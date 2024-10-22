@@ -1,14 +1,18 @@
-# python-package-template
+# BANG - BooleAn Networks on the GPU
 
-This is a template repository for projects that are Python packages.
+This is a Python package dedicated to generation, analysis, simulation and control of boolean networks with the help of CUDA.
 
-## Getting started
+## In this README :point_down:
 
-After creating a new repository from this template, you need to:
+- [Features](#features)
+- [Initial setup](#initial-setup)
+- [Usage](#usage)
+- [FAQ](#faq)
 
-1. Change the name of the `my_package` directory to the name you want.
-2. Replace all mentions of `my_package` throughout this repository with the name you want.
+## Features
 
-    ```bash
-    find . -type f -not -path ./.git -not -path ./README.md | xargs grep 'my_package'
-    ```
+## Initial setup
+
+## Usage
+
+## FAQ
