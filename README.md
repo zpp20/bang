@@ -17,11 +17,21 @@ This is a Python package dedicated to generation, analysis, simulation and contr
 
 1. First, input "import bang" in your Python script. 
 
-2. Then, create a new instance of the `bang.BooleanNetwork class. The simplest way
+
+2. Then, create a new instance of the bang.BooleanNetwork class. The simplest way
 is to pass the path to the sbml file with the network description. You can also change network_description 
 attribute manually later.
 
-3. Granted that the description is parsed correctly, you can now use 
+
+3. Granted that the network description is parsed correctly, you can now use 
 functions such as simulate, analyze, control, etc.
+
+    ```python
+   import bang
+   .
+   .
+   .
+   network = bang.BooleanNetwork("path/to/sbml/file")
+   results = network.simulate(10)
 
 ## FAQ
