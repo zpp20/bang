@@ -1,18 +1,18 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
 
 [project]
 # See https://setuptools.pypa.io/en/latest/userguide/quickstart.html for more project configuration options.
 name = "bang"
-dynamic = ["version"]
 readme = "README.md"
+version = "0.0.1"
 
 requires-python = ">=3.8"
 dependencies = [
   # Add your own dependencies here
 ]
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 
 [project.urls]
 Homepage = "https://github.com/pavozayac/bang"
@@ -22,35 +22,29 @@ Changelog = "https://github.com/pavozayac/bang/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
-    "ruff",
-    "mypy>=1.0,<1.5",
-    "black>=23.0,<24.0",
-    "isort>=5.12,<5.13",
-    "pytest",
-    "pytest-sphinx",
-    "pytest-cov",
-    "twine>=1.11.0",
-    "build",
-    "setuptools",
-    "wheel",
-    "Sphinx>=4.3.0,<7.1.0",
-    "furo==2023.7.26",
-    "myst-parser>=1.0,<2.1",
-    "sphinx-copybutton==0.5.2",
-    "sphinx-autobuild==2021.3.14",
-    "sphinx-autodoc-typehints==1.23.3",
-    "packaging"
+  "pybind11",
+  "ruff",
+  "mypy>=1.0,<1.5",
+  "black>=23.0,<24.0",
+  "isort>=5.12,<5.13",
+  "pytest",
+  "pytest-sphinx",
+  "pytest-cov",
+  "twine>=1.11.0",
+  "build",
+  "setuptools",
+  "wheel",
+  "Sphinx>=4.3.0,<7.1.0",
+  "furo==2023.7.26",
+  "myst-parser>=1.0,<2.1",
+  "sphinx-copybutton==0.5.2",
+  "sphinx-autobuild==2021.3.14",
+  "sphinx-autodoc-typehints==1.23.3",
+  "packaging",
 ]
 
 [tool.setuptools.packages.find]
-exclude = [
-    "*.tests",
-    "*.tests.*",
-    "tests.*",
-    "tests",
-    "docs*",
-    "scripts*"
-]
+exclude = ["*.tests", "*.tests.*", "tests.*", "tests", "docs*", "scripts*"]
 
 [tool.setuptools]
 include-package-data = true
@@ -59,7 +53,7 @@ include-package-data = true
 bang = ["py.typed"]
 
 [tool.setuptools.dynamic]
-version = {attr = "bang.version.VERSION"}
+version = { attr = "bang.version.VERSION" }
 
 [tool.black]
 line-length = 100
@@ -103,9 +97,6 @@ strict_optional = false
 
 [tool.pytest.ini_options]
 testpaths = "tests/"
-python_classes = [
-  "Test*",
-  "*Test"
-]
+python_classes = ["Test*", "*Test"]
 log_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 log_level = "DEBUG"
