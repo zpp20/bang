@@ -8,9 +8,11 @@ RUN gcc --version
 RUN g++ --version
 # Optionally, copy your project files here
 
-
-
 COPY ../ /app
+
+WORKDIR /app
+
+RUN pip install .
 
 # Default command
 CMD ["/bin/bash"]
