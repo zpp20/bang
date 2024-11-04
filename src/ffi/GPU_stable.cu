@@ -1,10 +1,14 @@
 /** In the cases that a PBN is too large, both shared memory and texture memory
  * are used to store it*/
+#include "./shared/German.h"
 #include "./shared/ltqnorm.h"
 
 #include <ctime>
+#include <cuda.h>
+#include <cuda_runtime.h>
 #include <curand.h>
 #include <curand_kernel.h>
+#include <fstream>
 #include <math.h>
 #include <pybind11/pybind11.h>
 #include <stdbool.h>
@@ -3802,66 +3806,66 @@ __global__ void kernelUpdateTrajectory(unsigned short *gpu_cumNv,
      transitions[1][0], transitions[1][1]);*/
 }
 
-int fromVector(vector<bool> myvector) {
-  int retval = 0;
-  int i = 0;
-  for (vector<bool>::iterator it = myvector.begin(); it != myvector.end();
-       it++, i++) {
-    if (*it) {
-      retval |= 1 << i;
-    }
-  }
-  return retval;
-}
+// int fromVector(vector<bool> myvector) {
+//   int retval = 0;
+//   int i = 0;
+//   for (vector<bool>::iterator it = myvector.begin(); it != myvector.end();
+//        it++, i++) {
+//     if (*it) {
+//       retval |= 1 << i;
+//     }
+//   }
+//   return retval;
+// }
 
-/**consider the case where len is greater than 32*/
-int fromVector(jboolean *myvector, int len) {
-  int retval = 0;
-  int i = 0;
-  int prefix = 0;
-  int other = 0;
-  if (len > 32) {
-    for (i = 0; i < 32; i++) {
-      if (myvector[i + prefix]) {
-        retval |= 1 << i;
-      }
-    }
-    prefix += 32;
-    len = len - 32;
-    // cout << "if extra " << retval << endl;
-  } else { // len is equal to or smaller than 32, return directly
-    for (i = 0; i < len; i++) {
-      if (myvector[i]) {
-        retval |= 1 << i;
-      }
-    }
-    return retval;
-  }
-  while (len > 32) {
-    other = 0;
-    for (i = 0; i < 32; i++) {
-      if (myvector[i + prefix]) {
-        other |= 1 << i;
-      }
-    }
-    prefix += 32;
-    len = len - 32;
-    extraF[extraFInitialIndex] = other;
-    extraFInitialIndex++;
-    // cout << "while extra " << other << endl;
-  }
-  other = 0;
-  for (i = 0; i < len; i++) {
-    if (myvector[i + prefix]) {
-      other |= 1 << i;
-    }
-  }
-  // cout << "final extra " << other << endl;
-  extraF[extraFInitialIndex] = other;
-  extraFInitialIndex++;
-  // cout<<"extraFInitialIndex="<<extraFInitialIndex<<endl;
-  return retval; // return the first retval
-}
+// /**consider the case where len is greater than 32*/
+// int fromVector(jboolean *myvector, int len) {
+//   int retval = 0;
+//   int i = 0;
+//   int prefix = 0;
+//   int other = 0;
+//   if (len > 32) {
+//     for (i = 0; i < 32; i++) {
+//       if (myvector[i + prefix]) {
+//         retval |= 1 << i;
+//       }
+//     }
+//     prefix += 32;
+//     len = len - 32;
+//     // cout << "if extra " << retval << endl;
+//   } else { // len is equal to or smaller than 32, return directly
+//     for (i = 0; i < len; i++) {
+//       if (myvector[i]) {
+//         retval |= 1 << i;
+//       }
+//     }
+//     return retval;
+//   }
+//   while (len > 32) {
+//     other = 0;
+//     for (i = 0; i < 32; i++) {
+//       if (myvector[i + prefix]) {
+//         other |= 1 << i;
+//       }
+//     }
+//     prefix += 32;
+//     len = len - 32;
+//     extraF[extraFInitialIndex] = other;
+//     extraFInitialIndex++;
+//     // cout << "while extra " << other << endl;
+//   }
+//   other = 0;
+//   for (i = 0; i < len; i++) {
+//     if (myvector[i + prefix]) {
+//       other |= 1 << i;
+//     }
+//   }
+//   // cout << "final extra " << other << endl;
+//   extraF[extraFInitialIndex] = other;
+//   extraFInitialIndex++;
+//   // cout<<"extraFInitialIndex="<<extraFInitialIndex<<endl;
+//   return retval; // return the first retval
+// }
 
 // alpha is stored in alphabeta[0]; and beta is stored in alphabeta[1]
 void calAlphaBeta(long transitionsLast[][2], float *alphabeta) {
@@ -3983,309 +3987,309 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
  * Method:    getCudaDeviceCount
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL
-Java_simulationMethod_GermanGPU_getCudaDeviceCount(JNIEnv *env, jclass cls) {
-  jint nDevices;
-  cudaGetDeviceCount(&nDevices);
-  return nDevices;
-}
+// JNIEXPORT jint JNICALL
+// Java_simulationMethod_GermanGPU_getCudaDeviceCount(JNIEnv *env, jclass cls) {
+//   jint nDevices;
+//   cudaGetDeviceCount(&nDevices);
+//   return nDevices;
+// }
 
 //------------------------------------------------------------------------------
 
-/*
- * Class:     simulationMethod_GermanGPU
- * Method:    initialGPUPBN
- * Signature: (LPBN/PBN;)V
- */
-JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGPUPBN(
-    JNIEnv *env, jclass cls, jobject lpbn) {
-  /**
-   public int getN();
-   descriptor: ()I
+// /*
+//  * Class:     simulationMethod_GermanGPU
+//  * Method:    initialGPUPBN
+//  * Signature: (LPBN/PBN;)V
+//  */
+// JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGPUPBN(
+//     JNIEnv *env, jclass cls, jobject lpbn) {
+//   /**
+//    public int getN();
+//    descriptor: ()I
 
-   public int[] getNf();
-   descriptor: ()[I
+//    public int[] getNf();
+//    descriptor: ()[I
 
-   public java.util.List<java.lang.Integer> getNv();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<java.lang.Integer> getNv();
+//    descriptor: ()Ljava/util/List;
 
-   public java.util.List<boolean[]> getF();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<boolean[]> getF();
+//    descriptor: ()Ljava/util/List;
 
-   public java.util.List<java.util.BitSet> getVarF();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<java.util.BitSet> getVarF();
+//    descriptor: ()Ljava/util/List;
 
-   public java.util.List<int[]> getVarFInt();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<int[]> getVarFInt();
+//    descriptor: ()Ljava/util/List;
 
-   public java.util.List<double[]> getCij();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<double[]> getCij();
+//    descriptor: ()Ljava/util/List;
 
-   public double getPerturbation();
-   descriptor: ()D
+//    public double getPerturbation();
+//    descriptor: ()D
 
-   public void setNpNode(java.util.List<java.lang.Integer>);
-   descriptor: (Ljava/util/List;)V
+//    public void setNpNode(java.util.List<java.lang.Integer>);
+//    descriptor: (Ljava/util/List;)V
 
-   public java.util.List<java.lang.Integer> npNode();
-   descriptor: ()Ljava/util/List;
+//    public java.util.List<java.lang.Integer> npNode();
+//    descriptor: ()Ljava/util/List;
 
-   public abstract boolean getNextNodeValue(int, PBN.StateBit);
-   descriptor: (ILPBN/StateBit;)Z
+//    public abstract boolean getNextNodeValue(int, PBN.StateBit);
+//    descriptor: (ILPBN/StateBit;)Z
 
-   public abstract int getStateLength();
-   descriptor: ()I
+//    public abstract int getStateLength();
+//    descriptor: ()I
 
+//    */
+//   jclass pbncl = env->GetObjectClass(lpbn);
+//   jmethodID mid = env->GetMethodID(pbncl, "getN", "()I");
+//   n = env->CallIntMethod(lpbn, mid);
+//   // initialise statesize
+//   stateSize = n / 32;
+//   if (stateSize * 32 < n)
+//     stateSize++;
 
-   */
-  jclass pbncl = env->GetObjectClass(lpbn);
-  jmethodID mid = env->GetMethodID(pbncl, "getN", "()I");
-  n = env->CallIntMethod(lpbn, mid);
-  // initialise statesize
-  stateSize = n / 32;
-  if (stateSize * 32 < n)
-    stateSize++;
+//   mid = env->GetMethodID(pbncl, "getNf", "()[I");
+//   jintArray lnf = (jintArray)env->CallObjectMethod(lpbn, mid);
 
-  mid = env->GetMethodID(pbncl, "getNf", "()[I");
-  jintArray lnf = (jintArray)env->CallObjectMethod(lpbn, mid);
+//   nf = (unsigned short *)malloc(sizeof(unsigned short) * n);
+//   int *tmpNf = (int *)malloc(sizeof(int) * n);
+//   (*env).GetIntArrayRegion(lnf, 0, n, &tmpNf[0]);
+//   // copy tmpNf to nf
+//   for (int i = 0; i < n; i++) {
+//     nf[i] = (unsigned short)tmpNf[i];
+//   }
+//   free(tmpNf);
 
-  nf = (unsigned short *)malloc(sizeof(unsigned short) * n);
-  int *tmpNf = (int *)malloc(sizeof(int) * n);
-  (*env).GetIntArrayRegion(lnf, 0, n, &tmpNf[0]);
-  // copy tmpNf to nf
-  for (int i = 0; i < n; i++) {
-    nf[i] = (unsigned short)tmpNf[i];
-  }
-  free(tmpNf);
+//   // cout<<n<<endl;
+//   mid = env->GetMethodID(pbncl, "getNv", "()Ljava/util/List;");
+//   jobject lnv = env->CallObjectMethod(lpbn, mid);
+//   // retrieve the java.util.List interface class
+//   jclass cList = env->FindClass("java/util/List");
+//   // retrieve the size and the get method
+//   jmethodID mSize = env->GetMethodID(cList, "size", "()I");
 
-  // cout<<n<<endl;
-  mid = env->GetMethodID(pbncl, "getNv", "()Ljava/util/List;");
-  jobject lnv = env->CallObjectMethod(lpbn, mid);
-  // retrieve the java.util.List interface class
-  jclass cList = env->FindClass("java/util/List");
-  // retrieve the size and the get method
-  jmethodID mSize = env->GetMethodID(cList, "size", "()I");
+//   jmethodID mGet = env->GetMethodID(cList, "get", "(I)Ljava/lang/Object;");
+//   // get the size of the list
+//   jint size = env->CallIntMethod(lnv, mSize);
 
-  jmethodID mGet = env->GetMethodID(cList, "get", "(I)Ljava/lang/Object;");
-  // get the size of the list
-  jint size = env->CallIntMethod(lnv, mSize);
+//   nv = (unsigned short *)malloc(sizeof(unsigned short) * size);
+//   int *tmpNv = (int *)malloc(sizeof(int) * size);
+//   // nv
+//   jclass cInt = env->FindClass("java/lang/Integer");
+//   jmethodID getValue = env->GetMethodID(cInt, "intValue", "()I");
+//   int cumNv = 0;
+//   // cout<<"nv, size="<<size<<endl;
+//   extraFCount = 0;
+//   extraFIndexCount = 0;
+//   for (int i = 0; i < size; i++) {
+//     jobject jInteger = env->CallObjectMethod(lnv, mGet, i);
+//     tmpNv[i] = env->CallIntMethod(jInteger, getValue);
+//     if (tmpNv[i] > 5) { // extraF
+//       extraFIndexCount++;
+//       extraFCount += (int)pow(2, tmpNv[i] - 5) - 1;
+//     }
+//     cumNv += tmpNv[i];
+//     // cout<<tmpNv[i]<<" ";
+//   }
+//   // cout<<endl<<"nv:\n";
+//   // copy tmpNv to nv
+//   for (int i = 0; i < size; i++) {
+//     nv[i] = (unsigned short)tmpNv[i];
+//     // cout<<nv[i]<<" ";
+//   }
+//   free(tmpNv);
 
-  nv = (unsigned short *)malloc(sizeof(unsigned short) * size);
-  int *tmpNv = (int *)malloc(sizeof(int) * size);
-  // nv
-  jclass cInt = env->FindClass("java/lang/Integer");
-  jmethodID getValue = env->GetMethodID(cInt, "intValue", "()I");
-  int cumNv = 0;
-  // cout<<"nv, size="<<size<<endl;
-  extraFCount = 0;
-  extraFIndexCount = 0;
-  for (int i = 0; i < size; i++) {
-    jobject jInteger = env->CallObjectMethod(lnv, mGet, i);
-    tmpNv[i] = env->CallIntMethod(jInteger, getValue);
-    if (tmpNv[i] > 5) { // extraF
-      extraFIndexCount++;
-      extraFCount += (int)pow(2, tmpNv[i] - 5) - 1;
-    }
-    cumNv += tmpNv[i];
-    // cout<<tmpNv[i]<<" ";
-  }
-  // cout<<endl<<"nv:\n";
-  // copy tmpNv to nv
-  for (int i = 0; i < size; i++) {
-    nv[i] = (unsigned short)tmpNv[i];
-    // cout<<nv[i]<<" ";
-  }
-  free(tmpNv);
+//   // cout<<endl;
+//   if (extraFCount > 0) {
+//     extraFInitialIndex = 0;
+//     extraFIndex =
+//         (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+//     cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+//                                          (extraFIndexCount + 1));
 
-  // cout<<endl;
-  if (extraFCount > 0) {
-    extraFInitialIndex = 0;
-    extraFIndex =
-        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
-                                         (extraFIndexCount + 1));
+//     cumExtraF[0] = 0;
+//     extraF = (int *)malloc(sizeof(int) * extraFCount);
+//     int tmpIndex = 0;
+//     for (int i = 0; i < size; i++) {
+//       if (nv[i] > 5) {
+//         extraFIndex[tmpIndex] = (unsigned short)i;
+//         tmpIndex++;
+//         cumExtraF[tmpIndex] =
+//             cumExtraF[tmpIndex - 1] + (unsigned short)pow(2, nv[i] - 5) - 1;
+//       }
+//     }
+//     //
+//     cout<<"extraFCount"<<extraFCount<<"extraFIndexCount"<<extraFIndexCount<<endl;
+//   } else { // create dummy ones
+//     extraFCount = 1;
+//     extraFIndexCount = 1;
+//     extraFIndex =
+//         (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+//     extraF = (int *)malloc(sizeof(int) * extraFCount);
+//     cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+//                                          (extraFIndexCount + 1));
+//   }
 
-    cumExtraF[0] = 0;
-    extraF = (int *)malloc(sizeof(int) * extraFCount);
-    int tmpIndex = 0;
-    for (int i = 0; i < size; i++) {
-      if (nv[i] > 5) {
-        extraFIndex[tmpIndex] = (unsigned short)i;
-        tmpIndex++;
-        cumExtraF[tmpIndex] =
-            cumExtraF[tmpIndex - 1] + (unsigned short)pow(2, nv[i] - 5) - 1;
-      }
-    }
-    // cout<<"extraFCount"<<extraFCount<<"extraFIndexCount"<<extraFIndexCount<<endl;
-  } else { // create dummy ones
-    extraFCount = 1;
-    extraFIndexCount = 1;
-    extraFIndex =
-        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-    extraF = (int *)malloc(sizeof(int) * extraFCount);
-    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
-                                         (extraFIndexCount + 1));
-  }
+//   // F
+//   int sizeF;
+//   mid = env->GetMethodID(pbncl, "getF", "()Ljava/util/List;");
+//   jobject lF = env->CallObjectMethod(lpbn, mid);
+//   size = env->CallIntMethod(lF, mSize);
+//   sizeF = size;
+//   F = (int *)malloc(sizeof(int) * size);
+//   // cout<<"F"<<endl;
+//   for (int i = 0; i < size; i++) {
+//     jbooleanArray elementF = (jbooleanArray)env->CallObjectMethod(lF, mGet,
+//     i); jsize len = (*env).GetArrayLength(elementF);
+//     // std::vector<bool> elementFVector( len );
+//     jboolean elementFVector[len];
+//     (*env).GetBooleanArrayRegion(elementF, 0, len, &elementFVector[0]);
+//     // for(int j=0;j<len;j++) {
+//     //	if(elementFVector[j])
+//     // cout<<"1"<<" ";
+//     //	else
+//     //	cout<<"0"<<" ";
+//     //}
+//     F[i] = fromVector(elementFVector, len);
+//     // cout<<"\n"<<F[i]<<"\n";
+//   }
+//   // varF
+//   mid = env->GetMethodID(pbncl, "getVarFInt", "()Ljava/util/List;");
+//   jobject lvarF = env->CallObjectMethod(lpbn, mid);
+//   size = env->CallIntMethod(lvarF, mSize);
+//   varF = (unsigned short *)malloc(sizeof(unsigned short) * cumNv);
+//   int *tmpVarF = (int *)malloc(sizeof(int) * cumNv);
+//   // cout<<"num varF="<<cumNv<<endl;
+//   int index = 0;
+//   // cout<<"varF"<<endl;
+//   for (int i = 0; i < size; i++) {
+//     jintArray elementVarF = (jintArray)env->CallObjectMethod(lvarF, mGet, i);
+//     jsize len = (*env).GetArrayLength(elementVarF);
+//     (*env).GetIntArrayRegion(elementVarF, 0, len, &tmpVarF[index]);
+//     // for(int j=0;j<len;j++) {
+//     //	cout<<varF[j+index]<<"\t";
+//     // }
+//     // cout<<endl;
+//     index += len;
+//   }
+//   // copy tmpVarF to varF
+//   for (int i = 0; i < cumNv; i++) {
+//     varF[i] = (unsigned short)tmpVarF[i];
+//   }
+//   free(tmpVarF);
 
-  // F
-  int sizeF;
-  mid = env->GetMethodID(pbncl, "getF", "()Ljava/util/List;");
-  jobject lF = env->CallObjectMethod(lpbn, mid);
-  size = env->CallIntMethod(lF, mSize);
-  sizeF = size;
-  F = (int *)malloc(sizeof(int) * size);
-  // cout<<"F"<<endl;
-  for (int i = 0; i < size; i++) {
-    jbooleanArray elementF = (jbooleanArray)env->CallObjectMethod(lF, mGet, i);
-    jsize len = (*env).GetArrayLength(elementF);
-    // std::vector<bool> elementFVector( len );
-    jboolean elementFVector[len];
-    (*env).GetBooleanArrayRegion(elementF, 0, len, &elementFVector[0]);
-    // for(int j=0;j<len;j++) {
-    //	if(elementFVector[j])
-    // cout<<"1"<<" ";
-    //	else
-    //	cout<<"0"<<" ";
-    //}
-    F[i] = fromVector(elementFVector, len);
-    // cout<<"\n"<<F[i]<<"\n";
-  }
-  // varF
-  mid = env->GetMethodID(pbncl, "getVarFInt", "()Ljava/util/List;");
-  jobject lvarF = env->CallObjectMethod(lpbn, mid);
-  size = env->CallIntMethod(lvarF, mSize);
-  varF = (unsigned short *)malloc(sizeof(unsigned short) * cumNv);
-  int *tmpVarF = (int *)malloc(sizeof(int) * cumNv);
-  // cout<<"num varF="<<cumNv<<endl;
-  int index = 0;
-  // cout<<"varF"<<endl;
-  for (int i = 0; i < size; i++) {
-    jintArray elementVarF = (jintArray)env->CallObjectMethod(lvarF, mGet, i);
-    jsize len = (*env).GetArrayLength(elementVarF);
-    (*env).GetIntArrayRegion(elementVarF, 0, len, &tmpVarF[index]);
-    // for(int j=0;j<len;j++) {
-    //	cout<<varF[j+index]<<"\t";
-    // }
-    // cout<<endl;
-    index += len;
-  }
-  // copy tmpVarF to varF
-  for (int i = 0; i < cumNv; i++) {
-    varF[i] = (unsigned short)tmpVarF[i];
-  }
-  free(tmpVarF);
-
-  // cij
-  mid = env->GetMethodID(pbncl, "getCij", "()Ljava/util/List;");
-  jobject lcij = env->CallObjectMethod(lpbn, mid);
-  size = env->CallIntMethod(lcij, mSize);
-  cij = (float *)malloc(sizeof(float) * sizeF);
-  double cij_d[sizeF];
-  index = 0;
-  for (int i = 0; i < size; i++) {
-    jdoubleArray elementcij =
-        (jdoubleArray)env->CallObjectMethod(lcij, mGet, i);
-    jsize len = (*env).GetArrayLength(elementcij);
-    (*env).GetDoubleArrayRegion(elementcij, 0, len, &cij_d[index]);
-    index += len;
-  }
-  for (int i = 0; i < sizeF; i++) {
-    cij[i] = cij_d[i];
-    // cout<<cij[i]<<"\t";
-  }
-  // cout<<endl;
-  // p
-  mid = env->GetMethodID(pbncl, "getPerturbation", "()D");
-  jdouble perturbation = env->CallDoubleMethod(lpbn, mid);
-  p = perturbation;
-  // cout<<"\n"<<p;
-  // npNode
-  mid = env->GetMethodID(pbncl, "npNode", "()Ljava/util/List;");
-  jobject lnp = env->CallObjectMethod(lpbn, mid);
-  size = env->CallIntMethod(lnp, mSize);
-  g_npNode = (int *)malloc(sizeof(int) * size);
-  jclass cInteger = env->FindClass("Ljava/lang/Integer;");
-  jmethodID getInteger = env->GetMethodID(cInteger, "intValue", "()I");
-  for (int i = 0; i < size; i++) {
-    jobject elementNp = env->CallObjectMethod(lnp, mGet, i);
-    g_npNode[i] = (int)env->CallIntMethod(elementNp, getInteger);
-    // cout<<"npNode["<<i<<"]"<<g_npNode[i]<<"\n";
-  }
-  g_npLength = size;
-}
+//   // cij
+//   mid = env->GetMethodID(pbncl, "getCij", "()Ljava/util/List;");
+//   jobject lcij = env->CallObjectMethod(lpbn, mid);
+//   size = env->CallIntMethod(lcij, mSize);
+//   cij = (float *)malloc(sizeof(float) * sizeF);
+//   double cij_d[sizeF];
+//   index = 0;
+//   for (int i = 0; i < size; i++) {
+//     jdoubleArray elementcij =
+//         (jdoubleArray)env->CallObjectMethod(lcij, mGet, i);
+//     jsize len = (*env).GetArrayLength(elementcij);
+//     (*env).GetDoubleArrayRegion(elementcij, 0, len, &cij_d[index]);
+//     index += len;
+//   }
+//   for (int i = 0; i < sizeF; i++) {
+//     cij[i] = cij_d[i];
+//     // cout<<cij[i]<<"\t";
+//   }
+//   // cout<<endl;
+//   // p
+//   mid = env->GetMethodID(pbncl, "getPerturbation", "()D");
+//   jdouble perturbation = env->CallDoubleMethod(lpbn, mid);
+//   p = perturbation;
+//   // cout<<"\n"<<p;
+//   // npNode
+//   mid = env->GetMethodID(pbncl, "npNode", "()Ljava/util/List;");
+//   jobject lnp = env->CallObjectMethod(lpbn, mid);
+//   size = env->CallIntMethod(lnp, mSize);
+//   g_npNode = (int *)malloc(sizeof(int) * size);
+//   jclass cInteger = env->FindClass("Ljava/lang/Integer;");
+//   jmethodID getInteger = env->GetMethodID(cInteger, "intValue", "()I");
+//   for (int i = 0; i < size; i++) {
+//     jobject elementNp = env->CallObjectMethod(lnp, mGet, i);
+//     g_npNode[i] = (int)env->CallIntMethod(elementNp, getInteger);
+//     // cout<<"npNode["<<i<<"]"<<g_npNode[i]<<"\n";
+//   }
+//   g_npLength = size;
+// }
 
 /*
  * Class:     simulationMethod_GermanGPU
  * Method:    initialGPUExpression
  * Signature: ([J[J)V
  */
-JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGPUExpression(
-    JNIEnv *env, jclass cls, jlongArray lpositiveIndex,
-    jlongArray lnegativeIndex) {
-  jsize len = (*env).GetArrayLength(lpositiveIndex);
-  jlong *body = (*env).GetLongArrayElements(lpositiveIndex, 0);
-  g_positiveIndex = (int *)malloc(sizeof(int) * stateSize);
-  g_negativeIndex = (int *)malloc(sizeof(int) * stateSize);
-  for (int i = 0; i < len; i++) {
-    g_positiveIndex[i * 2] = (int)body[i];
-    // cout<<"g_positiveIndex["<<i*2<<"]="<<g_positiveIndex[i*2]<<endl;
-    if (i * 2 + 1 < stateSize) {
-      g_positiveIndex[i * 2 + 1] = (int)(body[i] >> 32);
-      // cout<<"g_positiveIndex["<<i*2+1<<"]="<<g_positiveIndex[i*2+1]<<endl;
-    }
-  }
-  for (int i = len * 2; i < stateSize; i++) {
-    g_positiveIndex[i] = 0;
-    // cout<<"g_positiveIndex["<<i<<"]="<<g_positiveIndex[i]<<endl;
-  }
-  len = (*env).GetArrayLength(lnegativeIndex);
-  body = (*env).GetLongArrayElements(lnegativeIndex, 0);
-  for (int i = 0; i < len; i++) {
-    g_negativeIndex[i * 2] = (int)body[i];
-    // cout<<"g_negativeIndex["<<i*2<<"]="<<g_negativeIndex[i*2]<<endl;
-    if (i * 2 + 1 < stateSize) {
-      g_negativeIndex[i * 2 + 1] = (int)(body[i] >> 32);
-      // cout<<"g_negativeIndex["<<i*2+1<<"]="<<g_negativeIndex[i*2+1]<<endl;
-    }
-  }
-  for (int i = len * 2; i < stateSize; i++) {
-    g_negativeIndex[i] = 0;
-    // cout<<"g_negativeIndex["<<i<<"]="<<g_negativeIndex[i]<<endl;
-  }
-}
+// JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGPUExpression(
+//     JNIEnv *env, jclass cls, jlongArray lpositiveIndex,
+//     jlongArray lnegativeIndex) {
+//   jsize len = (*env).GetArrayLength(lpositiveIndex);
+//   jlong *body = (*env).GetLongArrayElements(lpositiveIndex, 0);
+//   g_positiveIndex = (int *)malloc(sizeof(int) * stateSize);
+//   g_negativeIndex = (int *)malloc(sizeof(int) * stateSize);
+//   for (int i = 0; i < len; i++) {
+//     g_positiveIndex[i * 2] = (int)body[i];
+//     // cout<<"g_positiveIndex["<<i*2<<"]="<<g_positiveIndex[i*2]<<endl;
+//     if (i * 2 + 1 < stateSize) {
+//       g_positiveIndex[i * 2 + 1] = (int)(body[i] >> 32);
+//       // cout<<"g_positiveIndex["<<i*2+1<<"]="<<g_positiveIndex[i*2+1]<<endl;
+//     }
+//   }
+//   for (int i = len * 2; i < stateSize; i++) {
+//     g_positiveIndex[i] = 0;
+//     // cout<<"g_positiveIndex["<<i<<"]="<<g_positiveIndex[i]<<endl;
+//   }
+//   len = (*env).GetArrayLength(lnegativeIndex);
+//   body = (*env).GetLongArrayElements(lnegativeIndex, 0);
+//   for (int i = 0; i < len; i++) {
+//     g_negativeIndex[i * 2] = (int)body[i];
+//     // cout<<"g_negativeIndex["<<i*2<<"]="<<g_negativeIndex[i*2]<<endl;
+//     if (i * 2 + 1 < stateSize) {
+//       g_negativeIndex[i * 2 + 1] = (int)(body[i] >> 32);
+//       // cout<<"g_negativeIndex["<<i*2+1<<"]="<<g_negativeIndex[i*2+1]<<endl;
+//     }
+//   }
+//   for (int i = len * 2; i < stateSize; i++) {
+//     g_negativeIndex[i] = 0;
+//     // cout<<"g_negativeIndex["<<i<<"]="<<g_negativeIndex[i]<<endl;
+//   }
+// }
 
 /*
  * Class:     simulationMethod_GermanGPU
  * Method:    initialGerman
  * Signature: ([D)V
  */
-JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGerman(
-    JNIEnv *env, jclass cls, jdoubleArray parameters) {
-  jsize len = (*env).GetArrayLength(parameters);
-  jdouble *body = (*env).GetDoubleArrayElements(parameters, 0);
-  precision = body[0];
-  confidence = body[1];
-  epsilon_twostate = body[2];
-  blockInfor[0] = 0;
-  if (len > 4) {
-    blockInfor[0] = (int)body[3];
-    blockInfor[1] = (int)body[4];
-    // cout<<"blockInfor[0]"<<blockInfor[0];
-  }
-  // cout<<precision<<"\t"<<confidence<<"\t"<<epsilon_twostate<<"\n";
-}
+// JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_initialGerman(
+//     JNIEnv *env, jclass cls, jdoubleArray parameters) {
+//   jsize len = (*env).GetArrayLength(parameters);
+//   jdouble *body = (*env).GetDoubleArrayElements(parameters, 0);
+//   precision = body[0];
+//   confidence = body[1];
+//   epsilon_twostate = body[2];
+//   blockInfor[0] = 0;
+//   if (len > 4) {
+//     blockInfor[0] = (int)body[3];
+//     blockInfor[1] = (int)body[4];
+//     // cout<<"blockInfor[0]"<<blockInfor[0];
+//   }
+//   // cout<<precision<<"\t"<<confidence<<"\t"<<epsilon_twostate<<"\n";
+// }
 
 /*
  * Class:     simulationMethod_GermanGPU
  * Method:    setOutputName
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_setOutputName(
-    JNIEnv *env, jclass cls, jstring name) {
-  const char *s = env->GetStringUTFChars(name, NULL);
-  outputName = s;
-  // cout<<outputName<<endl;
-}
+// JNIEXPORT void JNICALL Java_simulationMethod_GermanGPU_setOutputName(
+//     JNIEnv *env, jclass cls, jstring name) {
+//   const char *s = env->GetStringUTFChars(name, NULL);
+//   outputName = s;
+//   // cout<<outputName<<endl;
+// }
 
 /*
  * Class:     simulationMethod_GermanGPU
@@ -5076,7 +5080,7 @@ double *german_gpu_run() {
 
   double *newArray = new double[4];
   newArray[0] = (float)stateASum / (float)(stateBSum + stateASum);
-  o newArray[1] = stateBSum + stateASum + steps * N; // counting burn-in as well
+  newArray[1] = stateBSum + stateASum + steps * N; // counting burn-in as well
   newArray[2] = duration;
   newArray[3] = memsettime / 1000.0;
 
@@ -5085,6 +5089,6 @@ double *german_gpu_run() {
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(_core, m) {
+PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
 }
