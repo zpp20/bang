@@ -46,7 +46,7 @@ jobs:
             task:
               name: Build
               run: |
-                python -m build
+                python -m pip install .
 
           - python: "3.10"
             task:
