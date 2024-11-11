@@ -18,7 +18,14 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <pybind11/pybind11.h>
+#include <pybind11/embed.h>
+#include <pybind11/stl.h>
+
 using namespace std;
+
+namespace py = pybind11;
+
 #define epsilon 1e-9;   // to adjust the precision of float number
 #define RegPerThread 63 // this value is obtained via compiling command
 #define maxAllowedSharedMemory 40960 // the maximum allowed shared memory 40KB
@@ -3818,54 +3825,54 @@ __global__ void kernelUpdateTrajectory(unsigned short *gpu_cumNv,
 //   return retval;
 // }
 
-// /**consider the case where len is greater than 32*/
-// int fromVector(jboolean *myvector, int len) {
-//   int retval = 0;
-//   int i = 0;
-//   int prefix = 0;
-//   int other = 0;
-//   if (len > 32) {
-//     for (i = 0; i < 32; i++) {
-//       if (myvector[i + prefix]) {
-//         retval |= 1 << i;
-//       }
-//     }
-//     prefix += 32;
-//     len = len - 32;
-//     // cout << "if extra " << retval << endl;
-//   } else { // len is equal to or smaller than 32, return directly
-//     for (i = 0; i < len; i++) {
-//       if (myvector[i]) {
-//         retval |= 1 << i;
-//       }
-//     }
-//     return retval;
-//   }
-//   while (len > 32) {
-//     other = 0;
-//     for (i = 0; i < 32; i++) {
-//       if (myvector[i + prefix]) {
-//         other |= 1 << i;
-//       }
-//     }
-//     prefix += 32;
-//     len = len - 32;
-//     extraF[extraFInitialIndex] = other;
-//     extraFInitialIndex++;
-//     // cout << "while extra " << other << endl;
-//   }
-//   other = 0;
-//   for (i = 0; i < len; i++) {
-//     if (myvector[i + prefix]) {
-//       other |= 1 << i;
-//     }
-//   }
-//   // cout << "final extra " << other << endl;
-//   extraF[extraFInitialIndex] = other;
-//   extraFInitialIndex++;
-//   // cout<<"extraFInitialIndex="<<extraFInitialIndex<<endl;
-//   return retval; // return the first retval
-// }
+/**consider the case where len is greater than 32*/
+int fromVector(py::list myvector, int len) {
+  int retval = 0;
+  int i = 0;
+  int prefix = 0;
+  int other = 0;
+  if (len > 32) {
+    for (i = 0; i < 32; i++) {
+      if (myvector[i + prefix].cast<bool>()) {
+        retval |= 1 << i;
+      }
+    }
+    prefix += 32;
+    len = len - 32;
+    // cout << "if extra " << retval << endl;
+  } else { // len is equal to or smaller than 32, return directly
+    for (i = 0; i < len; i++) {
+      if (myvector[i].cast<bool>()) {
+        retval |= 1 << i;
+      }
+    }
+    return retval;
+  }
+  while (len > 32) {
+    other = 0;
+    for (i = 0; i < 32; i++) {
+      if (myvector[i + prefix].cast<bool>()) {
+        other |= 1 << i;
+      }
+    }
+    prefix += 32;
+    len = len - 32;
+    extraF[extraFInitialIndex] = other;
+    extraFInitialIndex++;
+    // cout << "while extra " << other << endl;
+  }
+  other = 0;
+  for (i = 0; i < len; i++) {
+    if (myvector[i + prefix].cast<bool>()) {
+      other |= 1 << i;
+    }
+  }
+  // cout << "final extra " << other << endl;
+  extraF[extraFInitialIndex] = other;
+  extraFInitialIndex++;
+  // cout<<"extraFInitialIndex="<<extraFInitialIndex<<endl;
+  return retval; // return the first retval
+}
 
 // alpha is stored in alphabeta[0]; and beta is stored in alphabeta[1]
 void calAlphaBeta(long transitionsLast[][2], float *alphabeta) {
@@ -4217,6 +4224,140 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
 //   }
 //   g_npLength = size;
 // }
+
+void initialisePBN_GPU(py:object PBN) {
+
+
+  // n
+  n = PBN.attr("getN")().cast<int>();
+
+  stateSize = n / 32;
+  if (stateSize * 32 < n)
+    stateSize++;
+
+
+  // nf
+  py::list nf_py = PBN.attr("getNf")();
+
+  nf = (uint16_t *)malloc(sizeof(uint16_t) * n);
+
+  int idx = 0
+  for (auto elem : nf_py) {
+    nf[idx++] = elem.cast<uint16_t>();
+  }
+
+
+  // nv
+  py::list nv_py = PBN.attr("getNv")();
+
+  int nv_len = py::len(nv_py);
+  nv = (uint16_t *)malloc(sizeof(uint16_t) * nv_len);
+
+  int cumNv = 0;
+  extraFCount = 0;
+  extraFIndexCount = 0;
+
+  idx = 0;
+  for (auto elem : nv_py) {
+    uint16_t value = elem.cast<uint16_t>();
+
+    if (value > 5) {
+      extraFIndexCount++;
+      extraFCount += (int)pow(2, tmpNv[i] - 5) - 1;
+    }
+    cumNv += value;
+
+    nv[idx++] = value; 
+  }
+
+
+  // extraF
+  if (extraFCount > 0) {
+    extraFInitialIndex = 0;
+    extraFIndex =
+        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+                                         (extraFIndexCount + 1));
+
+    cumExtraF[0] = 0;
+    extraF = (int *)malloc(sizeof(int) * extraFCount);
+    int tmpIndex = 0;
+    for (int i = 0; i < size; i++) {
+      if (nv[i] > 5) {
+        extraFIndex[tmpIndex] = (unsigned short)i;
+        tmpIndex++;
+        cumExtraF[tmpIndex] =
+            cumExtraF[tmpIndex - 1] + (unsigned short)pow(2, nv[i] - 5) - 1;
+      }
+    }
+  } else { // create dummy ones
+    extraFCount = 1;
+    extraFIndexCount = 1;
+    extraFIndex =
+        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+    extraF = (int *)malloc(sizeof(int) * extraFCount);
+    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+                                         (extraFIndexCount + 1));
+  }
+
+
+  // F
+  
+  py::list F_py = PBN.attr("getF");
+  
+  int sizeF = py::len(F);
+  
+  F = (int *)malloc(sizeof(int) * size);
+
+  idx = 0;
+  for (py::list elem : F_py) {
+    int elem_len = py::len(elem);
+    
+    F[idx++] = fromVector(elem, elem_len);
+  }
+
+
+  // varF
+  py::list varF_py = PBN.attr("getVarFInt")();
+  varF = (uint16_t *)malloc(sizeof(uint16_t) * cumNv);
+  // cout<<"num varF="<<cumNv<<endl;
+  // cout<<"varF"<<endl;
+  idx = 0;
+  for (py::list varF_elem_list : varF_py) {
+    for (auto elem : varF_elem_list) {
+      varF[idx++] = elem.cast<bool>();
+    }
+  }
+  
+
+  // cij
+  py::list cij_py = PBN.attr("getCij")();
+  cij = (float *)malloc(sizeof(float) * sizeF);
+
+  idx = 0;
+  for (auto cij_sublist : cij_py) {
+    for (auto elem : cij_sublist) {
+      cij[idx++] = elem.cast<float>();
+    }
+  }
+
+
+  // p
+  p = PBN.attr("getPerturbation")().cast<float>();
+
+
+  // npNode
+  py::list npNode_py = PBN.attr("getNpNode")();
+  int npNode_size = py::len(npNode_py);
+
+  g_npNode = (int *)malloc(sizeof(int) * npNode_size);
+  idx = 0;
+  for (auto elem : npNode_py) {
+    g_npNode[idx++] = elem.cast<int>();
+  }
+  g_npLength = npNode_size;
+
+}
 
 /*
  * Class:     simulationMethod_GermanGPU
@@ -5091,4 +5232,5 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
+  m.def("initialise_PBN", &initialisePBN_GPU, "Initialise PBN on GPU", py::arg("PBN"));
 }
