@@ -4304,7 +4304,7 @@ void initialisePBN_GPU(py::object PBN) {
 
 
   // F
-  py::list F_py = PBN.attr("getF");
+  py::list F_py = PBN.attr("getF")();
   
   int sizeF = py::len(F_py);
   
@@ -4329,7 +4329,7 @@ void initialisePBN_GPU(py::object PBN) {
   for (auto varF_elem : varF_py) {
     py::list varF_elem_list = py::cast<py::list>(varF_elem);
     for (auto elem : varF_elem_list) {
-      varF[idx++] = elem.cast<bool>();
+      varF[idx++] = elem.cast<uint16_t>();
     }
   }
   
