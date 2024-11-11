@@ -17,10 +17,12 @@
 #include <string>
 #include <sys/time.h>
 #include <unistd.h>
+#include <cstdint>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
+
 
 using namespace std;
 
@@ -4225,7 +4227,7 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
 //   g_npLength = size;
 // }
 
-void initialisePBN_GPU(py:object PBN) {
+void initialisePBN_GPU(py::object PBN) {
 
 
   // n
@@ -4241,7 +4243,7 @@ void initialisePBN_GPU(py:object PBN) {
 
   nf = (uint16_t *)malloc(sizeof(uint16_t) * n);
 
-  int idx = 0
+  int idx = 0;
   for (auto elem : nf_py) {
     nf[idx++] = elem.cast<uint16_t>();
   }
@@ -4263,7 +4265,7 @@ void initialisePBN_GPU(py:object PBN) {
 
     if (value > 5) {
       extraFIndexCount++;
-      extraFCount += (int)pow(2, tmpNv[i] - 5) - 1;
+      extraFCount += (int)pow(2, value - 5) - 1;
     }
     cumNv += value;
 
@@ -4282,7 +4284,7 @@ void initialisePBN_GPU(py:object PBN) {
     cumExtraF[0] = 0;
     extraF = (int *)malloc(sizeof(int) * extraFCount);
     int tmpIndex = 0;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < nv_len; i++) {
       if (nv[i] > 5) {
         extraFIndex[tmpIndex] = (unsigned short)i;
         tmpIndex++;
@@ -4305,25 +4307,28 @@ void initialisePBN_GPU(py:object PBN) {
   
   py::list F_py = PBN.attr("getF");
   
-  int sizeF = py::len(F);
+  int sizeF = py::len(F_py);
   
-  F = (int *)malloc(sizeof(int) * size);
+  F = (int *)malloc(sizeof(int) * sizeF);
 
   idx = 0;
-  for (py::list elem : F_py) {
+  for (auto elem : F_py) {
+    py::list elem_list = py::cast<py::list>(elem);
+
     int elem_len = py::len(elem);
     
-    F[idx++] = fromVector(elem, elem_len);
+    F[idx++] = fromVector(elem_list, elem_len);
   }
-
 
   // varF
   py::list varF_py = PBN.attr("getVarFInt")();
+
   varF = (uint16_t *)malloc(sizeof(uint16_t) * cumNv);
   // cout<<"num varF="<<cumNv<<endl;
   // cout<<"varF"<<endl;
   idx = 0;
-  for (py::list varF_elem_list : varF_py) {
+  for (auto varF_elem : varF_py) {
+    py::list varF_elem_list = py::cast<py::list>(varF_elem);
     for (auto elem : varF_elem_list) {
       varF[idx++] = elem.cast<bool>();
     }

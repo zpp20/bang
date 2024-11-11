@@ -5,16 +5,16 @@ class PBN:
     def __init__(self, n : int,
                  nf : List[int], 
                  nv : List[int],
-                 F : List[bool],
-                 varFInt : List[int],
-                 cij : List[float],
+                 F : List[List[bool]],
+                 varFInt : List[List[int]],
+                 cij : List[List[float]],
                  perturbation : float,
                  cumNF : List[int],
                  npNode : List[int]):
         
         self.n = n  #the number of nodes
         self.nf = nf    #the size is n
-        self.nv = nv    #the size = cum(nf)
+        self.nv = nv    #the sizef = cum(nf)
         self.F = F  #each element of F stores a column of the truth table "F"， e.g., F.get(0)=[true false], the length of the element is 2^nv(boolean function index)
         self.varFInt = varFInt  
         self.cij = cij  #the size=n, each element represents the selection probability of a node, and therefore the size of each element equals to the number of functions of each node
