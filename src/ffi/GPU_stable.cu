@@ -4304,7 +4304,6 @@ void initialisePBN_GPU(py::object PBN) {
 
 
   // F
-  
   py::list F_py = PBN.attr("getF");
   
   int sizeF = py::len(F_py);

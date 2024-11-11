@@ -9,7 +9,6 @@ class PBN:
                  varFInt : List[List[int]],
                  cij : List[List[float]],
                  perturbation : float,
-                 cumNF : List[int],
                  npNode : List[int]):
         
         self.n = n  #the number of nodes
@@ -19,7 +18,6 @@ class PBN:
         self.varFInt = varFInt  
         self.cij = cij  #the size=n, each element represents the selection probability of a node, and therefore the size of each element equals to the number of functions of each node
         self.perturbation = perturbation    #perturbation rate
-        self.cumNF = cumNF  #cumulative sum of nf, the first element is 0 and the size=n+1
         self.npNode = npNode    #index of those nodes without perturbation. To make simulation easy, the last element of npNode will always be n, which also indicate the end of the list. If there is only one element, it means there is no disabled node.
 
 
