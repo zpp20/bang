@@ -45,3 +45,19 @@ class PBN:
     def getNpNode(self):
         return self.npNode
     
+
+
+def load_sbml():
+    pass
+
+def load_assa():
+    pass
+
+def load_from_file(format='sbml'):
+    match format:
+        case 'sbml':
+            load_sbml()
+        case 'assa':
+            load_assa()
+        case _:
+            raise ValueError("Invalid format")
