@@ -1,4 +1,5 @@
 from typing import List
+from libsbml import *
 
 class PBN:
 
@@ -45,19 +46,76 @@ class PBN:
     def getNpNode(self):
         return self.npNode
     
-
+def skip_empty_lines(lines, i):
+    while lines[i].strip() == "":
+        i += 1
+    return i
 
 def load_sbml():
     pass
 
-def load_assa():
-    pass
+def load_assa(path):
+    with open(path, 'r') as f:
+        lines = f.readlines()
+        no_of_lines = len(lines)
+       
+        i = 0
+        i = skip_empty_lines(lines, i)
+        
+        type_line = lines[i]
+        type_line = type_line.strip()
+        if type_line.startswith("type=") == False:
+            raise ValueError("Invalid file format")
+        type = type_line.split("=")[1]
+        if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']
+            raise ValueError("Invalid file format")
+        
+        i += 1
+        i = skip_empty_lines(lines, i)
+        
+        n_line = lines[i]
+        n_line = n_line.strip()
+        if n_line.startswith("n=") == False:
+            raise ValueError("Invalid file format")
+        n = n_line.split("=")[1]
+        if not n.isnumeric():
+            raise ValueError("Invalid file format")
+        n = int(n)
 
-def load_from_file(format='sbml'):
+        i += 1
+        i = skip_empty_lines(lines, i)
+
+        perturbation_line = lines[i]
+        perturbation_line = perturbation_line.strip()
+        if perturbation_line.startswith("perturbation=") == False:
+            raise ValueError("Invalid file format")
+        perturbation = perturbation_line.split("=")[1]
+        if not perturbation.isnumeric():
+            raise ValueError("Invalid file format")
+        perturbation = float(perturbation)
+
+        i += 1
+        pass
+        # nf = list(map(int, lines[1].split()))
+        # nv = list(map(int, lines[2].split()))
+        # F = []
+        # for i in range(sum(nf)):
+        #     F.append(list(map(bool, lines[3 + i].split())))
+        # varFInt = []
+        # for i in range(n):
+        #     varFInt.append(list(map(int, lines[3 + sum(nf) + i].split())))
+        # cij = []
+        # for i in range(n):
+        #     cij.append(list(map(float, lines[3 + sum(nf) + n + i].split()))
+        # perturbation = float(lines[3 + sum(nf) + 2*n])
+        # npNode = list(map(int, lines[3 + sum(nf) + 2*n + 1].split()))
+        # return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
+
+def load_from_file(path, format='sbml'):
     match format:
         case 'sbml':
-            load_sbml()
+            load_sbml(path)
         case 'assa':
-            load_assa()
+            load_assa(path)
         case _:
             raise ValueError("Invalid format")
