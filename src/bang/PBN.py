@@ -1,5 +1,6 @@
 from typing import List
 from libsbml import *
+from parseSBML import parseSBMLDocument
 
 class PBN:
 
@@ -51,7 +52,8 @@ def skip_empty_lines(lines, i):
         i += 1
     return i
 
-def load_sbml():
+def load_sbml(path: str) -> PBN:
+    return PBN(*parseSBMLDocument(path))
     pass
 
 def load_assa(path):
