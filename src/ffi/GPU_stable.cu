@@ -18,6 +18,9 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <cstdint>
+#include <iostream>
+
+#include <bitset>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/embed.h>
@@ -2792,7 +2795,8 @@ __global__ void kernelConvergeInitial1(
   int idx = threadIdx.x + blockIdx.x * blockDim.x; // one register
 
   // let's make shared memory
-  unsigned short *cumNv = (unsigned short *)arrays;
+  unsigned short *cumNv = (unsigned short *)arrays; //MC: trzymamy wszystkie dane o PBNie w jednej duzej tabeli arrays
+  //MC: czyli w arrays sa trzymane: cumNv | F | varF | l_extraF(co to?) | l_extraFIndex | l_cumExtraF | npLength | np
   int *F;
   if ((constantCumNf[nodeNum[0]] + 1) % 2 != 0) {
     F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
@@ -2811,11 +2815,11 @@ __global__ void kernelConvergeInitial1(
   int *npLength = (int *)&l_cumExtraF[*gpu_extraFIndexCount + 1];
   int *np = (int *)&npLength[1];
 
-  // can be put in texture
-  int initialStateCopy[4];
-  int initialState[4];
+  // can be put in texture  //MC: z jakiegos powodu mowia na pamiec lokalna w gpu "texture", nwm czy to jest to samo
+  int initialStateCopy[4]; //MC: jest mniej niz 4 * 32 = 128 wezlow
+  int initialState[4];  //MC: czyli statesize <= 4
 
-  if (threadIdx.x == 0) {
+  if (threadIdx.x == 0) {   //MC: mozliwe warp divergence??
     for (int i = 0; i < constantCumNf[nodeNum[0]]; i++) {
       // nv[i] = gpu_nv[i];
       cumNv[i] = gpu_cumNv[i];
@@ -2852,7 +2856,7 @@ __global__ void kernelConvergeInitial1(
   int stateSize = *gpu_stateSize;
   int relativeIndex = idx * stateSize;
   for (int i = 0; i < stateSize; i++) {
-    initialState[i] = gpu_initialState[relativeIndex + i];
+    initialState[i] = gpu_initialState[relativeIndex + i];    //MC: kazdy thread wpisuje sobie swoja czesc initialstateow
     initialStateCopy[i] = initialState[i];
   }
 
@@ -2868,13 +2872,14 @@ __global__ void kernelConvergeInitial1(
     int indexState = 0, indexShift = 0;
     int start = 0;
     for (int t = 0; t < *npLength; t++) {
-      for (int i = start; i < np[t]; i++) {
+      for (int i = start; i < np[t]; i++) { //MC: ostatni element np czyli tablicy z wezlami bez perturbacji to zawsze n (ilosc wezlow)
+      //MC: czyli idziemy od 0 do np[0], od np[0] + 1 do np[1] itd po wszystkich wezlach bez perturbacji
         rand = curand_uniform(&localState);
         // if(idx==0 && j<10) printf("\trand %d-%d: %f\nodeNum[0]",j,i,rand);
-        if (rand < constantP[0]) {
+        if (rand < constantP[0]) {  //stale takie jak perturbation sa trzymane w jednoelementowych tablicach
           perturbation = true;
           indexState = i / 32;
-          indexShift = indexState * 32;
+          indexShift = indexState * 32;   //MC: ciekawy sposob na liczenie i mod 32
           initialStateCopy[indexState] =
               initialStateCopy[indexState] ^
               (1 << (i - indexShift)); // might use constant memory to replace
@@ -2884,25 +2889,25 @@ __global__ void kernelConvergeInitial1(
       start = np[t] + 1;
     }
 
-    if (!perturbation) {
+    if (!perturbation) {  //MC: jesli nie ma perturbacji to liczymy z funkcji boolowskich nastepny stan
       indexShift = 0;
       indexState = 0;
-      for (int i = 0; i < nodeNum[0]; i++) {
+      for (int i = 0; i < nodeNum[0]; i++) {  //MC: indexState i indexShift to kolejno numer inta i numer bitu w incie ze stanem danego wezla.
         if (indexShift == 32) {
           indexState++;
           indexShift = 0;
         }
         relativeIndex = 0;
         rand = curand_uniform(&localState);
-        while (rand > constantCij[constantCumNf[i] + relativeIndex]) {
-          relativeIndex++;
+        while (rand > constantCij[constantCumNf[i] + relativeIndex]) {  
+          relativeIndex++;      //MC: losujemy ktorej funkcji dla wezla uzywamy, chyba cij jest przepisywane w german_run na skumulowane prawdopodobienstwo
         }
-        start = constantCumNf[i] + relativeIndex;
-        int elementF = F[start];
-        int startVarFIndex = cumNv[start];
-        int resultStateSize = cumNv[start + 1] - startVarFIndex;
+        start = constantCumNf[i] + relativeIndex; //MC: start to indeks funkcji ktora wybieramy
+        int elementF = F[start]; 
+        int startVarFIndex = cumNv[start];    //MC: indeks numeru pierwszego wezla w funkcji F
+        int resultStateSize = cumNv[start + 1] - startVarFIndex; //MC: ile jest wezlow w funkcji F
         int shifNum = 0;
-        for (int ind = 0; ind < resultStateSize; ind++) {
+        for (int ind = 0; ind < resultStateSize; ind++) { //MC: lecimy po wszystkich wezlach funkcji F
           relativeIndex = varF[startVarFIndex + ind] / 32;
           relativeIndex = initialState[relativeIndex];
           if (((relativeIndex >> (varF[startVarFIndex + ind] % 32)) & 1) != 0) {
@@ -2923,7 +2928,7 @@ __global__ void kernelConvergeInitial1(
         // relativeIndex = i / 32;
         initialStateCopy[indexState] ^=
             (-(elementF & 1) ^ initialStateCopy[indexState]) &
-            (1 << (i - indexState * 32));
+            (1 << (i - indexState * 32)); //MC: xorujemy stany z tymi ktore znamy
         indexShift++;
       }
     }
@@ -2939,6 +2944,7 @@ __global__ void kernelConvergeInitial1(
     gpu_initialState[relativeIndex + i] = initialStateCopy[i];
   }
   // printf("idx=%d", idx);
+  //MC: jak widac w ConvergeInitial nie zapisujemy nigdzie informacji o tym jakie stany mielismy do tej pory, patrzymy tylko gdzie znalezlismy sie po steps krokach.
 }
 
 /**
@@ -4449,18 +4455,18 @@ double *german_gpu_run() {
   int argCount = 1;
   bool useTexture = false;
 
-  ofstream output;
+  // ofstream output;
 
   // pbn = io.loadPBN(argv[argCount]);
   argCount += 2;
   // argv[2]=property file name
-  output.open(outputName, ios::out | ios::app);
+  // output.open(outputName, ios::out | ios::app);
 
   steps = 100; // stoi(argv[argCount]);
 
   int N = block * blockSize;
-  output << "***************************\n";
-  output << "running two-state on model ";
+  cout << "***************************\n";
+  cout << "running two-state on model ";
   // output << argv[1];
 
   std::clock_t cpu_start;
@@ -4557,7 +4563,7 @@ double *german_gpu_run() {
 
            cout<<stateSize<<endl;*/
 
-  // cout<<"allocating finished\n";
+  cout<<"allocating finished\n";
   free(nf);
   free(nv);
 
@@ -4601,7 +4607,7 @@ double *german_gpu_run() {
     }
     // size_sharedMemory -= cumNv[cumNf[n]] * sizeof(int); //varF
     useTexture = true;
-    output << "Using texture memory to store extraF, extraFindex, cumExtraF "
+    cout << "Using texture memory to store extraF, extraFindex, cumExtraF "
               "size texture="
            << (tmp - size_sharedMemory) << "bytes. " << endl;
   }
@@ -4621,7 +4627,7 @@ double *german_gpu_run() {
   N = block * blockSize;
   // size_sharedMemory += stateSize * N * sizeof(int);
   // printf("sharedMemorySize=%d bytes\n", size_sharedMemory);
-  output << "blockSize=" << blockSize << ", block=" << block
+  cout << "blockSize=" << blockSize << ", block=" << block
          << ", precision=" << r << ", sharedMemorySize=" << size_sharedMemory
          << " bytes.\n";
 
@@ -4730,12 +4736,12 @@ double *german_gpu_run() {
       cudaMalloc((void **)&gpu_initialState, stateSize * N * sizeof(int)));
   // HANDLE_ERROR(cudaMalloc((void**) &gpu_initialStateCopy, stateSize * N *
   // sizeof(int)));
-  HANDLE_ERROR(
-      cudaMalloc((void **)&gpu_positiveIndex, stateSize * sizeof(int)));
-  HANDLE_ERROR(
-      cudaMalloc((void **)&gpu_negativeIndex, stateSize * sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void **)&gpu_trajectoryKernel,
-                          trajectoryLength * stateSize * N * sizeof(int)));
+  // HANDLE_ERROR(
+  //     cudaMalloc((void **)&gpu_positiveIndex, stateSize * sizeof(int)));
+  // HANDLE_ERROR(
+  //     cudaMalloc((void **)&gpu_negativeIndex, stateSize * sizeof(int)));
+  // HANDLE_ERROR(cudaMalloc((void **)&gpu_trajectoryKernel,
+  //                         trajectoryLength * stateSize * N * sizeof(int)));
   HANDLE_ERROR(cudaMalloc((void **)&gpu_stateSize, sizeof(int)));
 
   // copy data from host to device
@@ -4764,10 +4770,10 @@ double *german_gpu_run() {
                           sizeof(int), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(gpu_stateSize, &stateSize, sizeof(int),
                           cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaMemcpy(gpu_positiveIndex, g_positiveIndex,
-                          stateSize * sizeof(int), cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaMemcpy(gpu_negativeIndex, g_negativeIndex,
-                          stateSize * sizeof(int), cudaMemcpyHostToDevice));
+  // HANDLE_ERROR(cudaMemcpy(gpu_positiveIndex, g_positiveIndex,
+  //                         stateSize * sizeof(int), cudaMemcpyHostToDevice));
+  // HANDLE_ERROR(cudaMemcpy(gpu_negativeIndex, g_negativeIndex,
+  //                         stateSize * sizeof(int), cudaMemcpyHostToDevice));
 
   HANDLE_ERROR(cudaMemcpy(gpu_initialState, initialState,
                           N * stateSize * sizeof(float),
@@ -4787,10 +4793,10 @@ double *german_gpu_run() {
   cudaMemcpyToSymbol(nodeNum, &n, sizeof(int));
   cudaMemcpyToSymbol(constantP, &p, sizeof(float));
   cudaMemcpyToSymbol(constantCumNf, &cumNf, sizeof(unsigned short) * (n + 1));
-  cudaMemcpyToSymbol(constantPositiveIndex, g_positiveIndex,
-                     sizeof(int) * (stateSize));
-  cudaMemcpyToSymbol(constantNegativeIndex, g_negativeIndex,
-                     sizeof(int) * (stateSize));
+  // cudaMemcpyToSymbol(constantPositiveIndex, g_positiveIndex,
+  //                    sizeof(int) * (stateSize));
+  // cudaMemcpyToSymbol(constantNegativeIndex, g_negativeIndex,
+  //                    sizeof(int) * (stateSize));
   cudaMemcpyToSymbol(constantCij, cij, sizeof(float) * cumNf[n]);
 
   // free variables in host
@@ -4834,7 +4840,7 @@ double *german_gpu_run() {
   // printf("start to call kernelConvergeInitial\n");
   // output << "start to call kernelConvergeInitial\n";
   // german and rubin method
-  // cout<<"before calling kernelconvergeInitial\n";
+  cout<<"before calling kernelconvergeInitial\n";
   if (n < 129) {
     // printf("1\n");
     kernelConvergeInitial1<<<block, blockSize, size_sharedMemory>>>(
@@ -4873,7 +4879,23 @@ double *german_gpu_run() {
   }
   currentTrajectorySize = steps;
   // printf("finish converge initial\n");
-  // cout<<"before calling kernelConverge\n";
+  cout<<"before calling kernelConverge  currentTrajectorySize: " << currentTrajectorySize <<"\n\n";
+  
+  //MC: wypisujemy wszystkie stany ktore otrzymalismy z 25tek za pomoca convergeinitial:
+
+  for (int i = 0; i < N; i++) {
+    cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
+    for (int j = 0; j < stateSize; j++) {
+      cout << "|";
+      for (size_t k = 0; k < sizeof(int); k++) {
+        unsigned char* bytes = reinterpret_cast<unsigned char*>(&(gpu_initialState[i * stateSize + j]));
+        bitset<8> bits = bytes[k];
+        cout<< bits << " ";
+      }
+    }
+  }
+  
+  
   while (!done) {
     // call kernel function, need to allocate the shared method size here as the
     // third parameters
@@ -5018,14 +5040,14 @@ double *german_gpu_run() {
     transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
     }*/
   }
-  output << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  output << "transitionsLast[0][0]=" << transitionsLast[0][0]
+  cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
+  cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
 
          << ", transitionsLast[0][1]=" << transitionsLast[0][1]
 
          << ", transitionsLast[1][0]=" << transitionsLast[1][0]
          << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  output << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
+  cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
          << "\n";
 
   /*cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
@@ -5043,7 +5065,7 @@ double *german_gpu_run() {
   alphabeta[1] = 0;
   calAlphaBeta(transitionsLast, alphabeta);
 
-  output << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
+  cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
 
   long maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
                    transitionsLast[1][0] + transitionsLast[1][1];
@@ -5058,13 +5080,13 @@ double *german_gpu_run() {
 
   int extensionPerChain;
   int round = 0;
-  output << "maxLength=" << maxLength << ", N=" << TSN << "\n";
+  cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
 
   // cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
   while (TSN > maxLength) {
     extensionPerChain =
         (int)ceil((TSN - maxLength) * kstep / (double)N); // consider kstep here
-    output << "extensionPerChain=" << extensionPerChain << endl;
+    cout << "extensionPerChain=" << extensionPerChain << endl;
     // cout << "extensionPerChain=" << extensionPerChain << endl;
     // cout<<"before calling kernel\n";
     HANDLE_ERROR(cudaMemcpy(gpu_steps, &extensionPerChain, sizeof(int),
@@ -5140,17 +5162,17 @@ double *german_gpu_run() {
     free(stateA);
     free(stateB);
     free(transitionsLastChain);
-    output << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-    output << "transitionsLast[0][0]=" << transitionsLast[0][0]
+    cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
+    cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
 
            << ", transitionsLast[0][1]=" << transitionsLast[0][1]
 
            << ", transitionsLast[1][0]=" << transitionsLast[1][0]
            << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-    output << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
+    cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
            << "\n";
     calAlphaBeta(transitionsLast, alphabeta);
-    output << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
+    cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
     if (alphabeta[0] == 0 || alphabeta[1] == 0)
       TSN = TSN * 2;
     else
@@ -5161,24 +5183,24 @@ double *german_gpu_run() {
     maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
                 transitionsLast[1][0] + transitionsLast[1][1];
     round++;
-    output << "maxLength=" << maxLength << ", N=" << TSN << "\n";
+    cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
   }
 
-  output << "Finished in " << round << " round. Prob. is "
+  cout << "Finished in " << round << " round. Prob. is "
          << (float)stateASum / (float)(stateBSum + stateASum) << "\n";
   duration = (std::clock() - cpu_start) / (double)CLOCKS_PER_SEC;
 
-  output << "time duration : " << duration << "s\n";
+  cout << "time duration : " << duration << "s\n";
 
   // stop CUDA timer
   cudaEventRecord(stop, 0);
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&memsettime, start, stop);
-  output << " *** CUDA execution time: " << memsettime << " ms*** \n";
+  cout << " *** CUDA execution time: " << memsettime << " ms*** \n";
   cudaEventDestroy(start);
   cudaEventDestroy(stop);
 
-  output.close();
+  // output.close();
 
   cudaFree(gpu_n);
   // cudaFree(gpu_nf);
