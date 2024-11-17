@@ -27,6 +27,25 @@ target_link_libraries(_core PRIVATE pybind11::headers)
 
 python_add_library(_gpu_stable MODULE src/ffi/GPU_stable.cu WITH_SOABI)
 add_library(German STATIC src/ffi/shared/German.cc)
+
+target_compile_options(German INTERFACE
+  "SHELL:-gencode=arch=compute_35,code=sm_35"
+  "SHELL:-gencode=arch=compute_50,code=sm_50"
+  "SHELL:-gencode=arch=compute_60,code=sm_60"
+  "SHELL:-gencode=arch=compute_70,code=sm_70"
+  "SHELL:-gencode=arch=compute_75,code=sm_75"
+  "SHELL:-gencode=arch=compute_75,code=compute_75"
+)
+
+target_compile_options(_gpu_stable INTERFACE
+  "SHELL:-gencode=arch=compute_35,code=sm_35"
+  "SHELL:-gencode=arch=compute_50,code=sm_50"
+  "SHELL:-gencode=arch=compute_60,code=sm_60"
+  "SHELL:-gencode=arch=compute_70,code=sm_70"
+  "SHELL:-gencode=arch=compute_75,code=sm_75"
+  "SHELL:-gencode=arch=compute_75,code=compute_75"
+)
+
 target_include_directories(_gpu_stable PUBLIC src/ffi/shared)
 target_link_libraries(_gpu_stable PRIVATE pybind11::headers CUDA::curand German)
 
