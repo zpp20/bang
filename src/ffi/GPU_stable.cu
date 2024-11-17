@@ -2790,9 +2790,9 @@ __global__ void kernelConvergeInitial1(
     unsigned short *gpu_varF, int *gpu_initialState, int *gpu_steps,
     int *gpu_stateSize, int *gpu_extraF, int *gpu_extraFIndex,
     int *gpu_cumExtraF, int *gpu_extraFCount, int *gpu_extraFIndexCount,
-    int *gpu_npLength, int *gpu_npNode, int* gpu_perturbations) {
+    int *gpu_npLength, int *gpu_npNode) {
 
-  printf("Hello from kernelconvergeinitial\n");
+  // printf("Hello from kernelconvergeinitial\n");
   int idx = threadIdx.x + blockIdx.x * blockDim.x; // one register
 
   // let's make shared memory
@@ -2876,11 +2876,10 @@ __global__ void kernelConvergeInitial1(
       for (int i = start; i < np[t]; i++) { //MC: ostatni element np czyli tablicy z wezlami bez perturbacji to zawsze n (ilosc wezlow)
       //MC: czyli idziemy od 0 do np[0], od np[0] + 1 do np[1] itd po wszystkich wezlach bez perturbacji
         rand = curand_uniform(&localState);
-        printf("RAND: %f\n", rand);
+        // printf("RAND: %f\n", rand);
         // if(idx==0 && j<10) printf("\trand %d-%d: %f\nodeNum[0]",j,i,rand);
         if (rand < constantP[0]) {  //stale takie jak perturbation sa trzymane w jednoelementowych tablicach
           //printf("\nPERTURBATION!!!!\n");
-          gpu_perturbations[0]++;
           perturbation = true;
           indexState = i / 32;
           indexShift = indexState * 32;   //MC: ciekawy sposob na liczenie i mod 32
@@ -4453,7 +4452,7 @@ void initialisePBN_GPU(py::object PBN) {
  */
 double *german_gpu_run() {
   int block = 2, blockSize = 3;
-  int steps = 100; // german and rubin n
+  int steps = 5; // german and rubin n
   int *gpu_steps;
   float r = precision;
   int argCount = 1;
@@ -4847,13 +4846,13 @@ double *german_gpu_run() {
   cout<<"before calling kernelconvergeInitial\n";
   
   
-  int* perturbations = (int*)malloc(sizeof(int));
-  perturbations[0] = 0;
+  // int* perturbations = (int*)malloc(sizeof(int));
+  // perturbations[0] = 0;
 
-  int* gpu_perturbations;
-  HANDLE_ERROR(cudaMalloc((void**)&gpu_perturbations, sizeof(int)));
+  // int* gpu_perturbations;
+  // HANDLE_ERROR(cudaMalloc((void**)&gpu_perturbations, sizeof(int)));
   
-  HANDLE_ERROR(cudaMemcpy(gpu_perturbations, perturbations, sizeof(int), cudaMemcpyHostToDevice));
+  // HANDLE_ERROR(cudaMemcpy(gpu_perturbations, perturbations, sizeof(int), cudaMemcpyHostToDevice));
 
   if (n < 129) {
     // printf("1\n");
@@ -4861,7 +4860,7 @@ double *german_gpu_run() {
     kernelConvergeInitial1<<<block, blockSize, size_sharedMemory>>>(
         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-        gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode, gpu_perturbations);
+        gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   } else if (n < 161) {
     // printf("5\n");
     kernelConvergeInitial5<<<block, blockSize, size_sharedMemory>>>(
@@ -4897,7 +4896,7 @@ double *german_gpu_run() {
   if (err != cudaSuccess) printf("Kernel launch failed %s\n", cudaGetErrorString(err));
   else printf("cuda success\n");
 
-  cudaDeviceSynchronize();
+  // cudaDeviceSynchronize();
   
   currentTrajectorySize = steps;
   // printf("finish converge initial\n");
@@ -4905,322 +4904,322 @@ double *german_gpu_run() {
   
   //MC: wypisujemy wszystkie stany ktore otrzymalismy z 25tek za pomoca convergeinitial:
 
-  HANDLE_ERROR(cudaMemcpy(perturbations, gpu_perturbations, sizeof(int), cudaMemcpyDeviceToHost));
+  // HANDLE_ERROR(cudaMemcpy(perturbations, gpu_perturbations, sizeof(int), cudaMemcpyDeviceToHost));
 
-  HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
-                          N * stateSize * sizeof(int),
-                          cudaMemcpyDeviceToHost));
+  // HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
+  //                         N * stateSize * sizeof(int),
+  //                         cudaMemcpyDeviceToHost));
 
   for (int i = 0; i < N; i++) {
-    // cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
+    cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
     for (int j = 0; j < stateSize; j++) {
       for (size_t k = 0; k < sizeof(int); k++) {
         unsigned char* bytes = reinterpret_cast<unsigned char*>(&(initialState[i * stateSize + j]));
         bitset<8> bits = bytes[k];
-        // cout<< bits << " ";
+        cout<< bits << " ";
       }
     }
   }
-  cout<< "\nNumber of perturbations that occured: " << perturbations[0] << "\n";
-  cout << "Kernel converge:\n";
-  while (!done) {
-    // call kernel function, need to allocate the shared method size here as the
-    // third parameters
-    if (n < 129) {
+  // cout<< "\nNumber of perturbations that occured: " << perturbations[0] << "\n";
+  // cout << "Kernel converge:\n";
+  // while (!done) {
+  //   // call kernel function, need to allocate the shared method size here as the
+  //   // third parameters
+  //   if (n < 129) {
       
-      kernelConverge1<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-          gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-          gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-          gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 161) {
-      kernelConverge5<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-          gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-          gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-          gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 193) {
-      kernelConverge6<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-          gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-          gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-          gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 513) {
-      if (useTexture)
-        kernelConverge7_texture<<<block, blockSize, size_sharedMemory>>>(
-            states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-            gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-            gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-            gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-      else
-        kernelConverge7<<<block, blockSize, size_sharedMemory>>>(
-            states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
-            gpu_mean, gpu_trajectory, gpu_trajectoryKernel, gpu_steps,
-            gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-            gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 2049) {
-      kernelConverge8<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-          gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-          gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-          gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    }
-    currentTrajectorySize = currentTrajectorySize + steps;
-    // printf("currentTrajectorySize=%d\n",currentTrajectorySize);
-    HANDLE_ERROR(cudaMemcpy(mean, gpu_mean, 2 * N * sizeof(float),
-                            cudaMemcpyDeviceToHost));
+  //     kernelConverge1<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
+  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
+  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
+  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 161) {
+  //     kernelConverge5<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
+  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
+  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
+  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 193) {
+  //     kernelConverge6<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
+  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
+  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
+  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 513) {
+  //     if (useTexture)
+  //       kernelConverge7_texture<<<block, blockSize, size_sharedMemory>>>(
+  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
+  //           gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
+  //           gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
+  //           gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //     else
+  //       kernelConverge7<<<block, blockSize, size_sharedMemory>>>(
+  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
+  //           gpu_mean, gpu_trajectory, gpu_trajectoryKernel, gpu_steps,
+  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 2049) {
+  //     kernelConverge8<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
+  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
+  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
+  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   }
+  //   currentTrajectorySize = currentTrajectorySize + steps;
+  //   // printf("currentTrajectorySize=%d\n",currentTrajectorySize);
+  //   HANDLE_ERROR(cudaMemcpy(mean, gpu_mean, 2 * N * sizeof(float),
+  //                           cudaMemcpyDeviceToHost));
 
-    psrf = german.computePstr(mean, currentTrajectorySize, n, N);
+  //   psrf = german.computePstr(mean, currentTrajectorySize, n, N);
 
-    //free(mean);
+  //   //free(mean);
 
-    if (abs(1 - psrf) > threshold) {
-      done = false;
-      done1 = false;
-      steps = currentTrajectorySize;
-    } else {
-      if (done1) {
-        done = true;
-      } else {
-        done1 = true;
-        steps = currentTrajectorySize;
-      }
-    }
-    if (steps > trajectoryLength) {
-      done = true;
-      steps = currentTrajectorySize / 2;
-    }
-    HANDLE_ERROR(
-        cudaMemcpy(gpu_steps, &steps, sizeof(int), cudaMemcpyHostToDevice));
-  }
+  //   if (abs(1 - psrf) > threshold) {
+  //     done = false;
+  //     done1 = false;
+  //     steps = currentTrajectorySize;
+  //   } else {
+  //     if (done1) {
+  //       done = true;
+  //     } else {
+  //       done1 = true;
+  //       steps = currentTrajectorySize;
+  //     }
+  //   }
+  //   if (steps > trajectoryLength) {
+  //     done = true;
+  //     steps = currentTrajectorySize / 2;
+  //   }
+  //   HANDLE_ERROR(
+  //       cudaMemcpy(gpu_steps, &steps, sizeof(int), cudaMemcpyHostToDevice));
+  // }
 
-  cout << "\n\n ---Finished big kernel loop----\n"; 
+  // cout << "\n\n ---Finished big kernel loop----\n"; 
 
-  // printf("converged! current trajectory size = %d\n", currentTrajectorySize);
-  cudaFree(gpu_mean);
-  cudaFree(gpu_trajectory);
-  // printf("free memory\n");
-  //*****************************two state***************************
+  // // printf("converged! current trajectory size = %d\n", currentTrajectorySize);
+  // cudaFree(gpu_mean);
+  // cudaFree(gpu_trajectory);
+  // // printf("free memory\n");
+  // //*****************************two state***************************
 
-  // cout<<"before allocating stateA\n";
-  float invPhi = ltqnorm(0.5 * (1 + confidence));
-  int kstep = 1;
-  long stateASum = 0, stateBSum = 0;
-  // printf("before allocating memory stateA \n");
-  long *stateA = (long *)malloc(
-      N * sizeof(long)); //[N];			//how many steps are in state A
-  for (int i = 0; i < N; i++) {
-    stateA[i] = 0;
-  }
+  // // cout<<"before allocating stateA\n";
+  // float invPhi = ltqnorm(0.5 * (1 + confidence));
+  // int kstep = 1;
+  // long stateASum = 0, stateBSum = 0;
+  // // printf("before allocating memory stateA \n");
+  // long *stateA = (long *)malloc(
+  //     N * sizeof(long)); //[N];			//how many steps are in state A
+  // for (int i = 0; i < N; i++) {
+  //   stateA[i] = 0;
+  // }
 
-  // printf("before allocating memory stateB \n");
-  long *stateB = (long *)malloc(
-      N *
-      sizeof(long)); //[N];
-                     // element 0=transitions from meta state B to meta state B
-                     // element 1=transitions from meta state B to meta state A
-                     // element 2=transitions from meta state A to meta state B
-                     // element 3=transitions from meta state A to meta state A
-  long transitionsLast[2][2];
-  // printf("before allocating memory transitionsLastChain %d\n",N);
-  int *transitionsLastChain = (int *)malloc(N * 4 * sizeof(int)); //[N * 4];
-  // printf("before allocating memory gpu_stateA \n");
-  long *gpu_stateA;
-  long *gpu_stateB;
-  int *gpu_transitionsLastChain;
-  int *gpu_bridge;
-  // printf("before allocating memory gpu_transitionsLastChain \n");
+  // // printf("before allocating memory stateB \n");
+  // long *stateB = (long *)malloc(
+  //     N *
+  //     sizeof(long)); //[N];
+  //                    // element 0=transitions from meta state B to meta state B
+  //                    // element 1=transitions from meta state B to meta state A
+  //                    // element 2=transitions from meta state A to meta state B
+  //                    // element 3=transitions from meta state A to meta state A
+  // long transitionsLast[2][2];
+  // // printf("before allocating memory transitionsLastChain %d\n",N);
+  // int *transitionsLastChain = (int *)malloc(N * 4 * sizeof(int)); //[N * 4];
+  // // printf("before allocating memory gpu_stateA \n");
+  // long *gpu_stateA;
+  // long *gpu_stateB;
+  // int *gpu_transitionsLastChain;
+  // int *gpu_bridge;
+  // // printf("before allocating memory gpu_transitionsLastChain \n");
 
-  // cout<<"before kernelUpdateTrajectory\n";
-  HANDLE_ERROR(
-      cudaMalloc((void **)&gpu_transitionsLastChain, N * 4 * sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void **)&gpu_stateA, N * sizeof(long)));
-  HANDLE_ERROR(cudaMalloc((void **)&gpu_stateB, N * sizeof(long)));
-  HANDLE_ERROR(cudaMalloc((void **)&gpu_bridge, N * sizeof(int)));
-  // printf("before calling update trajectory kernel\n");
-  kernelUpdateTrajectory<<<block, blockSize, size_sharedMemory>>>(
-      gpu_cumNv, gpu_trajectoryKernel, gpu_steps, gpu_stateA, gpu_stateB,
-      gpu_transitionsLastChain, gpu_bridge, gpu_stateSize);
-  // cout<<"after calling update trajectory kernel"<<endl;
-  HANDLE_ERROR(
-      cudaMemcpy(stateA, gpu_stateA, N * sizeof(long), cudaMemcpyDeviceToHost));
-  HANDLE_ERROR(
-      cudaMemcpy(stateB, gpu_stateB, N * sizeof(long), cudaMemcpyDeviceToHost));
-  HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
-                          4 * N * sizeof(int), cudaMemcpyDeviceToHost));
+  // // cout<<"before kernelUpdateTrajectory\n";
+  // HANDLE_ERROR(
+  //     cudaMalloc((void **)&gpu_transitionsLastChain, N * 4 * sizeof(int)));
+  // HANDLE_ERROR(cudaMalloc((void **)&gpu_stateA, N * sizeof(long)));
+  // HANDLE_ERROR(cudaMalloc((void **)&gpu_stateB, N * sizeof(long)));
+  // HANDLE_ERROR(cudaMalloc((void **)&gpu_bridge, N * sizeof(int)));
+  // // printf("before calling update trajectory kernel\n");
+  // kernelUpdateTrajectory<<<block, blockSize, size_sharedMemory>>>(
+  //     gpu_cumNv, gpu_trajectoryKernel, gpu_steps, gpu_stateA, gpu_stateB,
+  //     gpu_transitionsLastChain, gpu_bridge, gpu_stateSize);
+  // // cout<<"after calling update trajectory kernel"<<endl;
+  // HANDLE_ERROR(
+  //     cudaMemcpy(stateA, gpu_stateA, N * sizeof(long), cudaMemcpyDeviceToHost));
+  // HANDLE_ERROR(
+  //     cudaMemcpy(stateB, gpu_stateB, N * sizeof(long), cudaMemcpyDeviceToHost));
+  // HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
+  //                         4 * N * sizeof(int), cudaMemcpyDeviceToHost));
 
-  transitionsLast[0][0] = 0;
-  transitionsLast[0][1] = 0;
-  transitionsLast[1][0] = 0;
-  transitionsLast[1][1] = 0;
-  for (int i = 0; i < N; i++) {
-    // printf("stateA[%d]=%d, stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
-    // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-    // transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-    stateASum += stateA[i];
-    stateBSum += stateB[i];
-    transitionsLast[0][0] += transitionsLastChain[i * 4];
-    transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
-    transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
-    transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
-    /*if(stateA[i]+stateB[i]!=transitionsLastChain[i * 4]+transitionsLastChain[i
-    * 4+1]+transitionsLastChain[i * 4+2]+transitionsLastChain[i * 4+3]){
-            printf("stateA[%d]=%d, stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
-    transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-    transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-    }*/
-  }
-  cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
+  // transitionsLast[0][0] = 0;
+  // transitionsLast[0][1] = 0;
+  // transitionsLast[1][0] = 0;
+  // transitionsLast[1][1] = 0;
+  // for (int i = 0; i < N; i++) {
+  //   // printf("stateA[%d]=%d, stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
+  //   // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
+  //   // transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
+  //   stateASum += stateA[i];
+  //   stateBSum += stateB[i];
+  //   transitionsLast[0][0] += transitionsLastChain[i * 4];
+  //   transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
+  //   transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
+  //   transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
+  //   /*if(stateA[i]+stateB[i]!=transitionsLastChain[i * 4]+transitionsLastChain[i
+  //   * 4+1]+transitionsLastChain[i * 4+2]+transitionsLastChain[i * 4+3]){
+  //           printf("stateA[%d]=%d, stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
+  //   transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
+  //   transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
+  //   }*/
+  // }
+  // cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
+  // cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
 
-         << ", transitionsLast[0][1]=" << transitionsLast[0][1]
+  //        << ", transitionsLast[0][1]=" << transitionsLast[0][1]
 
-         << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-         << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
-         << "\n";
+  //        << ", transitionsLast[1][0]=" << transitionsLast[1][0]
+  //        << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
+  // cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
+  //        << "\n";
 
-  /*cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
+  // /*cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
+  // cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
 
-  << ", transitionsLast[0][1]=" << transitionsLast[0][1]
+  // << ", transitionsLast[0][1]=" << transitionsLast[0][1]
 
-  << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-  << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  cout << "Prob. is " << (float) stateASum / (float) (stateBSum + stateASum)
-  << "\n";*/
+  // << ", transitionsLast[1][0]=" << transitionsLast[1][0]
+  // << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
+  // cout << "Prob. is " << (float) stateASum / (float) (stateBSum + stateASum)
+  // << "\n";*/
 
-  float alphabeta[2];
-  alphabeta[0] = 0;
-  alphabeta[1] = 0;
-  calAlphaBeta(transitionsLast, alphabeta);
+  // float alphabeta[2];
+  // alphabeta[0] = 0;
+  // alphabeta[1] = 0;
+  // calAlphaBeta(transitionsLast, alphabeta);
 
-  cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
+  // cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
 
-  long maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
-                   transitionsLast[1][0] + transitionsLast[1][1];
-  long TSN;
-  if (alphabeta[0] == 0 || alphabeta[1] == 0)
-    TSN = (long)pow(2, 12);
-  else
-    TSN = ceil(*alphabeta * *(alphabeta + 1) *
-               (2 - *alphabeta - *(alphabeta + 1)) /
-               (pow(*alphabeta + *(alphabeta + 1), 3) * pow(r / invPhi, 2))) *
-          kstep;
+  // long maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
+  //                  transitionsLast[1][0] + transitionsLast[1][1];
+  // long TSN;
+  // if (alphabeta[0] == 0 || alphabeta[1] == 0)
+  //   TSN = (long)pow(2, 12);
+  // else
+  //   TSN = ceil(*alphabeta * *(alphabeta + 1) *
+  //              (2 - *alphabeta - *(alphabeta + 1)) /
+  //              (pow(*alphabeta + *(alphabeta + 1), 3) * pow(r / invPhi, 2))) *
+  //         kstep;
 
-  int extensionPerChain;
-  int round = 0;
-  cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-
+  // int extensionPerChain;
+  // int round = 0;
   // cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-  while (TSN > maxLength) {
-    extensionPerChain =
-        (int)ceil((TSN - maxLength) * kstep / (double)N); // consider kstep here
-    cout << "extensionPerChain=" << extensionPerChain << endl;
-    // cout << "extensionPerChain=" << extensionPerChain << endl;
-    // cout<<"before calling kernel\n";
-    HANDLE_ERROR(cudaMemcpy(gpu_steps, &extensionPerChain, sizeof(int),
-                            cudaMemcpyHostToDevice));
-    if (n < 97 && n > 64) {
-      kernel3<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-          gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-          gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-          gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
 
-    } else if (n < 129) {
-      kernel1<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-          gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-          gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-          gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 161) {
-      kernel5<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-          gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-          gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-          gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 193) {
-      kernel6<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-          gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-          gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-          gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 513) {
-      if (useTexture)
-        kernel7_texture<<<block, blockSize, size_sharedMemory>>>(
-            states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-            gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-            gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-            gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-      else
-        kernel7<<<block, blockSize, size_sharedMemory>>>(
-            states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
-            gpu_steps,
+  // // cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
+  // while (TSN > maxLength) {
+  //   extensionPerChain =
+  //       (int)ceil((TSN - maxLength) * kstep / (double)N); // consider kstep here
+  //   cout << "extensionPerChain=" << extensionPerChain << endl;
+  //   // cout << "extensionPerChain=" << extensionPerChain << endl;
+  //   // cout<<"before calling kernel\n";
+  //   HANDLE_ERROR(cudaMemcpy(gpu_steps, &extensionPerChain, sizeof(int),
+  //                           cudaMemcpyHostToDevice));
+  //   if (n < 97 && n > 64) {
+  //     kernel3<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
 
-            gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-            gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-            gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    } else if (n < 2049) {
-      kernel8<<<block, blockSize, size_sharedMemory>>>(
-          states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-          gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-          gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-          gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    }
-    HANDLE_ERROR(cudaMemcpy(stateA, gpu_stateA, N * sizeof(long),
-                            cudaMemcpyDeviceToHost));
-    HANDLE_ERROR(cudaMemcpy(stateB, gpu_stateB, N * sizeof(long),
-                            cudaMemcpyDeviceToHost));
-    HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
-                            4 * N * sizeof(int), cudaMemcpyDeviceToHost));
-    for (int i = 0; i < N; i++) {
-      stateASum += stateA[i];
-      stateBSum += stateB[i];
-      transitionsLast[0][0] += transitionsLastChain[i * 4];
-      transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
-      transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
-      transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
-      // if(stateA[i]+stateB[i]!=transitionsLastChain[i *
-      // 4]+transitionsLastChain[i * 4+1]+transitionsLastChain[i *
-      // 4+2]+transitionsLastChain[i * 4+3]){ 	printf("stateA[%d]=%d,
-      // stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
-      // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-      // transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-      // }
-    }
-    free(stateA);
-    free(stateB);
-    free(transitionsLastChain);
-    cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-    cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
+  //   } else if (n < 129) {
+  //     kernel1<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 161) {
+  //     kernel5<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 193) {
+  //     kernel6<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 513) {
+  //     if (useTexture)
+  //       kernel7_texture<<<block, blockSize, size_sharedMemory>>>(
+  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //           gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //     else
+  //       kernel7<<<block, blockSize, size_sharedMemory>>>(
+  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
+  //           gpu_steps,
 
-           << ", transitionsLast[0][1]=" << transitionsLast[0][1]
+  //           gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   } else if (n < 2049) {
+  //     kernel8<<<block, blockSize, size_sharedMemory>>>(
+  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
+  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
+  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
+  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+  //   }
+  //   HANDLE_ERROR(cudaMemcpy(stateA, gpu_stateA, N * sizeof(long),
+  //                           cudaMemcpyDeviceToHost));
+  //   HANDLE_ERROR(cudaMemcpy(stateB, gpu_stateB, N * sizeof(long),
+  //                           cudaMemcpyDeviceToHost));
+  //   HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
+  //                           4 * N * sizeof(int), cudaMemcpyDeviceToHost));
+  //   for (int i = 0; i < N; i++) {
+  //     stateASum += stateA[i];
+  //     stateBSum += stateB[i];
+  //     transitionsLast[0][0] += transitionsLastChain[i * 4];
+  //     transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
+  //     transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
+  //     transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
+  //     // if(stateA[i]+stateB[i]!=transitionsLastChain[i *
+  //     // 4]+transitionsLastChain[i * 4+1]+transitionsLastChain[i *
+  //     // 4+2]+transitionsLastChain[i * 4+3]){ 	printf("stateA[%d]=%d,
+  //     // stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
+  //     // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
+  //     // transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
+  //     // }
+  //   }
+  //   free(stateA);
+  //   free(stateB);
+  //   free(transitionsLastChain);
+  //   cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
+  //   cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
 
-           << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-           << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-    cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
-           << "\n";
-    calAlphaBeta(transitionsLast, alphabeta);
-    cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
-    if (alphabeta[0] == 0 || alphabeta[1] == 0)
-      TSN = TSN * 2;
-    else
-      TSN =
-          ceil(alphabeta[0] * alphabeta[1] * (2 - alphabeta[0] - alphabeta[1]) /
-               (pow(alphabeta[0] + alphabeta[1], 3) * pow(r / invPhi, 2))) *
-          kstep;
-    maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
-                transitionsLast[1][0] + transitionsLast[1][1];
-    round++;
-    cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-  }
+  //          << ", transitionsLast[0][1]=" << transitionsLast[0][1]
 
-  cout << "Finished in " << round << " round. Prob. is "
-         << (float)stateASum / (float)(stateBSum + stateASum) << "\n";
-  duration = (std::clock() - cpu_start) / (double)CLOCKS_PER_SEC;
+  //          << ", transitionsLast[1][0]=" << transitionsLast[1][0]
+  //          << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
+  //   cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
+  //          << "\n";
+  //   calAlphaBeta(transitionsLast, alphabeta);
+  //   cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
+  //   if (alphabeta[0] == 0 || alphabeta[1] == 0)
+  //     TSN = TSN * 2;
+  //   else
+  //     TSN =
+  //         ceil(alphabeta[0] * alphabeta[1] * (2 - alphabeta[0] - alphabeta[1]) /
+  //              (pow(alphabeta[0] + alphabeta[1], 3) * pow(r / invPhi, 2))) *
+  //         kstep;
+  //   maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
+  //               transitionsLast[1][0] + transitionsLast[1][1];
+  //   round++;
+  //   cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
+  // }
 
-  cout << "time duration : " << duration << "s\n";
+  // cout << "Finished in " << round << " round. Prob. is "
+  //        << (float)stateASum / (float)(stateBSum + stateASum) << "\n";
+  // duration = (std::clock() - cpu_start) / (double)CLOCKS_PER_SEC;
+
+  // cout << "time duration : " << duration << "s\n";
 
   // stop CUDA timer
   cudaEventRecord(stop, 0);
@@ -5242,21 +5241,21 @@ double *german_gpu_run() {
   cudaFree(gpu_cij);
   cudaFree(gpu_p);
   cudaFree(gpu_steps);
-  cudaFree(gpu_positiveIndex);
-  cudaFree(gpu_negativeIndex);
-  cudaFree(gpu_stateA);
-  cudaFree(gpu_stateB);
-  cudaFree(gpu_transitionsLastChain);
-  cudaFree(gpu_bridge);
+  // cudaFree(gpu_positiveIndex);
+  // cudaFree(gpu_negativeIndex);
+  // cudaFree(gpu_stateA);
+  // cudaFree(gpu_stateB);
+  // cudaFree(gpu_transitionsLastChain);
+  // cudaFree(gpu_bridge);
   cudaFree(gpu_currentTrajectorySize);
   cudaFree(gpu_initialState);
   cudaFree(gpu_stateSize);
-  cudaFree(gpu_trajectoryKernel);
+  // cudaFree(gpu_trajectoryKernel);
   cudaFree(states);
-  cudaFree(gpu_transitionsLastChain);
-  cudaFree(gpu_stateA);
-  cudaFree(gpu_stateB);
-  cudaFree(gpu_bridge);
+  // cudaFree(gpu_transitionsLastChain);
+  // cudaFree(gpu_stateA);
+  // cudaFree(gpu_stateB);
+  // cudaFree(gpu_bridge);
   cudaFree(gpu_extraF);
   cudaFree(gpu_extraFIndex);
   cudaFree(gpu_cumExtraF);
@@ -5276,10 +5275,10 @@ double *german_gpu_run() {
   // env->ReleaseDoubleArrayElements(newArray, narr, (jint)NULL);
 
   double *newArray = new double[4];
-  newArray[0] = (float)stateASum / (float)(stateBSum + stateASum);
-  newArray[1] = stateBSum + stateASum + steps * N; // counting burn-in as well
-  newArray[2] = duration;
-  newArray[3] = memsettime / 1000.0;
+  // newArray[0] = (float)stateASum / (float)(stateBSum + stateASum);
+  // newArray[1] = stateBSum + stateASum + steps * N; // counting burn-in as well
+  // newArray[2] = duration;
+  // newArray[3] = memsettime / 1000.0;
 
   return newArray;
 }
