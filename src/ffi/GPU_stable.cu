@@ -2790,8 +2790,9 @@ __global__ void kernelConvergeInitial1(
     unsigned short *gpu_varF, int *gpu_initialState, int *gpu_steps,
     int *gpu_stateSize, int *gpu_extraF, int *gpu_extraFIndex,
     int *gpu_cumExtraF, int *gpu_extraFCount, int *gpu_extraFIndexCount,
-    int *gpu_npLength, int *gpu_npNode) {
+    int *gpu_npLength, int *gpu_npNode, int* gpu_perturbations) {
 
+  printf("Hello from kernelconvergeinitial\n");
   int idx = threadIdx.x + blockIdx.x * blockDim.x; // one register
 
   // let's make shared memory
@@ -2875,8 +2876,11 @@ __global__ void kernelConvergeInitial1(
       for (int i = start; i < np[t]; i++) { //MC: ostatni element np czyli tablicy z wezlami bez perturbacji to zawsze n (ilosc wezlow)
       //MC: czyli idziemy od 0 do np[0], od np[0] + 1 do np[1] itd po wszystkich wezlach bez perturbacji
         rand = curand_uniform(&localState);
+        printf("RAND: %f\n", rand);
         // if(idx==0 && j<10) printf("\trand %d-%d: %f\nodeNum[0]",j,i,rand);
         if (rand < constantP[0]) {  //stale takie jak perturbation sa trzymane w jednoelementowych tablicach
+          //printf("\nPERTURBATION!!!!\n");
+          gpu_perturbations[0]++;
           perturbation = true;
           indexState = i / 32;
           indexShift = indexState * 32;   //MC: ciekawy sposob na liczenie i mod 32
@@ -4466,7 +4470,7 @@ double *german_gpu_run() {
 
   int N = block * blockSize;
   cout << "***************************\n";
-  cout << "running two-state on model ";
+  cout << "running two-state on model with N = " << N;
   // output << argv[1];
 
   std::clock_t cpu_start;
@@ -4624,7 +4628,7 @@ double *german_gpu_run() {
   // cout << "blockSize=" << blockSize << ", block=" << block<<endl;
   //<< ", precision=" << r << ", sharedMemorySize=" << size_sharedMemory
   //<< " bytes.\n";
-  N = block * blockSize;
+  N = block * blockSize;          //Alokujemy wiecej blokow
   // size_sharedMemory += stateSize * N * sizeof(int);
   // printf("sharedMemorySize=%d bytes\n", size_sharedMemory);
   cout << "blockSize=" << blockSize << ", block=" << block
@@ -4776,7 +4780,7 @@ double *german_gpu_run() {
   //                         stateSize * sizeof(int), cudaMemcpyHostToDevice));
 
   HANDLE_ERROR(cudaMemcpy(gpu_initialState, initialState,
-                          N * stateSize * sizeof(float),
+                          N * stateSize * sizeof(int),  //MC: dlaczego tu byl float? xd
                           cudaMemcpyHostToDevice));
 
   // host constant data
@@ -4841,12 +4845,23 @@ double *german_gpu_run() {
   // output << "start to call kernelConvergeInitial\n";
   // german and rubin method
   cout<<"before calling kernelconvergeInitial\n";
+  
+  
+  int* perturbations = (int*)malloc(sizeof(int));
+  perturbations[0] = 0;
+
+  int* gpu_perturbations;
+  HANDLE_ERROR(cudaMalloc((void**)&gpu_perturbations, sizeof(int)));
+  
+  HANDLE_ERROR(cudaMemcpy(gpu_perturbations, perturbations, sizeof(int), cudaMemcpyHostToDevice));
+
   if (n < 129) {
     // printf("1\n");
+    cout<< "Running converge1\n";
     kernelConvergeInitial1<<<block, blockSize, size_sharedMemory>>>(
         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-        gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
+        gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode, gpu_perturbations);
   } else if (n < 161) {
     // printf("5\n");
     kernelConvergeInitial5<<<block, blockSize, size_sharedMemory>>>(
@@ -4877,29 +4892,42 @@ double *german_gpu_run() {
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   }
+
+  cudaError_t err = cudaGetLastError();
+  if (err != cudaSuccess) printf("Kernel launch failed %s\n", cudaGetErrorString(err));
+  else printf("cuda success\n");
+
+  cudaDeviceSynchronize();
+  
   currentTrajectorySize = steps;
   // printf("finish converge initial\n");
-  cout<<"before calling kernelConverge  currentTrajectorySize: " << currentTrajectorySize <<"\n\n";
+  cout<<"before calling kernelConverge  currentTrajectorySize: " << currentTrajectorySize << "  printing "<< N <<" pbn states\n\n";
   
   //MC: wypisujemy wszystkie stany ktore otrzymalismy z 25tek za pomoca convergeinitial:
 
+  HANDLE_ERROR(cudaMemcpy(perturbations, gpu_perturbations, sizeof(int), cudaMemcpyDeviceToHost));
+
+  HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
+                          N * stateSize * sizeof(int),
+                          cudaMemcpyDeviceToHost));
+
   for (int i = 0; i < N; i++) {
-    cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
+    // cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
     for (int j = 0; j < stateSize; j++) {
-      cout << "|";
       for (size_t k = 0; k < sizeof(int); k++) {
-        unsigned char* bytes = reinterpret_cast<unsigned char*>(&(gpu_initialState[i * stateSize + j]));
+        unsigned char* bytes = reinterpret_cast<unsigned char*>(&(initialState[i * stateSize + j]));
         bitset<8> bits = bytes[k];
-        cout<< bits << " ";
+        // cout<< bits << " ";
       }
     }
   }
-  
-  
+  cout<< "\nNumber of perturbations that occured: " << perturbations[0] << "\n";
+  cout << "Kernel converge:\n";
   while (!done) {
     // call kernel function, need to allocate the shared method size here as the
     // third parameters
     if (n < 129) {
+      
       kernelConverge1<<<block, blockSize, size_sharedMemory>>>(
           states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
           gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
@@ -4944,7 +4972,7 @@ double *german_gpu_run() {
 
     psrf = german.computePstr(mean, currentTrajectorySize, n, N);
 
-    free(mean);
+    //free(mean);
 
     if (abs(1 - psrf) > threshold) {
       done = false;
@@ -4965,6 +4993,8 @@ double *german_gpu_run() {
     HANDLE_ERROR(
         cudaMemcpy(gpu_steps, &steps, sizeof(int), cudaMemcpyHostToDevice));
   }
+
+  cout << "\n\n ---Finished big kernel loop----\n"; 
 
   // printf("converged! current trajectory size = %d\n", currentTrajectorySize);
   cudaFree(gpu_mean);
