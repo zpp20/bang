@@ -14,7 +14,6 @@ project(
 enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
 
-
 # Find the module development requirements (requires FindPython from 3.17 or
 # scikit-build-core's built-in backport)
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
@@ -29,7 +28,6 @@ python_add_library(_gpu_stable MODULE src/ffi/GPU_stable.cu WITH_SOABI)
 add_library(German STATIC src/ffi/shared/German.cc)
 
 target_compile_options(German INTERFACE
-  "SHELL:-gencode=arch=compute_30,code=sm_30"
   "SHELL:-gencode=arch=compute_35,code=sm_35"
   "SHELL:-gencode=arch=compute_50,code=sm_50"
   "SHELL:-gencode=arch=compute_60,code=sm_60"
@@ -39,7 +37,6 @@ target_compile_options(German INTERFACE
 )
 
 target_compile_options(_gpu_stable INTERFACE
-  "SHELL:-gencode=arch=compute_30,code=sm_30"
   "SHELL:-gencode=arch=compute_35,code=sm_35"
   "SHELL:-gencode=arch=compute_50,code=sm_50"
   "SHELL:-gencode=arch=compute_60,code=sm_60"
