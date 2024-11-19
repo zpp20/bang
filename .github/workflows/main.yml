@@ -20,7 +20,7 @@ jobs:
     name: Python ${{ matrix.python }} - ${{ matrix.task.name }}
     runs-on: ubuntu-latest
     container:
-      image: nvidia/cuda:11.7.1-devel-ubuntu22.04
+      image: nvidia/cuda:11.7.1-devel-ubuntu18.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -46,7 +46,8 @@ jobs:
             task:
               name: Build
               run: |
-                python -m pip install .
+                python -m build --wheel
+                python -m auditwheel repair dist/*.whl
 
           - python: "3.10"
             task:
@@ -65,7 +66,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: |
-          python -m pip install --upgrade pip setuptools wheel virtualenv
+          python -m pip install --upgrade pip setuptools wheel virtualenv auditwheel
           python -m pip install -e .[dev]
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
           python -m venv .venv
