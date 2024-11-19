@@ -2940,13 +2940,13 @@ __global__ void kernelConvergeInitial1(
     for (int ll = 0; ll < stateSize; ll++)
       initialState[ll] = initialStateCopy[ll];
   }
-  // update state
+  //update state
   states[idx] = localState;
   relativeIndex = stateSize * idx;
   for (int i = 0; i < stateSize; i++) {
     gpu_initialState[relativeIndex + i] = initialStateCopy[i];
   }
-  // printf("idx=%d", idx);
+  printf("idx=%d", idx);
   //MC: jak widac w ConvergeInitial nie zapisujemy nigdzie informacji o tym jakie stany mielismy do tej pory, patrzymy tylko gdzie znalezlismy sie po steps krokach.
 }
 
@@ -4254,9 +4254,11 @@ void initialisePBN_GPU(py::object PBN) {
 
   int idx = 0;
   for (auto elem : nf_py) {
+    
     nf[idx++] = elem.cast<uint16_t>();
+    cout<< nf[idx - 1] << " - nf\n";
   }
-
+  cout<< "n - " << n << "\n";
 
   // nv
   py::list nv_py = PBN.attr("getNv")();
@@ -4488,6 +4490,7 @@ double *german_gpu_run() {
   cumNf[0] = 0;
   for (int i = 0; i < n; i++) {
     cumNf[i + 1] = cumNf[i] + nf[i];
+    cout<< "cumNf - " << cumNf[i+1]<< "\n";
   }
 
   // unsigned short* gpu_nv;
@@ -4623,6 +4626,9 @@ double *german_gpu_run() {
     block = blockInfor[1];
     blockSize = blockInfor[0];
   }
+
+  block /=3;
+  blockSize /=3;
 
   // cout << "blockSize=" << blockSize << ", block=" << block<<endl;
   //<< ", precision=" << r << ", sharedMemorySize=" << size_sharedMemory
@@ -4795,7 +4801,7 @@ double *german_gpu_run() {
   cudaMemcpyToSymbol(powNum, hPowNum, sizeof(int) * 32 * 2);
   cudaMemcpyToSymbol(nodeNum, &n, sizeof(int));
   cudaMemcpyToSymbol(constantP, &p, sizeof(float));
-  cudaMemcpyToSymbol(constantCumNf, &cumNf, sizeof(unsigned short) * (n + 1));
+  cudaMemcpyToSymbol(constantCumNf, cumNf, sizeof(unsigned short) * (n + 1));
   // cudaMemcpyToSymbol(constantPositiveIndex, g_positiveIndex,
   //                    sizeof(int) * (stateSize));
   // cudaMemcpyToSymbol(constantNegativeIndex, g_negativeIndex,
@@ -4892,23 +4898,25 @@ double *german_gpu_run() {
         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   }
 
+  // testKernel<<<1,10>>>();
+
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) printf("Kernel launch failed %s\n", cudaGetErrorString(err));
   else printf("cuda success\n");
 
   // cudaDeviceSynchronize();
   
-  currentTrajectorySize = steps;
+  // currentTrajectorySize = steps;
   // printf("finish converge initial\n");
-  cout<<"before calling kernelConverge  currentTrajectorySize: " << currentTrajectorySize << "  printing "<< N <<" pbn states\n\n";
+  // cout<<"before calling kernelConverge  currentTrajectorySize: " << currentTrajectorySize << "  printing "<< N <<" pbn states\n\n";
   
   //MC: wypisujemy wszystkie stany ktore otrzymalismy z 25tek za pomoca convergeinitial:
 
   // HANDLE_ERROR(cudaMemcpy(perturbations, gpu_perturbations, sizeof(int), cudaMemcpyDeviceToHost));
 
-  // HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
-  //                         N * stateSize * sizeof(int),
-  //                         cudaMemcpyDeviceToHost));
+  HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
+                          N * stateSize * sizeof(int),
+                          cudaMemcpyDeviceToHost));
 
   for (int i = 0; i < N; i++) {
     cout<<"______INITIAL STATE OF PBN " << i << " ______\n"; 
@@ -5222,7 +5230,12 @@ double *german_gpu_run() {
   // cout << "time duration : " << duration << "s\n";
 
   // stop CUDA timer
+
+  cout<< "BEFORE CUDA TIMER\n";
   cudaEventRecord(stop, 0);
+  err = cudaEventQuery(stop);
+  if (err != cudaSuccess) printf("Kernel launch failed %s\n", cudaGetErrorString(err));
+  else printf("cuda success\n");
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&memsettime, start, stop);
   cout << " *** CUDA execution time: " << memsettime << " ms*** \n";
