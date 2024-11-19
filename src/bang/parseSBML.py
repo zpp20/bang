@@ -10,7 +10,7 @@ def enumerateNodes(qual_model):
     return result
 
 #TODO: add errors
-def parseSBMLDocument(path):
+def parseSBMLDocument(path: str):
     reader = SBMLReader()
     doc :SBMLDocument = reader.readSBML(path)
     F: list[list[bool]] = []
