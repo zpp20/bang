@@ -92,6 +92,10 @@ jobs:
           . .venv/bin/activate
           ${{ matrix.task.run }}
 
+      - name: setup-docker
+        if: matrix.task.name == 'Build'
+        uses: docker-practice/actions-setup-docker@v1
+
       - name: Execute cibuildwheel
         if: matrix.task.name == 'Build'
         # uses: pypa/cibuildwheel@v2.1.1
