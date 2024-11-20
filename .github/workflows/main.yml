@@ -93,8 +93,9 @@ jobs:
           ${{ matrix.task.run }}
 
       - name: setup-docker
-        if: matrix.task.name == 'Build'
-        uses: docker-practice/actions-setup-docker@v1
+        run: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sh get-docker.sh
 
       - name: Execute cibuildwheel
         if: matrix.task.name == 'Build'
