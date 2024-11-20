@@ -29,14 +29,14 @@ def getFunc(mathExpression :ASTNode, nodes: dict[str, int]) -> tuple[callable[[d
 		return (lambda node_vals: False), {}
 
 def incrementNodes(bits: dict[int, bool], nodes: list[int]) ->  bool:
-    carry = True  # Start with a carry, which is the increment by 1
+    carry = True  
     
     for i in range(len(nodes)):
-        if bits[nodes[i]] == True:  # If the current bit is 1 (True)
-            bits[nodes[i]] = False   # Set it to 0 (False) and keep carry for the next bit
-        else:                 # If the current bit is 0 (False)
-            bits[nodes[i]] = True    # Set it to 1 (True) and no more carry is needed
-            carry = False     # Break out of carry since we've incremented
+        if bits[nodes[i]] == True:  
+            bits[nodes[i]] = False   
+        else:                
+            bits[nodes[i]] = True    
+            carry = False     
             break
     
     return not carry
