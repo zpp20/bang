@@ -9,9 +9,7 @@ readme = "README.md"
 version = "0.0.1"
 
 requires-python = ">=3.8"
-dependencies = [
-  # Add your own dependencies here
-]
+dependencies = ["libsbml"]
 license = { file = "LICENSE" }
 
 [project.urls]
@@ -41,7 +39,6 @@ dev = [
   "sphinx-autobuild==2021.3.14",
   "sphinx-autodoc-typehints==1.23.3",
   "packaging",
-  "libsbml"
 ]
 
 [tool.setuptools.packages.find]
