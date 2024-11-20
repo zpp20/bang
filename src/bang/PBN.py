@@ -1,18 +1,18 @@
 from typing import List
 from libsbml import *
 import itertools
-from parseSBML import parseSBMLDocument
+#from parseSBML import parseSBMLDocument
 
 class PBN:
 
     def __init__(self, n : int,
-                 nf : List[int], 
-                 nv : List[int],
-                 F : List[List[bool]],
-                 varFInt : List[List[int]],
-                 cij : List[List[float]],
-                 perturbation : float,
-                 npNode : List[int]):
+                nf : List[int], 
+                nv : List[int],
+                F : List[List[bool]],
+                varFInt : List[List[int]],
+                cij : List[List[float]],
+                perturbation : float,
+                npNode : List[int]):
         
         self.n = n  #the number of nodes
         self.nf = nf    #the size is n
@@ -52,11 +52,10 @@ class PBN:
 
 
 def load_sbml(path: str) -> PBN:
-    return PBN(*parseSBMLDocument(path))
+    #return PBN(*parseSBMLDocument(path))
     pass
 
-    @staticmethod
-    def load_assa(path):
+def load_assa(path):
         forbidden_chars = [' ', '\t', '\n', '\r', '\v', '\f', '&', '*', '!', '^', '/', '|', ':', '(', ')']
 
         logical_replacements = {
@@ -132,8 +131,8 @@ def load_sbml(path: str) -> PBN:
             if perturbation_line.startswith("perturbation=") == False:
                 raise ValueError("Invalid file format")
             perturbation = perturbation_line.split("=")[1]
-            if not perturbation.isnumeric():
-                raise ValueError("Invalid file format")
+            # if not perturbation.isnumeric():
+            #     raise ValueError("Invalid file format")
             perturbation = float(perturbation)
 
             i += 1
@@ -148,7 +147,9 @@ def load_sbml(path: str) -> PBN:
                 raise ValueError("Invalid file format")
             i += 1
             for j in range(n):
+                i = skip_empty_lines(lines, i)
                 name = lines[i].strip()
+                print('name:', name)
                 if name in names_dict:
                     raise ValueError("Duplicate node name")
                 for char in forbidden_chars:
@@ -158,6 +159,7 @@ def load_sbml(path: str) -> PBN:
                 names_dict[name] = j
                 index_dict[j] = name
                 i += 1
+            i = skip_empty_lines(lines, i)
             end_names_line = lines[i]
             end_names_line = end_names_line.strip()
             if end_names_line != "endNodeNames":
@@ -166,6 +168,7 @@ def load_sbml(path: str) -> PBN:
             i = skip_empty_lines(lines, i)
 
             for j in range(n):
+                i = skip_empty_lines(lines, i)
                 function_count = 0
                 node_line = lines[i]
                 node_line = node_line.strip()
@@ -173,6 +176,7 @@ def load_sbml(path: str) -> PBN:
                     raise ValueError("Invalid file format "  +  node_line)
                 i += 1
                 probs = []
+                i = skip_empty_lines(lines, i)
                 while lines[i].strip() != "endNode":
                     function_count += 1
                     function_line = lines[i]
@@ -219,30 +223,29 @@ def load_sbml(path: str) -> PBN:
                         values = dict(zip(sorted_vars, combination))
                         evaluated = eval(updated_fun, {}, values)
                         truth_table.append(evaluated)
+                        # print(combination)
+                        # print(updated_fun)
+                        # print(evaluated)
+                    #print(truth_table)
                     F.append(truth_table)
                     i += 1
+                    i = skip_empty_lines(lines, i)
                 nf.append(function_count)
                 cij.append(probs)
-
                 i += 1
 
             assert len(F) == sum(nf)
-            assert len(varFInt) == n
-
+        
         model = PBN(n, nf, nv, F, varFInt, cij, perturbation, [])
         return model
 
-    @staticmethod
-    def load_from_file(path, format='sbml'):
-        match format:
-            case 'sbml':
-                return PBN.load_sbml(path)
-            case 'assa':
-                return PBN.load_assa(path)
-            case _:
-                raise ValueError("Invalid format")
 
-
-
-
-
+def load_from_file(path, format='sbml'):
+    match format:
+        case 'sbml':
+            return load_sbml(path)
+        case 'assa':
+            return load_assa(path)
+        case _:
+            raise ValueError("Invalid format")
+        
