@@ -28,3 +28,5 @@ jobs:
               })
             }
             console.log("Clear completed")
+      - name: Clear Cache
+        run: rm -rf /opt/hostedtoolcache
