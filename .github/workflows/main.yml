@@ -19,8 +19,8 @@ jobs:
   checks:
     name: Python ${{ matrix.python }} - ${{ matrix.task.name }}
     runs-on: ubuntu-latest
-    container:
-      image: sameli/manylinux2014_x86_64_cuda_11.8
+    # container:
+    #   image: sameli/manylinux2014_x86_64_cuda_11.8
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -45,9 +45,9 @@ jobs:
           - python: "3.10"
             task:
               name: Build
-              run: |
-                python -m build --wheel
-                python -m auditwheel repair dist/*.whl
+              # run: |
+              #   python -m build --wheel
+              #   python -m auditwheel repair dist/*.whl
 
           - python: "3.10"
             task:
@@ -92,12 +92,21 @@ jobs:
           . .venv/bin/activate
           ${{ matrix.task.run }}
 
-      - name: Upload package distribution files
+      - name: Execute cibuildwheel
         if: matrix.task.name == 'Build'
-        uses: actions/upload-artifact@v3
+        uses: pypa/cibuildwheel
+        env:
+          CIBW_MANYLINUX_X86_64_IMAGE: sameli/manylinux2014_x86_64_cuda_11.8
         with:
           name: package
           path: dist
+
+      - name: Upload package distribution files
+        if: matrix.task.name == 'Build'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
 
       - name: Clean up
         if: always()
