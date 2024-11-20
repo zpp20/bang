@@ -94,9 +94,8 @@ jobs:
 
       - name: Execute cibuildwheel
         if: matrix.task.name == 'Build'
-        uses: pypa/cibuildwheel@v2.1.1
-        env:
-          CIBW_MANYLINUX_X86_64_IMAGE: sameli/manylinux2014_x86_64_cuda_11.8
+        # uses: pypa/cibuildwheel@v2.1.1
+        run: CIBW_MANYLINUX_X86_64_IMAGE=sameli/manylinux2014_x86_64_cuda_11.8 pipx run cibuildwheel
 
       - name: Upload package distribution files
         if: matrix.task.name == 'Build'
