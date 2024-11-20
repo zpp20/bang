@@ -2946,7 +2946,7 @@ __global__ void kernelConvergeInitial1(
   for (int i = 0; i < stateSize; i++) {
     gpu_initialState[relativeIndex + i] = initialStateCopy[i];
   }
-  printf("idx=%d", idx);
+  //printf("idx=%d", idx);
   //MC: jak widac w ConvergeInitial nie zapisujemy nigdzie informacji o tym jakie stany mielismy do tej pory, patrzymy tylko gdzie znalezlismy sie po steps krokach.
 }
 
