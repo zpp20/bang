@@ -103,6 +103,7 @@ log_level = "DEBUG"
 
 [tool.cibuildwheel]
 build = "*"
+skip = "*musllinux*"
 
 archs = ["x86_64"]
 
