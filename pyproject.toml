@@ -42,7 +42,6 @@ dev = [
   "sphinx-autodoc-typehints==1.23.3",
   "packaging",
   "libsbml"
-  "itertools"
 ]
 
 [tool.setuptools.packages.find]

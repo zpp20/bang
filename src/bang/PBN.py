@@ -1,5 +1,6 @@
 from typing import List
 from libsbml import *
+import itertools
 
 class PBN:
 
