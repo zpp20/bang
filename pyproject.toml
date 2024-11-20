@@ -9,7 +9,7 @@ readme = "README.md"
 version = "0.0.1"
 
 requires-python = ">=3.8"
-dependencies = ["libsbml"]
+dependencies = ["python-libsbml"]
 license = { file = "LICENSE" }
 
 [project.urls]
