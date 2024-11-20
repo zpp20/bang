@@ -1,5 +1,6 @@
 from typing import List
 from libsbml import *
+import itertools
 from parseSBML import parseSBMLDocument
 
 class PBN:
@@ -47,77 +48,201 @@ class PBN:
     def getNpNode(self):
         return self.npNode
     
-def skip_empty_lines(lines, i):
-    while lines[i].strip() == "":
-        i += 1
-    return i
+
+
 
 def load_sbml(path: str) -> PBN:
     return PBN(*parseSBMLDocument(path))
     pass
 
-def load_assa(path):
-    with open(path, 'r') as f:
-        lines = f.readlines()
-        no_of_lines = len(lines)
-       
-        i = 0
-        i = skip_empty_lines(lines, i)
-        
-        type_line = lines[i]
-        type_line = type_line.strip()
-        if type_line.startswith("type=") == False:
-            raise ValueError("Invalid file format")
-        type = type_line.split("=")[1]
-        if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']
-            raise ValueError("Invalid file format")
-        
-        i += 1
-        i = skip_empty_lines(lines, i)
-        
-        n_line = lines[i]
-        n_line = n_line.strip()
-        if n_line.startswith("n=") == False:
-            raise ValueError("Invalid file format")
-        n = n_line.split("=")[1]
-        if not n.isnumeric():
-            raise ValueError("Invalid file format")
-        n = int(n)
+    @staticmethod
+    def load_assa(path):
+        forbidden_chars = [' ', '\t', '\n', '\r', '\v', '\f', '&', '*', '!', '^', '/', '|', ':', '(', ')']
 
-        i += 1
-        i = skip_empty_lines(lines, i)
+        logical_replacements = {
+            '|' : ' or ',
+            '&' : ' and ',
+            '!' : ' not '
+        }
+        def skip_empty_lines(lines, i):
+            while lines[i].strip() == "" or lines[i].strip().startswith("//"):
+                i += 1
+            return i
+        def get_vars(fun):
+            vars = []
+            cur = ''
+            started = False
+            for i in range(len(fun)):
+                if fun[i] in forbidden_chars:
+                    if started:
+                        if cur not in vars:
+                            vars.append(cur)
+                        cur = ''
+                        started = False
+                    else:
+                        continue
+                else:
+                    cur += fun[i]
+                    started = True
+            if started:
+                if cur not in vars:
+                    vars.append(cur)
+            return vars
 
-        perturbation_line = lines[i]
-        perturbation_line = perturbation_line.strip()
-        if perturbation_line.startswith("perturbation=") == False:
-            raise ValueError("Invalid file format")
-        perturbation = perturbation_line.split("=")[1]
-        if not perturbation.isnumeric():
-            raise ValueError("Invalid file format")
-        perturbation = float(perturbation)
+        varFInt = []
+        F = []
+        nv = []
+        nf = []
+        cij = []
 
-        i += 1
-        pass
-        # nf = list(map(int, lines[1].split()))
-        # nv = list(map(int, lines[2].split()))
-        # F = []
-        # for i in range(sum(nf)):
-        #     F.append(list(map(bool, lines[3 + i].split())))
-        # varFInt = []
-        # for i in range(n):
-        #     varFInt.append(list(map(int, lines[3 + sum(nf) + i].split())))
-        # cij = []
-        # for i in range(n):
-        #     cij.append(list(map(float, lines[3 + sum(nf) + n + i].split()))
-        # perturbation = float(lines[3 + sum(nf) + 2*n])
-        # npNode = list(map(int, lines[3 + sum(nf) + 2*n + 1].split()))
-        # return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
+        with open(path, 'r') as f:
+            lines = f.readlines()
+            no_of_lines = len(lines)
 
-def load_from_file(path, format='sbml'):
-    match format:
-        case 'sbml':
-            load_sbml(path)
-        case 'assa':
-            load_assa(path)
-        case _:
-            raise ValueError("Invalid format")
+            i = 0
+            i = skip_empty_lines(lines, i)
+
+            # Read the type of the PBN
+            type_line = lines[i]
+            type_line = type_line.strip()
+            if type_line.startswith("type=") == False:
+                raise ValueError("Invalid file format")
+            type = type_line.split("=")[1]
+            if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']:
+                raise ValueError("Invalid file format")
+
+            i += 1
+            i = skip_empty_lines(lines, i)
+
+            # Read the number of nodes
+            n_line = lines[i]
+            n_line = n_line.strip()
+            if n_line.startswith("n=") == False:
+                raise ValueError("Invalid file format")
+            n = n_line.split("=")[1]
+            if not n.isnumeric():
+                raise ValueError("Invalid file format")
+            n = int(n)
+
+            i += 1
+            i = skip_empty_lines(lines, i)
+            # Read the perturbation rate
+            perturbation_line = lines[i]
+            perturbation_line = perturbation_line.strip()
+            if perturbation_line.startswith("perturbation=") == False:
+                raise ValueError("Invalid file format")
+            perturbation = perturbation_line.split("=")[1]
+            if not perturbation.isnumeric():
+                raise ValueError("Invalid file format")
+            perturbation = float(perturbation)
+
+            i += 1
+            i = skip_empty_lines(lines, i)
+            names_dict = {}
+            index_dict = {}
+            forbidden_names = ['or', 'not', 'and']
+            # Read the names of the nodes
+            names_line = lines[i]
+            names_line = names_line.strip()
+            if names_line != "nodeNames":
+                raise ValueError("Invalid file format")
+            i += 1
+            for j in range(n):
+                name = lines[i].strip()
+                if name in names_dict:
+                    raise ValueError("Duplicate node name")
+                for char in forbidden_chars:
+                    if char in name:
+                        raise ValueError("Invalid node name")
+
+                names_dict[name] = j
+                index_dict[j] = name
+                i += 1
+            end_names_line = lines[i]
+            end_names_line = end_names_line.strip()
+            if end_names_line != "endNodeNames":
+                raise ValueError("Invalid file format")
+            i += 1
+            i = skip_empty_lines(lines, i)
+
+            for j in range(n):
+                function_count = 0
+                node_line = lines[i]
+                node_line = node_line.strip()
+                if node_line != "node " + index_dict[j]:
+                    raise ValueError("Invalid file format "  +  node_line)
+                i += 1
+                probs = []
+                while lines[i].strip() != "endNode":
+                    function_count += 1
+                    function_line = lines[i]
+                    function_line = function_line.strip()
+                    function_line = function_line.split(":")
+                    aux_f_line = []
+                    for f in function_line:
+                        aux_f_line.append(f.strip())
+                    function_line = aux_f_line
+                    # get probability of the function
+                    fun_prob = function_line[0]
+                    try :
+                        fun_prob = float(fun_prob)
+                        probs.append(fun_prob)
+                    except ValueError:
+                        raise ValueError("Invalid file format")
+                    # extract variable names
+                    fun = function_line[1]
+                    vars = get_vars(fun)
+                    # check if extracted variables are valid
+                    for var in vars:
+                        if var not in names_dict:
+                            raise ValueError("Invalid file format")
+                    unsorted_var_indices = []
+                    for var in vars:
+                        unsorted_var_indices.append(names_dict[var])
+
+                    updated_fun = fun
+                    for rep in logical_replacements:
+                        updated_fun = updated_fun.replace(rep, logical_replacements[rep])
+                    sorted_var_indices = sorted(unsorted_var_indices)
+                    nv.append(len(sorted_var_indices))
+
+                    # add variable indices to the list varFInt
+                    varFInt.append(sorted_var_indices)
+                    sorted_vars = [index_dict[var] for var in sorted_var_indices]
+
+                    # generate every possible variable evaluation
+                    truth_combinations = list(itertools.product([False, True], repeat=len(vars)))
+                    truth_table = []
+                    # evaluate the function for every possible combination of variables
+                    # and store the result in the truth table
+                    for combination in truth_combinations:
+                        values = dict(zip(sorted_vars, combination))
+                        evaluated = eval(updated_fun, {}, values)
+                        truth_table.append(evaluated)
+                    F.append(truth_table)
+                    i += 1
+                nf.append(function_count)
+                cij.append(probs)
+
+                i += 1
+
+            assert len(F) == sum(nf)
+            assert len(varFInt) == n
+
+        model = PBN(n, nf, nv, F, varFInt, cij, perturbation, [])
+        return model
+
+    @staticmethod
+    def load_from_file(path, format='sbml'):
+        match format:
+            case 'sbml':
+                return PBN.load_sbml(path)
+            case 'assa':
+                return PBN.load_assa(path)
+            case _:
+                raise ValueError("Invalid format")
+
+
+
+
+
