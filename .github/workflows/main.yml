@@ -19,8 +19,8 @@ jobs:
   checks:
     name: Python ${{ matrix.python }} - ${{ matrix.task.name }}
     runs-on: ubuntu-latest
-    # container:
-    #   image: sameli/manylinux2014_x86_64_cuda_11.8
+    container:
+      image: nvidia/cuda:11.7.1-devel-ubuntu22.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
