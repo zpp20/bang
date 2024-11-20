@@ -9,9 +9,7 @@ readme = "README.md"
 version = "0.0.1"
 
 requires-python = ">=3.8"
-dependencies = [
-  # Add your own dependencies here
-]
+dependencies = ["python-libsbml"]
 license = { file = "LICENSE" }
 
 [project.urls]
@@ -41,7 +39,6 @@ dev = [
   "sphinx-autobuild==2021.3.14",
   "sphinx-autodoc-typehints==1.23.3",
   "packaging",
-  "libsbml"
 ]
 
 [tool.setuptools.packages.find]
@@ -101,3 +98,12 @@ testpaths = "tests/"
 python_classes = ["Test*", "*Test"]
 log_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 log_level = "DEBUG"
+
+[tool.cibuildwheel]
+build = ["*cp310*", "*cp38*"]
+skip = ["*musllinux*", "*pypy*"]
+
+archs = ["x86_64"]
+
+manylinux-x86_64-image = "sameli/manylinux2014_x86_64_cuda_11.8"
+manylinux-pypy_x86_64-image = "sameli/manylinux2014_x86_64_cuda_11.8"
