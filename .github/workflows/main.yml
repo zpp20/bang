@@ -59,8 +59,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # - run: apt-get update && apt-get install -y lsb-release && apt-get clean all
-
       - name: Setup Python environment
         uses: actions/setup-python@v5
         with:
@@ -94,13 +92,15 @@ jobs:
 
       - name: setup-docker
         run: |
+          apt-get update && apt-get install -y curl
           curl -fsSL https://get.docker.com -o get-docker.sh
           sh get-docker.sh
 
       - name: Execute cibuildwheel
         if: matrix.task.name == 'Build'
         # uses: pypa/cibuildwheel@v2.1.1
-        run: CIBW_MANYLINUX_X86_64_IMAGE=sameli/manylinux2014_x86_64_cuda_11.8 pipx run cibuildwheel
+        run: |
+          CIBW_MANYLINUX_X86_64_IMAGE=sameli/manylinux2014_x86_64_cuda_11.8 pipx run cibuildwheel
 
       - name: Upload package distribution files
         if: matrix.task.name == 'Build'
