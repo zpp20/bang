@@ -56,18 +56,35 @@ def load_sbml(path: str) -> PBN:
     pass
 
 def load_assa(path):
+    n = 0
+    nf = []
+    nv = []
+    F = []
+    varFInt = []
+    cij = []
+    perturbation = 0.0
+    np = []
+    type = ''
+    i = 0
+
+    # forbidden characters in the variable names
     forbidden_chars = [' ', '\t', '\n', '\r', '\v', '\f', '&', '*', '!', '^', '/', '|', ':', '(', ')']
 
+    # for python eval function
     logical_replacements = {
         '|': ' or ',
         '&': ' and ',
         '!': ' not '
     }
-
-    def skip_empty_lines(lines, i):
-        while lines[i].strip() == "" or lines[i].strip().startswith("//"):
-            i += 1
-        return i
+ 
+    def delete_comments_and_empty_lines(lines):
+        new_lines = []
+        for line in lines:
+            line = line.strip()
+            if line == "" or line.startswith("//"):
+                continue
+            new_lines.append(line)
+        return new_lines
 
     def get_vars(fun):
         vars = []
@@ -89,57 +106,57 @@ def load_assa(path):
             if cur not in vars:
                 vars.append(cur)
         return vars
-
-    varFInt = []
-    F = []
-    nv = []
-    nf = []
-    cij = []
-    np = []
-
-    with open(path, 'r') as f:
-        lines = f.readlines()
-        no_of_lines = len(lines)
-
-        i = 0
-        i = skip_empty_lines(lines, i)
-
-        # Read the type of the PBN
-        type_line = lines[i]
-        type_line = type_line.strip()
-        if type_line.startswith("type=") == False:
+    
+    def get_n(line):
+        nonlocal n
+        line = line.strip()
+        if line.startswith("n=") == False:
             raise ValueError("Invalid file format")
-        type = type_line.split("=")[1]
-        if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']:
-            raise ValueError("Invalid file format")
-
-        i += 1
-        i = skip_empty_lines(lines, i)
-
-        # Read the number of nodes
-        n_line = lines[i]
-        n_line = n_line.strip()
-        if n_line.startswith("n=") == False:
-            raise ValueError("Invalid file format")
-        n = n_line.split("=")[1]
+        n = line.split("=")[1]
         if not n.isnumeric():
             raise ValueError("Invalid file format")
         n = int(n)
-
+        nonlocal i
         i += 1
-        i = skip_empty_lines(lines, i)
-        # Read the perturbation rate
-        perturbation_line = lines[i]
-        perturbation_line = perturbation_line.strip()
-        if perturbation_line.startswith("perturbation=") == False:
+
+    def get_type(line):
+        nonlocal type
+        line = line.strip()
+        if line.startswith("type=") == False:
             raise ValueError("Invalid file format")
-        perturbation = perturbation_line.split("=")[1]
-        # if not perturbation.isnumeric():
-        #     raise ValueError("Invalid file format")
-        perturbation = float(perturbation)
-
+        type = line.split("=")[1]
+        if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']:
+            raise ValueError("Invalid file format")
+        nonlocal i
         i += 1
-        i = skip_empty_lines(lines, i)
+    
+    def get_perturbation(line):
+        nonlocal perturbation
+        line = line.strip()
+        if line.startswith("perturbation=") == False:
+            raise ValueError("Invalid file format")
+        perturbation = line.split("=")[1]
+        try:
+            perturbation = float(perturbation)
+        except ValueError:
+            raise ValueError("Invalid file format")
+        nonlocal i
+        i += 1
+    
+
+    with open(path, 'r') as f:
+        lines = f.readlines()
+        lines = delete_comments_and_empty_lines(lines)
+
+        # Read the type of the PBN
+        get_type(lines[i])
+
+        # Read the number of nodes
+        get_n(lines[i])
+
+        # Read the perturbation rate
+        get_perturbation(lines[i])
+        
         names_dict = {}
         index_dict = {}
         forbidden_names = ['or', 'not', 'and']
@@ -150,11 +167,12 @@ def load_assa(path):
             raise ValueError("Invalid file format")
         i += 1
         for j in range(n):
-            i = skip_empty_lines(lines, i)
             name = lines[i].strip()
             print('name:', name)
             if name in names_dict:
                 raise ValueError("Duplicate node name")
+            if name in forbidden_names:
+                raise ValueError("Invalid node name")
             for char in forbidden_chars:
                 if char in name:
                     raise ValueError("Invalid node name")
@@ -162,16 +180,12 @@ def load_assa(path):
             names_dict[name] = j
             index_dict[j] = name
             i += 1
-        i = skip_empty_lines(lines, i)
         end_names_line = lines[i]
         end_names_line = end_names_line.strip()
         if end_names_line != "endNodeNames":
             raise ValueError("Invalid file format")
         i += 1
-        i = skip_empty_lines(lines, i)
-
         for j in range(n):
-            i = skip_empty_lines(lines, i)
             function_count = 0
             node_line = lines[i]
             node_line = node_line.strip()
@@ -179,7 +193,6 @@ def load_assa(path):
                 raise ValueError("Invalid file format " + node_line)
             i += 1
             probs = []
-            i = skip_empty_lines(lines, i)
             while lines[i].strip() != "endNode":
                 function_count += 1
                 function_line = lines[i]
@@ -226,32 +239,23 @@ def load_assa(path):
                     values = dict(zip(sorted_vars, combination))
                     evaluated = eval(updated_fun, {}, values)
                     truth_table.append(evaluated)
-                    # print(combination)
-                    # print(updated_fun)
-                    # print(evaluated)
-                # print(truth_table)
                 F.append(truth_table)
                 i += 1
-                i = skip_empty_lines(lines, i)
             nf.append(function_count)
             cij.append(probs)
             i += 1
 
         assert len(F) == sum(nf)
-        i = skip_empty_lines(lines, i)
         np_line = lines[i].strip()
         if np_line != "npNode":
             raise ValueError("Invalid file format")
         i += 1
-        i = skip_empty_lines(lines, i)
         while lines[i].strip() != "endNpNode":
             node_name = lines[i].strip()
             if node_name not in names_dict:
                 raise ValueError("Invalid file format")
             np.append(names_dict[node_name])
             i += 1
-            i = skip_empty_lines(lines, i)
-
         np = sorted(np)
         np.append(n)
     model = PBN(n, nf, nv, F, varFInt, cij, perturbation, np)
