@@ -1023,16 +1023,37 @@ void initialisePBN_GPU(py::object PBN) {
   idx = 0;
   for (auto elem : nv_py) {
     uint16_t value = elem.cast<uint16_t>();
-
-    if (value > 5) {
-      extraFIndexCount++;
-      extraFCount += (int)pow(2, value - 5) - 1;
-    }
     cumNv += value;
-
     nv[idx++] = value;
   }
 
+  py::list extraFInfo_py = PBN.attr("getExtraFInfo")();
+
+  extraFCount = extraFInfo[0].cast<int>();
+  extraFIndexCount = extraFInfo[1].cast<int>();
+  
+  py::list extraFIndex_py =  py::cast<py::list>(extraFInfo[2]);
+  py::list cumExtraF_py = py::cast<py::list>(extraFInfo[3]);
+  py::list extraF_py = py::cast<py::list>(extraFInfo[4]);
+
+  extraFIndex = (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+  cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) * (extraFIndexCount + 1));
+  extraF = (int *)malloc(sizeof(int) * extraFCount);
+
+  idx = 0;
+  for (auto elem : extraFIndex_py) {
+    extraFIndex[idx++] = elem.cast<uint16_t>();
+  }
+
+  idx = 0;
+  for (auto elem : cumExtraF_py) {
+    cumExtraF[idx++] = elem.cast<uint16_t>();
+  }
+
+  idx = 0;
+  for (auto elem : extraF_py) {
+    extraF[idx++] = elem.cast<uint16_t>();
+  }
   // extraF
   if (extraFCount > 0) {
     extraFInitialIndex = 0;

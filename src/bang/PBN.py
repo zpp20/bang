@@ -33,6 +33,49 @@ class PBN:
     def getNv(self):
         return self.nv
     
+    def getExtraFInfo(self):
+    """
+    Returns list of size 5: 
+    - getExtraFInfo[0] is extraFCount
+    - getExtraFInfo[1] is extraFIndexCount
+    - getExtraFInfo[2] is list extraFIndex of size extraFIndexCount
+    - getExtraFInfo[3] is list cumExtraF of size extraFIndexCount + 1
+    - getExtraFInfo[4] is list extraF of size extraFCount
+    
+    In case there are no extraFs extraFCount, extraFIndexCount are set to 1.
+    extraFIndex is list of ones of size 1
+    extraF is list of ones of size 1
+    cumExtraF is list of ones of size 2
+    (in original implementation lists were allocated but no numbers were assigned)
+    """
+        extraFCount = 0
+        extraFIndexCount = 0
+        for elem in self.nv:
+            if elem > 5:
+                extraFIndexCount += 1
+                extraFCount += 2**(elem - 5) - 1
+
+        if extraFIndexCount > 0:
+            extraFIndex = list()
+            cumExtraF = list()
+            extraF = list()
+
+            cumExtraF.append(0)
+            for i in range(0, len(self.nv)):
+                if self.nv[i] > 5:
+                    extraFIndex.append(i)
+                    cumExtraF.append(cumExtraF[-1] + 2**(self.nv[i] - 5) - 1)
+
+        else:
+            extraFCount = 1
+            extraFIndexCount = 1
+            extraFIndex = [1]
+            cumExtraF = [1,1]
+            extraF = [1]
+
+        return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF]
+             
+
     def getF(self):
         return self.F
     
