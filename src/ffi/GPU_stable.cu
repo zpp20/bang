@@ -1023,43 +1023,36 @@ void initialisePBN_GPU(py::object PBN) {
   idx = 0;
   for (auto elem : nv_py) {
     uint16_t value = elem.cast<uint16_t>();
-
-    if (value > 5) {
-      extraFIndexCount++;
-      extraFCount += (int)pow(2, value - 5) - 1;
-    }
     cumNv += value;
-
     nv[idx++] = value;
   }
 
-  // extraF
-  if (extraFCount > 0) {
-    extraFInitialIndex = 0;
-    extraFIndex =
-        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
-                                         (extraFIndexCount + 1));
+  py::list extraFInfo_py = PBN.attr("getExtraFInfo")();
 
-    cumExtraF[0] = 0;
-    extraF = (int *)malloc(sizeof(int) * extraFCount);
-    int tmpIndex = 0;
-    for (int i = 0; i < nv_len; i++) {
-      if (nv[i] > 5) {
-        extraFIndex[tmpIndex] = (unsigned short)i;
-        tmpIndex++;
-        cumExtraF[tmpIndex] =
-            cumExtraF[tmpIndex - 1] + (unsigned short)pow(2, nv[i] - 5) - 1;
-      }
-    }
-  } else { // create dummy ones
-    extraFCount = 1;
-    extraFIndexCount = 1;
-    extraFIndex =
-        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-    extraF = (int *)malloc(sizeof(int) * extraFCount);
-    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
-                                         (extraFIndexCount + 1));
+  extraFCount = extraFInfo_py[0].cast<int>();
+  extraFIndexCount = extraFInfo_py[1].cast<int>();
+  
+  py::list extraFIndex_py =  py::cast<py::list>(extraFInfo_py[2]);
+  py::list cumExtraF_py = py::cast<py::list>(extraFInfo_py[3]);
+  py::list extraF_py = py::cast<py::list>(extraFInfo_py[4]);
+
+  extraFIndex = (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+  cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) * (extraFIndexCount + 1));
+  extraF = (int *)malloc(sizeof(int) * extraFCount);
+
+  idx = 0;
+  for (auto elem : extraFIndex_py) {
+    extraFIndex[idx++] = elem.cast<uint16_t>();
+  }
+
+  idx = 0;
+  for (auto elem : cumExtraF_py) {
+    cumExtraF[idx++] = elem.cast<uint16_t>();
+  }
+
+  idx = 0;
+  for (auto elem : extraF_py) {
+    extraF[idx++] = elem.cast<uint16_t>();
   }
 
   // F
