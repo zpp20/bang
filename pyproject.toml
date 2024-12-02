@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 # See https://setuptools.pypa.io/en/latest/userguide/quickstart.html for more project configuration options.
-name = "bang"
+name = "bang-gpu"
 readme = "README.md"
 version = "0.0.1"
 
