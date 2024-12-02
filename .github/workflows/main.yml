@@ -124,7 +124,7 @@ jobs:
     if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/v') }}
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/bang/
+      url: https://test.pypi.org/p/bang-gpu/
     permissions:
       id-token: write
     steps:
@@ -137,10 +137,6 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install requirements
-        run: |
-          pip install --upgrade pip twine
-
       - name: Prepare environment
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
@@ -150,22 +146,23 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: cibw-wheels
-          path: ./wheelhouse/
+          path: ./dist/
 
-      - name: Generate release notes
-        run: |
-          python scripts/release_notes.py > ${{ github.workspace }}-RELEASE_NOTES.md
-
-      - name: Upload to test.pypi
-        run: |
-          python -m twine upload --repository testpypi wheelhouse/*
-
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          body_path: ${{ github.workspace }}-RELEASE_NOTES.md
-          prerelease: ${{ contains(env.TAG, 'rc') }}
-          files: |
-            wheelhouse/*
+          repository-url: https://test.pypi.org/legacy/
+
+      # - name: Generate release notes
+      #   run: |
+      #     python scripts/release_notes.py > ${{ github.workspace }}-RELEASE_NOTES.md
+
+      # - name: Publish GitHub release
+      #   uses: softprops/action-gh-release@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     body_path: ${{ github.workspace }}-RELEASE_NOTES.md
+      #     prerelease: ${{ contains(env.TAG, 'rc') }}
+      #     files: |
+      #       wheelhouse/*
