@@ -3,7 +3,7 @@ FROM nvidia/cuda:11.7.1-devel-ubuntu22.04
 # FROM sameli/manylinux2014_x86_64_cuda_12.3 
 
 RUN apt update
-RUN apt install -y python3 python3-pip
+RUN apt install -y python3 python3-pip ninja-build
 
 # RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
 
