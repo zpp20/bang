@@ -33,21 +33,60 @@ class PBN:
     def getNv(self):
         return self.nv
     
-    def getExtraFInfo(self):
-    """
-    Returns list of size 5: 
-    - getExtraFInfo[0] is extraFCount
-    - getExtraFInfo[1] is extraFIndexCount
-    - getExtraFInfo[2] is list extraFIndex of size extraFIndexCount
-    - getExtraFInfo[3] is list cumExtraF of size extraFIndexCount + 1
-    - getExtraFInfo[4] is list extraF of size extraFCount
-    
-    In case there are no extraFs extraFCount, extraFIndexCount are set to 1.
-    extraFIndex is list of ones of size 1
-    extraF is list of ones of size 1
-    cumExtraF is list of ones of size 2
-    (in original implementation lists were allocated but no numbers were assigned)
-    """
+    def getVector(self, elemF, extraF):
+        """
+        based on fromVector function from original ASSA-PBN
+        converts list of bools to 32 bit int with bits representing truth table
+        extra bits are placed into extraF list
+        """
+        
+        retval = 0
+        i = 0
+        prefix = 0
+        tempLen = len(elemF)
+        if tempLen > 32:                                                       #we have to add values to extraF
+            for i in range(32):
+                if elemF[i + prefix]:
+                    retval |= 1 << i
+
+            prefix += 32
+            tempLen -= 32
+        
+        else:                                                                  #we just return proper into
+            for i in range(tempLen):
+                if elemF[i]:
+                    retval |= 1 << i
+            
+            return retval
+        
+        while tempLen > 0:                                                     #switched condition to tempLen > 0 to get one more iteration after tempLen > 32 is false
+            other = 0
+            for i in range(32):
+                if elemF[i + prefix]:
+                    other |= 1 << i
+            
+            prefix += 32
+            tempLen -= 32
+            extraF.append(other)
+
+        return retval
+        
+    def getFInfo(self):
+        """
+        Returns list of size 6: 
+        - getFInfo[0] is extraFCount
+        - getFInfo[1] is extraFIndexCount
+        - getFInfo[2] is list extraFIndex of size extraFIndexCount
+        - getFInfo[3] is list cumExtraF of size extraFIndexCount + 1
+        - getFInfo[4] is list extraF of size extraFCount
+        - getFInfo[5] is list F of size cumnF
+        
+        In case there are no extraFs extraFCount, extraFIndexCount are set to 1.
+        extraFIndex is list of ones of size 1
+        extraF is list of ones of size 1
+        cumExtraF is list of ones of size 2
+        (in original implementation lists were allocated but no numbers were assigned)
+        """
         extraFCount = 0
         extraFIndexCount = 0
         for elem in self.nv:
@@ -61,11 +100,11 @@ class PBN:
             extraF = list()
 
             cumExtraF.append(0)
-            for i in range(0, len(self.nv)):
+            for i in range(len(self.nv)):
                 if self.nv[i] > 5:
                     extraFIndex.append(i)
                     cumExtraF.append(cumExtraF[-1] + 2**(self.nv[i] - 5) - 1)
-
+                
         else:
             extraFCount = 1
             extraFIndexCount = 1
@@ -73,7 +112,12 @@ class PBN:
             cumExtraF = [1,1]
             extraF = [1]
 
-        return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF]
+        F = list()
+
+        for i in range(len(self.F)):
+            F.append(self.getVector(self.F[i], extraF))
+
+        return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF, extraF, F]
              
 
     def getF(self):

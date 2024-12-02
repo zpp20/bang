@@ -1006,9 +1006,7 @@ void initialisePBN_GPU(py::object PBN) {
   for (auto elem : nf_py) {
 
     nf[idx++] = elem.cast<uint16_t>();
-    cout << nf[idx - 1] << " - nf\n";
   }
-  cout << "n - " << n << "\n";
 
   // nv
   py::list nv_py = PBN.attr("getNv")();
@@ -1025,49 +1023,25 @@ void initialisePBN_GPU(py::object PBN) {
     uint16_t value = elem.cast<uint16_t>();
     cumNv += value;
     nv[idx++] = value;
-    cumNv += value;
-    nv[idx++] = value;
   }
 
-  py::list extraFInfo_py = PBN.attr("getExtraFInfo")();
-
-  extraFCount = extraFInfo[0].cast<int>();
-  extraFIndexCount = extraFInfo[1].cast<int>();
-  
-  py::list extraFIndex_py =  py::cast<py::list>(extraFInfo[2]);
-  py::list cumExtraF_py = py::cast<py::list>(extraFInfo[3]);
-  py::list extraF_py = py::cast<py::list>(extraFInfo[4]);
-
-  extraFIndex = (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-  cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) * (extraFIndexCount + 1));
-  extraF = (int *)malloc(sizeof(int) * extraFCount);
-
-  idx = 0;
-  for (auto elem : extraFIndex_py) {
-    extraFIndex[idx++] = elem.cast<uint16_t>();
-  }
-
-  idx = 0;
-  for (auto elem : cumExtraF_py) {
-    cumExtraF[idx++] = elem.cast<uint16_t>();
-  }
-
-  idx = 0;
-  for (auto elem : extraF_py) {
-    extraF[idx++] = elem.cast<uint16_t>();
-  }
-  py::list extraFInfo_py = PBN.attr("getExtraFInfo")();
-
+  py::list extraFInfo_py = PBN.attr("getFInfo")();
+    
   extraFCount = extraFInfo_py[0].cast<int>();
   extraFIndexCount = extraFInfo_py[1].cast<int>();
   
   py::list extraFIndex_py =  py::cast<py::list>(extraFInfo_py[2]);
   py::list cumExtraF_py = py::cast<py::list>(extraFInfo_py[3]);
   py::list extraF_py = py::cast<py::list>(extraFInfo_py[4]);
+  py::list F_py = py::cast<py::list>(extraFInfo_py[5]);
 
   extraFIndex = (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
   cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) * (extraFIndexCount + 1));
   extraF = (int *)malloc(sizeof(int) * extraFCount);
+  
+  int sizeF = py::len(F_py);
+
+  F = (int*)malloc(sizeof(int) * sizeF);
 
   idx = 0;
   for (auto elem : extraFIndex_py) {
@@ -1084,28 +1058,15 @@ void initialisePBN_GPU(py::object PBN) {
     extraF[idx++] = elem.cast<uint16_t>();
   }
 
-  // F
-  py::list F_py = PBN.attr("getF")();
-
-  int sizeF = py::len(F_py);
-
-  F = (int *)malloc(sizeof(int) * sizeF);
-
   idx = 0;
   for (auto elem : F_py) {
-    py::list elem_list = py::cast<py::list>(elem);
-
-    int elem_len = py::len(elem);
-
-    F[idx++] = fromVector(elem_list, elem_len);
+    F[idx++] = elem.cast<uint32_t>();
   }
-
   // varF
   py::list varF_py = PBN.attr("getVarFInt")();
 
   varF = (uint16_t *)malloc(sizeof(uint16_t) * cumNv);
-  // cout<<"num varF="<<cumNv<<endl;
-  // cout<<"varF"<<endl;
+
   idx = 0;
   for (auto varF_elem : varF_py) {
     py::list varF_elem_list = py::cast<py::list>(varF_elem);
