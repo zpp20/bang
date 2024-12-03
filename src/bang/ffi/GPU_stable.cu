@@ -9,7 +9,6 @@
 #include <curand_kernel.h>
 #include <iostream>
 #include <math.h>
-#include <pybind11/pybind11.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,10 +30,10 @@ namespace py = pybind11;
 #define RegPerThread 63 // this value is obtained via compiling command
 #define maxAllowedSharedMemory 40960 // the maximum allowed shared memory 40KB
 
-// declare texture reference
-// texture<int, 1, cudaReadModeElementType> texExtraF;
-// texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
-// texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
+// // declare texture reference
+// // texture<int, 1, cudaReadModeElementType> texExtraF;
+// // texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
+// // texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
 
 /**Simulation info */
 int n_trajectories;
@@ -42,7 +41,7 @@ int n_trajectories;
 /** store PBN directly*/
 int n;
 unsigned short *nf;
-unsigned short *nv;
+unsigned short *num_v;
 int *F;
 unsigned short *varF;
 float *cij;
@@ -1014,7 +1013,7 @@ void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
   py::list nv_py = PBN.attr("getNv")();
 
   int nv_len = py::len(nv_py);
-  nv = (uint16_t *)malloc(sizeof(uint16_t) * nv_len);
+  num_v = (uint16_t *)malloc(sizeof(uint16_t) * nv_len);
 
   int cumNv = 0;
   extraFCount = 0;
@@ -1024,7 +1023,8 @@ void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
   for (auto elem : nv_py) {
     uint16_t value = elem.cast<uint16_t>();
     cumNv += value;
-    nv[idx++] = value;
+
+    num_v[idx++] = value;
   }
 
   py::list extraFInfo_py = PBN.attr("getFInfo")();
@@ -1149,7 +1149,7 @@ double *german_gpu_run() {
   unsigned short *gpu_cumNv;
   cumNv[0] = 0;
   for (int i = 0; i < cumNf[n]; i++) {
-    cumNv[i + 1] = cumNv[i] + nv[i];
+    cumNv[i + 1] = cumNv[i] + num_v[i];
   }
 
   int *gpu_F;
@@ -1175,7 +1175,7 @@ double *german_gpu_run() {
 
   cout << "allocating finished\n";
   free(nf);
-  free(nv);
+  free(num_v);
 
   // cout<<"size_sharedMemory="<<size_sharedMemory<<endl;
   size_sharedMemory += (cumNf[n] + 1) * sizeof(unsigned short); // cumNv
@@ -1389,16 +1389,6 @@ double *german_gpu_run() {
   // invoke the GPU to initialize all of the random states
   init<<<block, blockSize>>>(time(0), states);
 
-  // bind texture reference with linear memory
-  // cudaBindTexture(0,texcumNv,gpu_cumNv,sizeof(int)*(cumNf[n] + 1));
-  // cudaBindTexture(0,texVarF,gpu_varF,sizeof(int)*cumNv[cumNf[n]]);
-  // cudaBindTexture(0, texExtraF, gpu_extraF, sizeof(int) * extraFCount);
-  // cudaBindTexture(0, texExtraFIndex, gpu_extraFIndex,
-  //                 sizeof(unsigned short) * extraFIndexCount);
-  // cudaBindTexture(0, texCumExtraF, gpu_cumExtraF,
-  //                 sizeof(unsigned short) * (extraFIndexCount + 1));
-
-  // German german;
   float psrf;
   bool done = false, done1 = false;
   float threshold = 1e-3; // judge when to converge
@@ -1427,13 +1417,6 @@ double *german_gpu_run() {
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   } else if (n < 513) {
-    // if (useTexture)
-    //   kernelConvergeInitial7_texture<<<block, blockSize,
-    //   size_sharedMemory>>>(
-    //       states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-    //       gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-    //       gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    // else
     kernelConvergeInitial1<16><<<block, blockSize, size_sharedMemory>>>(
         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
