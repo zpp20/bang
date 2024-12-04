@@ -20,29 +20,29 @@ jobs:
     name: Python ${{ matrix.python }} - ${{ matrix.task.name }}
     runs-on: ubuntu-latest
     container:
-      image: nvidia/cuda:11.7.1-devel-ubuntu22.04
+      image: nvidia/cuda:12.6.3-devel-ubuntu24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.8", "3.10"]
+        python: ["3.8", "3.10", "3.11"]
         task:
           - name: Test
             run: |
               pytest -v --color=yes tests/
 
         include:
-          - python: "3.10"
+          - python: "3.12"
             task:
               name: Lint
               run: ruff check .
 
-          - python: "3.10"
+          - python: "3.12"
             task:
               name: Type check
               run: mypy .
 
-          - python: "3.10"
+          - python: "3.12"
             task:
               name: Style
               run: |
@@ -133,9 +133,9 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: 3.11
 
       - name: Prepare environment
         run: |

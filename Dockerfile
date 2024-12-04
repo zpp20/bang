@@ -1,9 +1,10 @@
 # Start from a base CUDA image with NVCC 11.7
-FROM nvidia/cuda:11.7.1-devel-ubuntu22.04
-# FROM sameli/manylinux2014_x86_64_cuda_12.3 
+FROM nvidia/cuda:12.3.2-devel-ubuntu22.04
+#:11.7.1-devel-ubuntu22.04
+# FROM sameli/manylinux2014_x86_64_cuda_12.3
 
 RUN apt update
-RUN apt install -y python3 python3-pip ninja-build
+RUN apt install -y python3 python3-pip python3.10-venv
 
 # RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
 
@@ -18,7 +19,8 @@ COPY ../ /app
 
 WORKDIR /app
 
-RUN python3 -m pip install .
+RUN python3 -m venv ./.venv
+RUN .venv/bin/pip install .
 
 # Default command
 CMD ["/bin/bash"]

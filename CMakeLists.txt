@@ -35,7 +35,7 @@ python_add_library(_gpu_stable MODULE src/bang/ffi/GPU_stable.cu WITH_SOABI)
 # )
 
 target_compile_options(_gpu_stable INTERFACE
-  "SHELL:-gencode=arch=compute_35,code=sm_35"
+# "SHELL:-gencode=arch=compute_35,code=sm_35"
   "SHELL:-gencode=arch=compute_50,code=sm_50"
   "SHELL:-gencode=arch=compute_60,code=sm_60"
   "SHELL:-gencode=arch=compute_70,code=sm_70"
