@@ -177,6 +177,61 @@ def load_assa(path):
             raise ValueError("Invalid file format")
         nonlocal i
         i += 1
+
+    def get_function(line, probs):
+        nonlocal nv
+        nonlocal F
+        nonlocal varFInt
+        nonlocal i
+        fun_expr = [x.strip() for x in lines[i].strip().split(":")]
+        # get probability of the function
+        try:
+            fun_prob = float(fun_expr[0])
+            probs.append(fun_prob)
+        except ValueError:
+            raise ValueError("Invalid file format")
+        # extract variable names
+        fun = fun_expr[1]
+        vars = get_vars_from_assa_expr(fun)
+        # check if extracted variables are valid
+        unsorted_var_indices = []
+        for var in vars:
+            unsorted_var_indices.append(names_dict[var])
+        updated_fun = fun
+        for rep in logical_replacements:
+            updated_fun = updated_fun.replace(rep, logical_replacements[rep])
+        sorted_var_indices = sorted(unsorted_var_indices)
+        nv.append(len(sorted_var_indices))
+
+        # add variable indices to the list varFInt
+        varFInt.append(sorted_var_indices)
+        sorted_vars = [index_dict[var] for var in sorted_var_indices]
+
+        # generate every possible variable evaluation
+        truth_combinations = list(itertools.product([False, True], repeat=len(vars)))
+        truth_table = []
+        # evaluate the function for every possible combination of variables
+        # and store the result in the truth table
+        for combination in truth_combinations:
+            values = dict(zip(sorted_vars, combination))
+            evaluated = eval(updated_fun, {}, values)
+            truth_table.append(evaluated)
+        F.append(truth_table)
+        i += 1
+    
+    def get_np_node(line):
+        nonlocal np
+        nonlocal i
+        while lines[i].strip() != "endNpNode":
+            node_name = lines[i].strip()
+            if node_name not in names_dict:
+                raise ValueError("Invalid file format")
+            np.append(names_dict[node_name])
+            i += 1
+        np = sorted(np)
+        np.append(n)
+        i += 1
+
     
 
     with open(path, 'r') as f:
@@ -202,58 +257,18 @@ def load_assa(path):
             function_count = 0
             checkline(lines[i], "node " + index_dict[j])
             probs = []
+            
             # ... extract the boolean functions for the variable
             while lines[i].strip() != "endNode":
                 function_count += 1
-                fun_expr = [x.strip() for x in lines[i].strip().split(":")]
-                # get probability of the function
-                try:
-                    fun_prob = float(fun_expr[0])
-                    probs.append(fun_prob)
-                except ValueError:
-                    raise ValueError("Invalid file format")
-                # extract variable names
-                fun = fun_expr[1]
-                vars = get_vars_from_assa_expr(fun)
-                # check if extracted variables are valid
-                unsorted_var_indices = []
-                for var in vars:
-                    unsorted_var_indices.append(names_dict[var])
-                updated_fun = fun
-                for rep in logical_replacements:
-                    updated_fun = updated_fun.replace(rep, logical_replacements[rep])
-                sorted_var_indices = sorted(unsorted_var_indices)
-                nv.append(len(sorted_var_indices))
-
-                # add variable indices to the list varFInt
-                varFInt.append(sorted_var_indices)
-                sorted_vars = [index_dict[var] for var in sorted_var_indices]
-
-                # generate every possible variable evaluation
-                truth_combinations = list(itertools.product([False, True], repeat=len(vars)))
-                truth_table = []
-                # evaluate the function for every possible combination of variables
-                # and store the result in the truth table
-                for combination in truth_combinations:
-                    values = dict(zip(sorted_vars, combination))
-                    evaluated = eval(updated_fun, {}, values)
-                    truth_table.append(evaluated)
-                F.append(truth_table)
-                i += 1
+                get_function(lines[i], probs)
             nf.append(function_count)
             cij.append(probs)
             i += 1
 
         assert len(F) == sum(nf)
         checkline(lines[i], "npNode")
-        while lines[i].strip() != "endNpNode":
-            node_name = lines[i].strip()
-            if node_name not in names_dict:
-                raise ValueError("Invalid file format")
-            np.append(names_dict[node_name])
-            i += 1
-        np = sorted(np)
-        np.append(n)
+        get_np_node(lines[i])
     model = PBN(n, nf, nv, F, varFInt, cij, perturbation, np)
     return model
 
