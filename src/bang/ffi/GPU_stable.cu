@@ -20,6 +20,7 @@
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 using namespace std;
@@ -39,7 +40,7 @@ namespace py = pybind11;
 int n;
 unsigned short *nf;
 unsigned short *num_v;
-int *F;
+int *myF;
 unsigned short *varF;
 float *cij;
 float p;
@@ -162,13 +163,13 @@ kernel1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
   // int stateSize = *gpu_stateSize;
   // let's make shared memory
   unsigned short *cumNv = (unsigned short *)arrays;
-  int *F;
+  int *kernel_F;
   if ((constantCumNf[nodeNum[0]] + 1) % 2 != 0) {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
+    kernel_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
   } else {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
+    kernel_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
   }
-  unsigned short *varF = (unsigned short *)&F[constantCumNf[nodeNum[0]]];
+  unsigned short *varF = (unsigned short *)&kernel_F[constantCumNf[nodeNum[0]]];
   int *l_extraF;
   if (gpu_cumNv[constantCumNf[nodeNum[0]]] % 2 != 0) {
     l_extraF = (int *)&varF[gpu_cumNv[constantCumNf[nodeNum[0]]] + 1];
@@ -190,7 +191,7 @@ kernel1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
     for (int i = 0; i < constantCumNf[nodeNum[0]]; i++) {
       // nv[i] = gpu_nv[i];
       cumNv[i] = gpu_cumNv[i];
-      F[i] = gpu_F[i];
+      kernel_F[i] = gpu_F[i];
       // cij[i] = gpu_cij[i];
       // printf("%d %d %f %d \nodeNum[0]", nv[i], F[i], cij[i], cumNv[i]);
     }
@@ -277,7 +278,7 @@ kernel1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
           relativeIndex++;
         }
         start = constantCumNf[i] + relativeIndex;
-        int elementF = F[start];
+        int elementF = kernel_F[start];
         int startVarFIndex = cumNv[start];
         int resultStateSize = cumNv[start + 1] - startVarFIndex;
         int shifNum = 0;
@@ -366,13 +367,13 @@ kernelConverge1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
 
   // let's make shared memory
   unsigned short *cumNv = (unsigned short *)arrays;
-  int *F;
+  int *kernel_F;
   if ((constantCumNf[nodeNum[0]] + 1) % 2 != 0) {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
+    kernel_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
   } else {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
+    kernel_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
   }
-  unsigned short *varF = (unsigned short *)&F[constantCumNf[nodeNum[0]]];
+  unsigned short *varF = (unsigned short *)&kernel_F[constantCumNf[nodeNum[0]]];
   int *l_extraF;
   if (gpu_cumNv[constantCumNf[nodeNum[0]]] % 2 != 0) {
     l_extraF = (int *)&varF[gpu_cumNv[constantCumNf[nodeNum[0]]] + 1];
@@ -396,7 +397,7 @@ kernelConverge1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
     for (int i = 0; i < constantCumNf[nodeNum[0]]; i++) {
       // nv[i] = gpu_nv[i];
       cumNv[i] = gpu_cumNv[i];
-      F[i] = gpu_F[i];
+      kernel_F[i] = gpu_F[i];
       // cij[i] =  gpu_cij[i];
     }
 
@@ -484,7 +485,7 @@ kernelConverge1(curandState_t *states, unsigned short *gpu_cumNv, int *gpu_F,
           relativeIndex++;
         }
         start = constantCumNf[i] + relativeIndex;
-        elementF = F[start];
+        elementF = kernel_F[start];
         startVarFIndex = cumNv[start];
         resultStateSize = cumNv[start + 1] - startVarFIndex;
         shifNum = 0;
@@ -570,13 +571,13 @@ __global__ void kernelConvergeInitial1(
                                 // duzej tabeli arrays
   // MC: czyli w arrays sa trzymane: cumNv | F | varF | l_extraF(co to?) |
   // l_extraFIndex | l_cumExtraF | npLength | np
-  int *F;
+  int *converge_F;
   if ((constantCumNf[nodeNum[0]] + 1) % 2 != 0) {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
+    converge_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 2]; // add allinment
   } else {
-    F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
+    converge_F = (int *)&cumNv[constantCumNf[nodeNum[0]] + 1];
   }
-  unsigned short *varF = (unsigned short *)&F[constantCumNf[nodeNum[0]]];
+  unsigned short *varF = (unsigned short *)&converge_F[constantCumNf[nodeNum[0]]];
   int *l_extraF;
   if (gpu_cumNv[constantCumNf[nodeNum[0]]] % 2 != 0) {
     l_extraF = (int *)&varF[gpu_cumNv[constantCumNf[nodeNum[0]]] + 1];
@@ -597,7 +598,7 @@ __global__ void kernelConvergeInitial1(
     for (int i = 0; i < constantCumNf[nodeNum[0]]; i++) {
       // nv[i] = gpu_nv[i];
       cumNv[i] = gpu_cumNv[i];
-      F[i] = gpu_F[i];
+      converge_F[i] = gpu_F[i];
       // cij[i] =  gpu_cij[i];
     }
 
@@ -692,7 +693,7 @@ __global__ void kernelConvergeInitial1(
         }
         start = constantCumNf[i] +
                 relativeIndex; // MC: start to indeks funkcji ktora wybieramy
-        int elementF = F[start];
+        int elementF = converge_F[start];
         int startVarFIndex =
             cumNv[start]; // MC: indeks numeru pierwszego wezla w funkcji F
         int resultStateSize = cumNv[start + 1] -
@@ -1063,7 +1064,7 @@ void initialisePBN_GPU(py::object PBN) {
 
   int sizeF = py::len(F_py);
 
-  F = (int *)malloc(sizeof(int) * sizeF);
+  myF = (int *)malloc(sizeof(int) * sizeF);
 
   idx = 0;
   for (auto elem : F_py) {
@@ -1071,7 +1072,7 @@ void initialisePBN_GPU(py::object PBN) {
 
     int elem_len = py::len(elem);
 
-    F[idx++] = fromVector(elem_list, elem_len);
+    myF[idx++] = fromVector(elem_list, elem_len);
   }
 
   // varF
@@ -1114,7 +1115,7 @@ void initialisePBN_GPU(py::object PBN) {
   g_npLength = npNode_size;
 }
 
-double *german_gpu_run() {
+py::array_t<int> german_gpu_run() {
   int block = 2, blockSize = 3;
   int steps = 5; // german and rubin n
   int *gpu_steps;
@@ -1248,11 +1249,6 @@ double *german_gpu_run() {
   float memsettime;
   cudaEvent_t start, stop;
 
-  // initialize CUDA timer
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-  cudaEventRecord(start, 0);
-
   // for German and Runbin method
   int currentTrajectorySize = 0; // store the current trajectory size
   int *gpu_currentTrajectorySize;
@@ -1317,9 +1313,6 @@ double *german_gpu_run() {
 
   // allocate method in device
   HANDLE_ERROR(cudaMalloc((void **)&gpu_n, sizeof(int)));
-  // HANDLE_ERROR(cudaMalloc((void** ) &gpu_nf, n * sizeof(unsigned short)));
-  // HANDLE_ERROR(cudaMalloc((void** ) &gpu_nv, cumNf[n] * sizeof(unsigned
-  // short)));
   HANDLE_ERROR(
       cudaMalloc((void **)&gpu_cumNf, (n + 1) * sizeof(unsigned short)));
   HANDLE_ERROR(
@@ -1347,7 +1340,7 @@ double *german_gpu_run() {
                           (cumNf[n] + 1) * sizeof(unsigned short),
                           cudaMemcpyHostToDevice));
   HANDLE_ERROR(
-      cudaMemcpy(gpu_F, F, cumNf[n] * sizeof(int), cudaMemcpyHostToDevice));
+      cudaMemcpy(gpu_F, myF, cumNf[n] * sizeof(int), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(gpu_varF, varF,
                           (cumNv[cumNf[n]]) * sizeof(unsigned short),
                           cudaMemcpyHostToDevice));
@@ -1382,14 +1375,14 @@ double *german_gpu_run() {
 
   // free variables in host
   free(cij);
-  free(F);
+  free(myF);
   free(varF);
   free(extraF);
   free(cumExtraF);
   free(extraFIndex);
-  free(initialState);
   free(cumNf);
   free(cumNv);
+  //
   // CUDA's random number library uses curandState_t to keep track of the seed
   // value we will store a random state for every thread
   curandState_t *states;
@@ -1440,8 +1433,6 @@ double *german_gpu_run() {
         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   }
 
-  // testKernel<<<1,10>>>();
-
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess)
     printf("Kernel launch failed %s\n", cudaGetErrorString(err));
@@ -1450,16 +1441,8 @@ double *german_gpu_run() {
 
   cudaDeviceSynchronize();
 
-  // currentTrajectorySize = steps;
-  // printf("finish converge initial\n");
-  // cout<<"before calling kernelConverge  currentTrajectorySize: " <<
-  // currentTrajectorySize << "  printing "<< N <<" pbn states\n\n";
-
   // MC: wypisujemy wszystkie stany ktore otrzymalismy z 25tek za pomoca
   // convergeinitial:
-
-  // HANDLE_ERROR(cudaMemcpy(perturbations, gpu_perturbations, sizeof(int),
-  // cudaMemcpyDeviceToHost));
 
   HANDLE_ERROR(cudaMemcpy(initialState, gpu_initialState,
                           N * stateSize * sizeof(int), cudaMemcpyDeviceToHost));
@@ -1475,341 +1458,8 @@ double *german_gpu_run() {
       }
     }
   }
-  // cout<< "\nNumber of perturbations that occured: " << perturbations[0] <<
-  // "\n"; cout << "Kernel converge:\n"; while (!done) {
-  //   // call kernel function, need to allocate the shared method size here as
-  //   the
-  //   // third parameters
-  //   if (n < 129) {
-
-  //     kernelConverge1<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 161) {
-  //     kernelConverge5<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 193) {
-  //     kernelConverge6<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 513) {
-  //     if (useTexture)
-  //       kernelConverge7_texture<<<block, blockSize, size_sharedMemory>>>(
-  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-  //           gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-  //           gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-  //           gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //     else
-  //       kernelConverge7<<<block, blockSize, size_sharedMemory>>>(
-  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
-  //           gpu_mean, gpu_trajectory, gpu_trajectoryKernel, gpu_steps,
-  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 2049) {
-  //     kernelConverge8<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean,
-  //         gpu_trajectory, gpu_trajectoryKernel, gpu_steps, gpu_stateSize,
-  //         gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount,
-  //         gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   }
-  //   currentTrajectorySize = currentTrajectorySize + steps;
-  //   // printf("currentTrajectorySize=%d\n",currentTrajectorySize);
-  //   HANDLE_ERROR(cudaMemcpy(mean, gpu_mean, 2 * N * sizeof(float),
-  //                           cudaMemcpyDeviceToHost));
-
-  //   psrf = german.computePstr(mean, currentTrajectorySize, n, N);
-
-  //   //free(mean);
-
-  //   if (abs(1 - psrf) > threshold) {
-  //     done = false;
-  //     done1 = false;
-  //     steps = currentTrajectorySize;
-  //   } else {
-  //     if (done1) {
-  //       done = true;
-  //     } else {
-  //       done1 = true;
-  //       steps = currentTrajectorySize;
-  //     }
-  //   }
-  //   if (steps > trajectoryLength) {
-  //     done = true;
-  //     steps = currentTrajectorySize / 2;
-  //   }
-  //   HANDLE_ERROR(
-  //       cudaMemcpy(gpu_steps, &steps, sizeof(int), cudaMemcpyHostToDevice));
-  // }
-
-  // cout << "\n\n ---Finished big kernel loop----\n";
-
-  // // printf("converged! current trajectory size = %d\n",
-  // currentTrajectorySize); cudaFree(gpu_mean); cudaFree(gpu_trajectory);
-  // // printf("free memory\n");
-  // //*****************************two state***************************
-
-  // // cout<<"before allocating stateA\n";
-  // float invPhi = ltqnorm(0.5 * (1 + confidence));
-  // int kstep = 1;
-  // long stateASum = 0, stateBSum = 0;
-  // // printf("before allocating memory stateA \n");
-  // long *stateA = (long *)malloc(
-  //     N * sizeof(long)); //[N];			//how many steps are in
-  //     state A
-  // for (int i = 0; i < N; i++) {
-  //   stateA[i] = 0;
-  // }
-
-  // // printf("before allocating memory stateB \n");
-  // long *stateB = (long *)malloc(
-  //     N *
-  //     sizeof(long)); //[N];
-  //                    // element 0=transitions from meta state B to meta state
-  //                    B
-  //                    // element 1=transitions from meta state B to meta state
-  //                    A
-  //                    // element 2=transitions from meta state A to meta state
-  //                    B
-  //                    // element 3=transitions from meta state A to meta state
-  //                    A
-  // long transitionsLast[2][2];
-  // // printf("before allocating memory transitionsLastChain %d\n",N);
-  // int *transitionsLastChain = (int *)malloc(N * 4 * sizeof(int)); //[N * 4];
-  // // printf("before allocating memory gpu_stateA \n");
-  // long *gpu_stateA;
-  // long *gpu_stateB;
-  // int *gpu_transitionsLastChain;
-  // int *gpu_bridge;
-  // // printf("before allocating memory gpu_transitionsLastChain \n");
-
-  // // cout<<"before kernelUpdateTrajectory\n";
-  // HANDLE_ERROR(
-  //     cudaMalloc((void **)&gpu_transitionsLastChain, N * 4 * sizeof(int)));
-  // HANDLE_ERROR(cudaMalloc((void **)&gpu_stateA, N * sizeof(long)));
-  // HANDLE_ERROR(cudaMalloc((void **)&gpu_stateB, N * sizeof(long)));
-  // HANDLE_ERROR(cudaMalloc((void **)&gpu_bridge, N * sizeof(int)));
-  // // printf("before calling update trajectory kernel\n");
-  // kernelUpdateTrajectory<<<block, blockSize, size_sharedMemory>>>(
-  //     gpu_cumNv, gpu_trajectoryKernel, gpu_steps, gpu_stateA, gpu_stateB,
-  //     gpu_transitionsLastChain, gpu_bridge, gpu_stateSize);
-  // // cout<<"after calling update trajectory kernel"<<endl;
-  // HANDLE_ERROR(
-  //     cudaMemcpy(stateA, gpu_stateA, N * sizeof(long),
-  //     cudaMemcpyDeviceToHost));
-  // HANDLE_ERROR(
-  //     cudaMemcpy(stateB, gpu_stateB, N * sizeof(long),
-  //     cudaMemcpyDeviceToHost));
-  // HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
-  //                         4 * N * sizeof(int), cudaMemcpyDeviceToHost));
-
-  // transitionsLast[0][0] = 0;
-  // transitionsLast[0][1] = 0;
-  // transitionsLast[1][0] = 0;
-  // transitionsLast[1][1] = 0;
-  // for (int i = 0; i < N; i++) {
-  //   // printf("stateA[%d]=%d, stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
-  //   // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-  //   //
-  //   transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-  //   stateASum += stateA[i];
-  //   stateBSum += stateB[i];
-  //   transitionsLast[0][0] += transitionsLastChain[i * 4];
-  //   transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
-  //   transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
-  //   transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
-  //   /*if(stateA[i]+stateB[i]!=transitionsLastChain[i *
-  //   4]+transitionsLastChain[i
-  //   * 4+1]+transitionsLastChain[i * 4+2]+transitionsLastChain[i * 4+3]){
-  //           printf("stateA[%d]=%d, stateb[%d]=%d,
-  //           transitionsLastChain[%d-1]=%d,
-  //   transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-  //   transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-  //   }*/
-  // }
-  // cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  // cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
-
-  //        << ", transitionsLast[0][1]=" << transitionsLast[0][1]
-
-  //        << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-  //        << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  // cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
-  //        << "\n";
-
-  // /*cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  // cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
-
-  // << ", transitionsLast[0][1]=" << transitionsLast[0][1]
-
-  // << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-  // << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  // cout << "Prob. is " << (float) stateASum / (float) (stateBSum + stateASum)
-  // << "\n";*/
-
-  // float alphabeta[2];
-  // alphabeta[0] = 0;
-  // alphabeta[1] = 0;
-  // calAlphaBeta(transitionsLast, alphabeta);
-
-  // cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
-
-  // long maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
-  //                  transitionsLast[1][0] + transitionsLast[1][1];
-  // long TSN;
-  // if (alphabeta[0] == 0 || alphabeta[1] == 0)
-  //   TSN = (long)pow(2, 12);
-  // else
-  //   TSN = ceil(*alphabeta * *(alphabeta + 1) *
-  //              (2 - *alphabeta - *(alphabeta + 1)) /
-  //              (pow(*alphabeta + *(alphabeta + 1), 3) * pow(r / invPhi, 2)))
-  //              *
-  //         kstep;
-
-  // int extensionPerChain;
-  // int round = 0;
-  // cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-
-  // // cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-  // while (TSN > maxLength) {
-  //   extensionPerChain =
-  //       (int)ceil((TSN - maxLength) * kstep / (double)N); // consider kstep
-  //       here
-  //   cout << "extensionPerChain=" << extensionPerChain << endl;
-  //   // cout << "extensionPerChain=" << extensionPerChain << endl;
-  //   // cout<<"before calling kernel\n";
-  //   HANDLE_ERROR(cudaMemcpy(gpu_steps, &extensionPerChain, sizeof(int),
-  //                           cudaMemcpyHostToDevice));
-  //   if (n < 97 && n > 64) {
-  //     kernel3<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-
-  //   } else if (n < 129) {
-  //     kernel1<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 161) {
-  //     kernel5<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 193) {
-  //     kernel6<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 513) {
-  //     if (useTexture)
-  //       kernel7_texture<<<block, blockSize, size_sharedMemory>>>(
-  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //           gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //     else
-  //       kernel7<<<block, blockSize, size_sharedMemory>>>(
-  //           states, gpu_cumNv, gpu_F, gpu_varF, gpu_p, gpu_initialState,
-  //           gpu_steps,
-
-  //           gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //           gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //           gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   } else if (n < 2049) {
-  //     kernel8<<<block, blockSize, size_sharedMemory>>>(
-  //         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-  //         gpu_stateA, gpu_stateB, gpu_transitionsLastChain, gpu_bridge,
-  //         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-  //         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-  //   }
-  //   HANDLE_ERROR(cudaMemcpy(stateA, gpu_stateA, N * sizeof(long),
-  //                           cudaMemcpyDeviceToHost));
-  //   HANDLE_ERROR(cudaMemcpy(stateB, gpu_stateB, N * sizeof(long),
-  //                           cudaMemcpyDeviceToHost));
-  //   HANDLE_ERROR(cudaMemcpy(transitionsLastChain, gpu_transitionsLastChain,
-  //                           4 * N * sizeof(int), cudaMemcpyDeviceToHost));
-  //   for (int i = 0; i < N; i++) {
-  //     stateASum += stateA[i];
-  //     stateBSum += stateB[i];
-  //     transitionsLast[0][0] += transitionsLastChain[i * 4];
-  //     transitionsLast[0][1] += transitionsLastChain[i * 4 + 1];
-  //     transitionsLast[1][0] += transitionsLastChain[i * 4 + 2];
-  //     transitionsLast[1][1] += transitionsLastChain[i * 4 + 3];
-  //     // if(stateA[i]+stateB[i]!=transitionsLastChain[i *
-  //     // 4]+transitionsLastChain[i * 4+1]+transitionsLastChain[i *
-  //     // 4+2]+transitionsLastChain[i * 4+3]){ 	printf("stateA[%d]=%d,
-  //     // stateb[%d]=%d, transitionsLastChain[%d-1]=%d,
-  //     // transitionsLastChain[%d-2]=%d, transitionsLastChain[%d-3]=%d,
-  //     //
-  //     transitionsLastChain[%d-4]=%d\n",i,stateA[i],i,stateB[i],i,transitionsLastChain[i*4],i,transitionsLastChain[i*4+1],i,transitionsLastChain[i*4+2],i,transitionsLastChain[i*4+3]);
-  //     // }
-  //   }
-  //   free(stateA);
-  //   free(stateB);
-  //   free(transitionsLastChain);
-  //   cout << "stateASum=" << stateASum << " stateBSum=" << stateBSum << endl;
-  //   cout << "transitionsLast[0][0]=" << transitionsLast[0][0]
-
-  //          << ", transitionsLast[0][1]=" << transitionsLast[0][1]
-
-  //          << ", transitionsLast[1][0]=" << transitionsLast[1][0]
-  //          << ", transitionsLast[1][1]=" << transitionsLast[1][1] << endl;
-  //   cout << "Prob. is " << (float)stateASum / (float)(stateBSum + stateASum)
-  //          << "\n";
-  //   calAlphaBeta(transitionsLast, alphabeta);
-  //   cout << "alpha=" << alphabeta[0] << ", beta=" << alphabeta[1] << "\n";
-  //   if (alphabeta[0] == 0 || alphabeta[1] == 0)
-  //     TSN = TSN * 2;
-  //   else
-  //     TSN =
-  //         ceil(alphabeta[0] * alphabeta[1] * (2 - alphabeta[0] -
-  //         alphabeta[1]) /
-  //              (pow(alphabeta[0] + alphabeta[1], 3) * pow(r / invPhi, 2))) *
-  //         kstep;
-  //   maxLength = transitionsLast[0][0] + transitionsLast[0][1] +
-  //               transitionsLast[1][0] + transitionsLast[1][1];
-  //   round++;
-  //   cout << "maxLength=" << maxLength << ", N=" << TSN << "\n";
-  // }
-
-  // cout << "Finished in " << round << " round. Prob. is "
-  //        << (float)stateASum / (float)(stateBSum + stateASum) << "\n";
-  // duration = (std::clock() - cpu_start) / (double)CLOCKS_PER_SEC;
-
-  // cout << "time duration : " << duration << "s\n";
-
-  // stop CUDA timer
-
-  cout << "BEFORE CUDA TIMER\n";
-  cudaEventRecord(stop, 0);
-  err = cudaEventQuery(stop);
-  if (err != cudaSuccess)
-    printf("Kernel launch failed %s\n", cudaGetErrorString(err));
-  else
-    printf("cuda success\n");
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&memsettime, start, stop);
-  cout << " *** CUDA execution time: " << memsettime << " ms*** \n";
-  cudaEventDestroy(start);
-  cudaEventDestroy(stop);
-
-  // output.close();
-  double *newArray = new double[4];
 
   cudaFree(gpu_n);
-  // cudaFree(gpu_nf);
-  // cudaFree(gpu_nv);
   cudaFree(gpu_cumNf);
   cudaFree(gpu_cumNv);
   cudaFree(gpu_F);
@@ -1817,21 +1467,10 @@ double *german_gpu_run() {
   cudaFree(gpu_cij);
   cudaFree(gpu_p);
   cudaFree(gpu_steps);
-  // cudaFree(gpu_positiveIndex);
-  // cudaFree(gpu_negativeIndex);
-  // cudaFree(gpu_stateA);
-  // cudaFree(gpu_stateB);
-  // cudaFree(gpu_transitionsLastChain);
-  // cudaFree(gpu_bridge);
   cudaFree(gpu_currentTrajectorySize);
   cudaFree(gpu_initialState);
   cudaFree(gpu_stateSize);
-  // cudaFree(gpu_trajectoryKernel);
   cudaFree(states);
-  // cudaFree(gpu_transitionsLastChain);
-  // cudaFree(gpu_stateA);
-  // cudaFree(gpu_stateB);
-  // cudaFree(gpu_bridge);
   cudaFree(gpu_extraF);
   cudaFree(gpu_extraFIndex);
   cudaFree(gpu_cumExtraF);
@@ -1840,21 +1479,15 @@ double *german_gpu_run() {
   cudaFree(gpu_npLength);
   cudaFree(gpu_npNode);
 
-  // write result array
-  // jsize length = 4;
-  // jdoubleArray newArray = env->NewDoubleArray(length);
-  // jdouble *narr = env->GetDoubleArrayElements(newArray, NULL);
-  // narr[0] = (float)stateASum / (float)(stateBSum + stateASum);
-  // narr[1] = stateBSum + stateASum + steps * N; // counting burn-in as well
-  // narr[2] = duration;
-  // narr[3] = memsettime / 1000.0;
-  // env->ReleaseDoubleArrayElements(newArray, narr, (jint)NULL);
+  py::capsule cleanup(initialState, [](void *f){
+    delete[] static_cast<int *>(f);
+  });
 
-  // newArray[0] = (float)stateASum / (float)(stateBSum + stateASum);
-  // newArray[1] = stateBSum + stateASum + steps * N; // counting burn-in as
-  // well newArray[2] = duration; newArray[3] = memsettime / 1000.0;
-
-  return newArray;
+  return py::array_t<int>(
+      {N * stateSize},
+      {sizeof(int) * stateSize},
+      initialState,
+      cleanup);
 }
 
 namespace py = pybind11;
