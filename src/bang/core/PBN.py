@@ -2,7 +2,7 @@ from typing import List
 from libsbml import *
 import itertools
 import os
-#from parseSBML import parseSBMLDocument
+from .parseSBML import parseSBMLDocument
 
 class PBN:
 
@@ -53,8 +53,7 @@ class PBN:
 
 
 def load_sbml(path: str) -> PBN:
-    #return PBN(*parseSBMLDocument(path))
-    pass
+    return PBN(*parseSBMLDocument(path))
 
 def load_assa(path):
     n = 0

@@ -1,5 +1,5 @@
 from libsbml import *
-from boolFunc import parseFunction
+from .boolFunc import parseFunction
 
 def enumerateNodes(qual_model):
     result :dict[str, int] = {}
