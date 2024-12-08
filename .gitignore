@@ -4,8 +4,9 @@
 .mypy_cache
 *.egg-info/
 build/
-# dist/
+dist/
 pip-wheel-metadata/
+wheelhouse
 
 
 # dev tools
