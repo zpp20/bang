@@ -116,5 +116,5 @@ skip = ["*musllinux*", "*pypy*"]
 
 archs = ["x86_64"]
 
-manylinux-x86_64-image = "sameli/manylinux2014_x86_64_cuda_12"
-manylinux-pypy_x86_64-image = "sameli/manylinux2014_x86_64_cuda_12"
+manylinux-x86_64-image = "sameli/manylinux2014_x86_64_cuda_12.0"
+manylinux-pypy_x86_64-image = "sameli/manylinux2014_x86_64_cuda_12.0"
