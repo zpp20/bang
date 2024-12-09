@@ -31,4 +31,4 @@ def get_exempt_nodes(model :etree.ElementBase):
 def get_probabilities(path: str) -> tuple[dict[str, list[float]], float, list[str]]:
     root :etree.ElementBase = etree.parse(path, etree.XMLParser()).getroot()
     model :etree.ElementBase = root.getchildren()[0]
-    return {}, get_perturbation_rate(model), []
+    return get_function_probabilities(model), get_perturbation_rate(model), get_exempt_nodes(model)
