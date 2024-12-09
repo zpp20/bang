@@ -1,5 +1,6 @@
 from libsbml import *
 from .boolFunc import parseFunction
+from .parseProbabilities import get_probabilities
 
 def enumerateNodes(qual_model):
     result :dict[str, int] = {}
@@ -17,7 +18,7 @@ def parseSBMLDocument(path: str):
     nf :list[int]
     nv: list[int] = []
     varFInt: list[list[int]] = []
-
+    func_prob, perturbation_rate, npNodes = get_probabilities(path)
     model = doc.getModel()
     if model is None:
         pass 
@@ -43,4 +44,4 @@ def parseSBMLDocument(path: str):
                 for node in relevant_nodes:
                     nf[node] += 1
 
-    return len(nodes), nf, nv, F, varFInt, [[1.0] for node in nodes], 0.0, [nodes[name] for name in nodes]
+    return len(nodes), nf, nv, F, varFInt, [func_prob[node] for node in nodes], perturbation_rate, [nodes[name] for name in npNodes]
