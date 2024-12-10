@@ -32,7 +32,7 @@ def parseSBMLDocument(path: str):
 
     for transition in qual_model.getListOfTransitions():  # Scan all the transitions.
             # Get the output variable
-            output = transition.getListOfOutputs()
+            output :Output = transition.getListOfOutputs()[0]
             logic_terms = transition.getListOfFunctionTerms()
             if len(logic_terms) > 0:
                 math :ASTNode = logic_terms[0].getMath()
@@ -41,7 +41,6 @@ def parseSBMLDocument(path: str):
                 F.append(truth_table)
                 nv.append(len(relevant_nodes))
                 varFInt.append(relevant_nodes)
-                for node in relevant_nodes:
-                    nf[node] += 1
+                nf[nodes[output.getQualitativeSpecies()]] += 1
 
     return len(nodes), nf, nv, F, varFInt, [func_prob[node] for node in nodes], perturbation_rate, [nodes[name] for name in npNodes]
