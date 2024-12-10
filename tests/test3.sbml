@@ -1,0 +1,181 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version1/core" layout:required="false" level="3" qual:required="true"
+	xmlns:layout="http://www.sbml.org/sbml/level3/version1/layout/version1" version="1"
+	xmlns:qual="http://www.sbml.org/sbml/level3/version1/qual/version1">
+	<model>
+		<perturbation value="0.2"/>
+		<qual:listOfQualitativeSpecies xmlns:qual="http://www.sbml.org/sbml/level3/version1/qual/version1">
+			<qual:qualitativeSpecies qual:maxLevel="1" qual:constant="false" qual:name="x0" qual:id="v_Adenylate_cyclase"/>
+			<qual:qualitativeSpecies qual:maxLevel="1" qual:constant="false" qual:name="x1" qual:id="v_COMT"/>
+			<qual:qualitativeSpecies qual:maxLevel="1" qual:constant="false" qual:name="x2" qual:id="v_Calcineurin" qual:exempt="True"/>
+		</qual:listOfQualitativeSpecies>
+		<qual:listOfTransitions xmlns:qual="http://www.sbml.org/sbml/level3/version1/qual/version1">
+			<qual:transition qual:id="tr_x0">
+				<qual:listOfInputs>
+					<qual:input qual:qualitativeSpecies="x0" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x0_arg1" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x1" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x0_arg2" essential="true"/>
+				</qual:listOfInputs>
+				<qual:listOfOutputs>
+					<qual:output qual:qualitativeSpecies="x0" qual:transitionEffect="assignmentLevel" qual:id="tr_x0_out"/>
+				</qual:listOfOutputs>
+				<qual:listOfFunctionTerms>
+					<qual:defaultTerm qual:resultLevel="0"/>
+					<qual:functionTerm qual:resultLevel="1">
+						<math xmlns="http://www.w3.org/1998/Math/MathML">
+							<apply>
+								<and/>
+								<apply>
+									<eq/>
+									<ci>x0</ci>
+									<cn type="integer">1</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x1</ci>
+									<cn type="integer">1</cn>
+								</apply>
+							</apply>
+						</math>
+					</qual:functionTerm>
+				</qual:listOfFunctionTerms>
+			</qual:transition>
+			<qual:transition qual:id="tr_x1_!" qual:probability="0.3">
+				<qual:listOfInputs>
+					<qual:input qual:qualitativeSpecies="x0" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_arg1" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x1" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_arg2" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x2" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_arg3" essential="true"/>
+				</qual:listOfInputs>
+				<qual:listOfOutputs>
+					<qual:output qual:qualitativeSpecies="x1" qual:transitionEffect="assignmentLevel" qual:id="tr_x0_out"/>
+				</qual:listOfOutputs>
+				<qual:listOfFunctionTerms>
+					<qual:defaultTerm qual:resultLevel="0"/>
+					<qual:functionTerm qual:resultLevel="1">
+						<math xmlns="http://www.w3.org/1998/Math/MathML">
+							<apply>
+								<and/>
+								<apply>
+									<eq/>
+									<ci>x2</ci>
+									<cn type="integer">0</cn>
+								</apply>
+								<apply>
+									<or/>
+									<apply>
+										<eq/>
+										<ci>x1</ci>
+										<cn type="integer">1</cn>
+									</apply>
+									<apply>
+										<eq/>
+										<ci>x0</ci>
+										<cn type="integer">1</cn>
+									</apply>
+								</apply>
+							</apply>
+						</math>
+					</qual:functionTerm>
+				</qual:listOfFunctionTerms>
+			</qual:transition>
+			<qual:transition qual:id="tr_x1_2" qual:probability="0.7">
+				<qual:listOfInputs>
+					<qual:input qual:qualitativeSpecies="x0" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_2_arg1" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x1" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_2_arg2" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x2" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x1_2_arg2" essential="true"/>
+				</qual:listOfInputs>
+				<qual:listOfOutputs>
+					<qual:output qual:qualitativeSpecies="x1" qual:transitionEffect="assignmentLevel" qual:id="tr_x0_out"/>
+				</qual:listOfOutputs>
+				<qual:listOfFunctionTerms>
+					<qual:defaultTerm qual:resultLevel="0"/>
+					<qual:functionTerm qual:resultLevel="1">
+						<math xmlns="http://www.w3.org/1998/Math/MathML">
+							<apply>
+								<and/>
+								<apply>
+									<eq/>
+									<ci>x0</ci>
+									<cn type="integer">0</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x1</ci>
+									<cn type="integer">1</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x2</ci>
+									<cn type="integer">1</cn>
+								</apply>
+							</apply>
+						</math>
+					</qual:functionTerm>
+				</qual:listOfFunctionTerms>
+			</qual:transition>
+			<qual:transition qual:id="tr_x2_1" qual:probability="0.4">
+				<qual:listOfInputs>
+					<qual:input qual:qualitativeSpecies="x0" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x2_1_arg1" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x1" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x2_1_arg2" essential="true"/>
+				</qual:listOfInputs>
+				<qual:listOfOutputs>
+					<qual:output qual:qualitativeSpecies="x2" qual:transitionEffect="assignmentLevel" qual:id="tr_x0_out"/>
+				</qual:listOfOutputs>
+				<qual:listOfFunctionTerms>
+					<qual:defaultTerm qual:resultLevel="0"/>
+					<qual:functionTerm qual:resultLevel="1">
+						<math xmlns="http://www.w3.org/1998/Math/MathML">
+							<apply>
+								<and/>
+								<apply>
+									<eq/>
+									<ci>x0</ci>
+									<cn type="integer">0</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x1</ci>
+									<cn type="integer">1</cn>
+								</apply>
+							</apply>
+						</math>
+					</qual:functionTerm>
+				</qual:listOfFunctionTerms>
+			</qual:transition>
+			<qual:transition qual:id="tr_x2_2" qual:probability="0.6">
+				<qual:listOfInputs>
+					<qual:input qual:qualitativeSpecies="x0" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x2_2_arg1" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x1" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x2_2_arg2" essential="true"/>
+					<qual:input qual:qualitativeSpecies="x2" qual:transitionEffect="none" qual:sign="positive" qual:id="tr_x2_2_arg2" essential="true"/>
+				</qual:listOfInputs>
+				<qual:listOfOutputs>
+					<qual:output qual:qualitativeSpecies="x2" qual:transitionEffect="assignmentLevel" qual:id="tr_x0_out"/>
+				</qual:listOfOutputs>
+				<qual:listOfFunctionTerms>
+					<qual:defaultTerm qual:resultLevel="0"/>
+					<qual:functionTerm qual:resultLevel="1">
+						<math xmlns="http://www.w3.org/1998/Math/MathML">
+							<apply>
+								<and/>
+								<apply>
+									<eq/>
+									<ci>x0</ci>
+									<cn type="integer">1</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x1</ci>
+									<cn type="integer">1</cn>
+								</apply>
+								<apply>
+									<eq/>
+									<ci>x2</ci>
+									<cn type="integer">0</cn>
+								</apply>
+							</apply>
+						</math>
+					</qual:functionTerm>
+				</qual:listOfFunctionTerms>
+			</qual:transition>
+		</qual:listOfTransitions>
+	</model>
+</sbml>
