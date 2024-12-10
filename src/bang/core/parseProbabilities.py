@@ -24,8 +24,8 @@ def get_exempt_nodes(model :etree.ElementBase):
     node_list :list[etree.ElementBase] = model.find("{*}listOfQualitativeSpecies", None).getchildren()
     result = []
     for node in node_list:
-        if "exempt" in node.attrib and node.attrib[qual_namespace + "exempt"] == True:
-            result.append(node.attrib["name"])
+        if qual_namespace + "exempt" in node.attrib and node.attrib[qual_namespace + "exempt"] == True:
+            result.append(node.attrib[qual_namespace + "name"])
     return result
 
 def get_probabilities(path: str) -> tuple[dict[str, list[float]], float, list[str]]:
