@@ -275,6 +275,22 @@ def load_assa(path):
 
 
 def load_from_file(path, format='sbml'): 
+    """
+    Loads a PBN from files of format .pbn or .sbml.
+    
+    Parameters
+    ----------
+    path : str
+        Path to the file of format .pbn.
+    format : str, optional
+        Choose the format. Can be either 'sbml' for files with .sbml format
+        or 'assa' for files with .pbn format. Defaults to 'sbml'.
+
+    Returns
+    -------
+    PBN
+        PBN object representing the network from the file.
+    """
     match format:
         case 'sbml':
             return load_sbml(path)
