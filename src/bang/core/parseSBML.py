@@ -42,5 +42,6 @@ def parseSBMLDocument(path: str):
                 nv.append(len(relevant_nodes))
                 varFInt.append(relevant_nodes)
                 nf[nodes[output.getQualitativeSpecies()]] += 1
-
-    return len(nodes), nf, nv, F, varFInt, [func_prob[node] for node in nodes], perturbation_rate, [nodes[name] for name in npNodes]
+    npNode = [nodes[name] for name in npNodes]
+    npNode.append(len(nodes))
+    return len(nodes), nf, nv, F, varFInt, [func_prob[node] for node in nodes], perturbation_rate, npNode 
