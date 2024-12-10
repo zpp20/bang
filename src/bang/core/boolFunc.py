@@ -4,7 +4,7 @@ from collections.abc import Callable
 # Returns a function evaluating expression in mathExpression and a set of relevant nodes
 def getFunc(mathExpression :ASTNode, nodes: dict[str, int]) -> tuple[Callable[[dict[int, bool]], bool], set[int]]:
 	
-	def merge(func :Callable[[bool, bool], bool]) -> tuple[Callable[[list[bool]], bool], set[int]]:
+	def merge(func :Callable[[bool, bool], bool]) -> tuple[Callable[[dict[int,bool]], bool], set[int]]:
 		func1, set1 = getFunc(mathExpression.getRightChild(), nodes)
 		func2, set2 = getFunc(mathExpression.getLeftChild(), nodes)
 		return (lambda node_vals: func(func1(node_vals), func2(node_vals))), (set1 | set2)
@@ -32,7 +32,7 @@ def getFunc(mathExpression :ASTNode, nodes: dict[str, int]) -> tuple[Callable[[d
 def incrementNodes(bits: dict[int, bool], nodes: list[int]) ->  bool:
     carry = True  
     
-    for i in range(len(nodes)):
+    for i in range(len(nodes))[::-1]:
         if bits[nodes[i]] == True:  
             bits[nodes[i]] = False   
         else:                 
@@ -47,7 +47,7 @@ def parseFunction(mathExpression :ASTNode, nodes: dict[str, int]) -> tuple[list[
 	relevant_nodes = list(tmp)
 	relevant_nodes.sort()
 	truth_table :list[bool] = []
-	node_dictionary = {node: False for node in relevant_nodes}
+	node_dictionary = {node: False for node in relevant_nodes[::-1]}
 	loop: bool
 	while True:
 		truth_table.append(func(node_dictionary))
