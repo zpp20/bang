@@ -1,6 +1,6 @@
 from lxml import etree
 
-qual_namespace ="{{http://www.sbml.org/sbml/level3/version1/qual/version1}}"
+qual_namespace ="{http://www.sbml.org/sbml/level3/version1/qual/version1}"
 
 def get_perturbation_rate(model :etree.ElementBase):
     pert_element :etree.ElementBase = model.find("{*}perturbation", None)
@@ -14,7 +14,7 @@ def get_function_probabilities(model :etree.ElementBase):
     for func in func_list:
         name = func.find("{*}listOfOutputs", None).find("{*}output").attrib[qual_namespace + "qualitativeSpecies"]
         if not name in result:
-            result[name] = [float(func.attrib[qual_namespace + "probability"])]
+            result[name] = [float(func.attrib[qual_namespace + "probability"]) if qual_namespace + "probability" in func.attrib else 1.0]
         else:
             result[name].append(float(func.attrib[qual_namespace + "probability"]))
     return result
