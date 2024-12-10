@@ -208,7 +208,7 @@ def load_assa(path):
         sorted_vars = [index_dict[var] for var in sorted_var_indices]
 
         # generate every possible variable evaluation
-        truth_combinations = list(itertools.product([False, True], repeat=len(vars)))
+        truth_combinations = list(itertools.product([False, True], repeat=n))
         truth_table = []
         # evaluate the function for every possible combination of variables
         # and store the result in the truth table
