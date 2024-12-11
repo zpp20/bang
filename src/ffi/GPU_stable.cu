@@ -39,6 +39,9 @@ texture<int, 1, cudaReadModeElementType> texExtraF;
 texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
 texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
 
+/**Simulation info */
+int n_trajectories;
+
 /** store PBN directly*/
 int n;
 unsigned short *nf;
@@ -988,7 +991,9 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
   // printf("block=%d,blockSize=%d\n", numBlock, blockSize);
 }
 
-void initialisePBN_GPU(py::object PBN) {
+void initialisePBN_GPU(py::object PBN, py::object n_trajectories) {
+
+  n_trajectories = n_trajectories.cast<int>();
 
   // n
   n = PBN.attr("getN")().cast<int>();
@@ -1866,5 +1871,5 @@ namespace py = pybind11;
 PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
   m.def("initialise_PBN", &initialisePBN_GPU, "Initialise PBN on GPU",
-        py::arg("PBN"));
+        py::arg("PBN"), py::arg("n_trajectories"));
 }
