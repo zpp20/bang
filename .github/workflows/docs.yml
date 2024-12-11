@@ -10,6 +10,10 @@ on:
 concurrency:
   group: "docs-${{ github.ref }}"
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 jobs:
   docs:
     name: Build docs
