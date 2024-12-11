@@ -19,12 +19,12 @@ jobs:
       - name: Compile sphinx docs
         uses: ammaraskar/sphinx-action@master
         with:
-          docs-folder: "docs/docs_compile"
+          docs-folder: ./docs
       - name: Upload sphinx docs
         uses: actions/upload-artifact@v4
         with:
           name: sphinx-docs
-          path: docs/docs_compile/_build/html/
+          path: ./docs/_build/html
   pages:
     environment:
       name: github-pages
@@ -37,10 +37,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sphinx-docs
+          path: ./docs/_build/html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: ./docs/docs_compile/_build/html/
+          path: ./docs/_build/html/
