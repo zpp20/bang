@@ -30,6 +30,7 @@ jobs:
           name: sphinx-docs
           path: ./docs/_build/html
   pages:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
