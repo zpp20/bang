@@ -991,9 +991,9 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
   // printf("block=%d,blockSize=%d\n", numBlock, blockSize);
 }
 
-void initialisePBN_GPU(py::object PBN, py::object n_trajectories) {
+void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
 
-  n_trajectories = n_trajectories.cast<int>();
+  n_trajectories = py::cast<int>(n_trajectories_py);
 
   // n
   n = PBN.attr("getN")().cast<int>();
