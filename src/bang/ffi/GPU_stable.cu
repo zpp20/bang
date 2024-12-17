@@ -1114,6 +1114,40 @@ void initialisePBN_GPU(py::object PBN) {
   g_npLength = npNode_size;
 }
 
+double *simple_step(int py_steps) {
+  int block = 2, blockSize = 3;
+  int steps = py_steps; // german and rubin n
+  int *gpu_steps;
+  float r = precision;
+  int argCount = 1;
+  bool useTexture = false;
+
+  int N = block * blockSize;
+
+  int *gpu_n;
+  printf("%d steps\n", steps);
+  // calculate cumulative number of functions
+  unsigned short *cumNf =
+      (unsigned short *)malloc((n + 1) * sizeof(unsigned short));
+  unsigned short *gpu_cumNf;
+  cumNf[0] = 0;
+  for (int i = 0; i < n; i++) {
+    cumNf[i + 1] = cumNf[i] + nf[i];
+    cout << "cumNf - " << cumNf[i + 1] << "\n";
+  }
+
+  // calculate cumulative number of variables
+  unsigned short *cumNv = (unsigned short *)malloc(
+      (cumNf[n] + 1) * sizeof(unsigned short)); //[cumNf[n] + 1];
+  unsigned short *gpu_cumNv;
+  cumNv[0] = 0;
+  for (int i = 0; i < cumNf[n]; i++) {
+    cumNv[i + 1] = cumNv[i] + num_v[i];
+  }
+
+  
+}
+
 double *german_gpu_run() {
   int block = 2, blockSize = 3;
   int steps = 5; // german and rubin n
@@ -1863,4 +1897,5 @@ PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
   m.def("initialise_PBN", &initialisePBN_GPU, "Initialise PBN on GPU",
         py::arg("PBN"));
+  m.def("simple_step", &simple_step, "Run n steps on PBN", py::arg("steps"));
 }
