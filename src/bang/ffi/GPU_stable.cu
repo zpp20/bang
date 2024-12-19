@@ -1119,7 +1119,6 @@ double *simple_step(int py_steps) {
   int steps = py_steps; // german and rubin n
   int *gpu_steps;
   float r = precision;
-  int argCount = 1;
   bool useTexture = false;
 
   int N = block * blockSize;
