@@ -36,7 +36,7 @@ cmake.verbose = true
 dev = [
     "pybind11",
     "ruff",
-    "mypy>=1.0,<1.5",
+    "mypy>=1.0,<1.15",
     "black>=23.0,<24.0",
     "isort>=5.12,<5.13",
     "pytest",
