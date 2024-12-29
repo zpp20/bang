@@ -20,7 +20,10 @@ COPY ../ /app
 WORKDIR /app
 
 RUN python3 -m venv ./.venv
-RUN .venv/bin/pip install .
+ENV PATH="/app/.venv/bin:$PATH"
+
+RUN pip install .
+
 
 # Default command
 CMD ["/bin/bash"]
