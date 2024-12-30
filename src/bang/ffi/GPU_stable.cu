@@ -1,8 +1,5 @@
 /** In the cases that a PBN is too large, both shared memory and texture memory
  * are used to store it*/
-#include "./shared/German.h"
-#include "./shared/ltqnorm.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
@@ -12,7 +9,6 @@
 #include <curand_kernel.h>
 #include <iostream>
 #include <math.h>
-#include <pybind11/pybind11.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,18 +30,15 @@ namespace py = pybind11;
 #define RegPerThread 63 // this value is obtained via compiling command
 #define maxAllowedSharedMemory 40960 // the maximum allowed shared memory 40KB
 
-// declare texture reference
-texture<int, 1, cudaReadModeElementType> texExtraF;
-texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
-texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
-
-/**Simulation info */
-int n_trajectories;
+// // declare texture reference
+// texture<int, 1, cudaReadModeElementType> texExtraF;
+// texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
+// texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
 
 /** store PBN directly*/
 int n;
 unsigned short *nf;
-unsigned short *nv;
+unsigned short *num_v;
 int *F;
 unsigned short *varF;
 float *cij;
@@ -991,9 +984,7 @@ void computeDeviceInfor(int sizeSharedMemory1, int stateSize, int *blockInfor) {
   // printf("block=%d,blockSize=%d\n", numBlock, blockSize);
 }
 
-void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
-
-  n_trajectories = py::cast<int>(n_trajectories_py);
+void initialisePBN_GPU(py::object PBN) {
 
   // n
   n = PBN.attr("getN")().cast<int>();
@@ -1011,13 +1002,15 @@ void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
   for (auto elem : nf_py) {
 
     nf[idx++] = elem.cast<uint16_t>();
+    cout << nf[idx - 1] << " - nf\n";
   }
+  cout << "n - " << n << "\n";
 
   // nv
   py::list nv_py = PBN.attr("getNv")();
 
   int nv_len = py::len(nv_py);
-  nv = (uint16_t *)malloc(sizeof(uint16_t) * nv_len);
+  num_v = (uint16_t *)malloc(sizeof(uint16_t) * nv_len);
 
   int cumNv = 0;
   extraFCount = 0;
@@ -1026,52 +1019,67 @@ void initialisePBN_GPU(py::object PBN, py::object n_trajectories_py) {
   idx = 0;
   for (auto elem : nv_py) {
     uint16_t value = elem.cast<uint16_t>();
+
+    if (value > 5) {
+      extraFIndexCount++;
+      extraFCount += (int)pow(2, value - 5) - 1;
+    }
     cumNv += value;
-    nv[idx++] = value;
+
+    num_v[idx++] = value;
   }
 
-  py::list extraFInfo_py = PBN.attr("getFInfo")();
-    
-  extraFCount = extraFInfo_py[0].cast<int>();
-  extraFIndexCount = extraFInfo_py[1].cast<int>();
-  
-  py::list extraFIndex_py =  py::cast<py::list>(extraFInfo_py[2]);
-  py::list cumExtraF_py = py::cast<py::list>(extraFInfo_py[3]);
-  py::list extraF_py = py::cast<py::list>(extraFInfo_py[4]);
-  py::list F_py = py::cast<py::list>(extraFInfo_py[5]);
+  // extraF
+  if (extraFCount > 0) {
+    extraFInitialIndex = 0;
+    extraFIndex =
+        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+                                         (extraFIndexCount + 1));
 
-  extraFIndex = (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
-  cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) * (extraFIndexCount + 1));
-  extraF = (int *)malloc(sizeof(int) * extraFCount);
-  
+    cumExtraF[0] = 0;
+    extraF = (int *)malloc(sizeof(int) * extraFCount);
+    int tmpIndex = 0;
+    for (int i = 0; i < nv_len; i++) {
+      if (num_v[i] > 5) {
+        extraFIndex[tmpIndex] = (unsigned short)i;
+        tmpIndex++;
+        cumExtraF[tmpIndex] =
+            cumExtraF[tmpIndex - 1] + (unsigned short)pow(2, num_v[i] - 5) - 1;
+      }
+    }
+  } else { // create dummy ones
+    extraFCount = 1;
+    extraFIndexCount = 1;
+    extraFIndex =
+        (unsigned short *)malloc(sizeof(unsigned short) * extraFIndexCount);
+    extraF = (int *)malloc(sizeof(int) * extraFCount);
+    cumExtraF = (unsigned short *)malloc(sizeof(unsigned short) *
+                                         (extraFIndexCount + 1));
+  }
+
+  // F
+  py::list F_py = PBN.attr("getF")();
+
   int sizeF = py::len(F_py);
 
-  F = (int*)malloc(sizeof(int) * sizeF);
-
-  idx = 0;
-  for (auto elem : extraFIndex_py) {
-    extraFIndex[idx++] = elem.cast<uint16_t>();
-  }
-
-  idx = 0;
-  for (auto elem : cumExtraF_py) {
-    cumExtraF[idx++] = elem.cast<uint16_t>();
-  }
-
-  idx = 0;
-  for (auto elem : extraF_py) {
-    extraF[idx++] = elem.cast<uint16_t>();
-  }
+  F = (int *)malloc(sizeof(int) * sizeF);
 
   idx = 0;
   for (auto elem : F_py) {
-    F[idx++] = elem.cast<uint32_t>();
+    py::list elem_list = py::cast<py::list>(elem);
+
+    int elem_len = py::len(elem);
+
+    F[idx++] = fromVector(elem_list, elem_len);
   }
+
   // varF
   py::list varF_py = PBN.attr("getVarFInt")();
 
   varF = (uint16_t *)malloc(sizeof(uint16_t) * cumNv);
-
+  // cout<<"num varF="<<cumNv<<endl;
+  // cout<<"varF"<<endl;
   idx = 0;
   for (auto varF_elem : varF_py) {
     py::list varF_elem_list = py::cast<py::list>(varF_elem);
@@ -1152,7 +1160,7 @@ double *german_gpu_run() {
   unsigned short *gpu_cumNv;
   cumNv[0] = 0;
   for (int i = 0; i < cumNf[n]; i++) {
-    cumNv[i + 1] = cumNv[i] + nv[i];
+    cumNv[i + 1] = cumNv[i] + num_v[i];
   }
 
   int *gpu_F;
@@ -1178,7 +1186,7 @@ double *german_gpu_run() {
 
   cout << "allocating finished\n";
   free(nf);
-  free(nv);
+  free(num_v);
 
   // cout<<"size_sharedMemory="<<size_sharedMemory<<endl;
   size_sharedMemory += (cumNf[n] + 1) * sizeof(unsigned short); // cumNv
@@ -1392,16 +1400,6 @@ double *german_gpu_run() {
   // invoke the GPU to initialize all of the random states
   init<<<block, blockSize>>>(time(0), states);
 
-  // bind texture reference with linear memory
-  // cudaBindTexture(0,texcumNv,gpu_cumNv,sizeof(int)*(cumNf[n] + 1));
-  // cudaBindTexture(0,texVarF,gpu_varF,sizeof(int)*cumNv[cumNf[n]]);
-  cudaBindTexture(0, texExtraF, gpu_extraF, sizeof(int) * extraFCount);
-  cudaBindTexture(0, texExtraFIndex, gpu_extraFIndex,
-                  sizeof(unsigned short) * extraFIndexCount);
-  cudaBindTexture(0, texCumExtraF, gpu_cumExtraF,
-                  sizeof(unsigned short) * (extraFIndexCount + 1));
-
-  German german;
   float psrf;
   bool done = false, done1 = false;
   float threshold = 1e-3; // judge when to converge
@@ -1430,13 +1428,6 @@ double *german_gpu_run() {
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
         gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
   } else if (n < 513) {
-    // if (useTexture)
-    //   kernelConvergeInitial7_texture<<<block, blockSize,
-    //   size_sharedMemory>>>(
-    //       states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
-    //       gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
-    //       gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode);
-    // else
     kernelConvergeInitial1<16><<<block, blockSize, size_sharedMemory>>>(
         states, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps,
         gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF,
@@ -1871,5 +1862,5 @@ namespace py = pybind11;
 PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
   m.def("initialise_PBN", &initialisePBN_GPU, "Initialise PBN on GPU",
-        py::arg("PBN"), py::arg("n_trajectories"));
+        py::arg("PBN"));
 }
