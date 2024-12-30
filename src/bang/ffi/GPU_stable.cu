@@ -1004,7 +1004,6 @@ void initialisePBN_GPU(py::object PBN) {
     nf[idx++] = elem.cast<uint16_t>();
     cout << nf[idx - 1] << " - nf\n";
   }
-  cout << "n - " << n << "\n";
 
   // nv
   py::list nv_py = PBN.attr("getNv")();
@@ -1116,35 +1115,287 @@ void initialisePBN_GPU(py::object PBN) {
 
 double *simple_step(int py_steps) {
   int block = 2, blockSize = 3;
-  int steps = py_steps; // german and rubin n
+  int steps = py_steps; // german and rubin n.
   int *gpu_steps;
   float r = precision;
+  int argCount = 1;
   bool useTexture = false;
 
   int N = block * blockSize;
 
+  std::clock_t cpu_start;
+  double duration;
+  cpu_start = std::clock();
+
+  int size_sharedMemory = 0;
+
   int *gpu_n;
-  printf("%d steps\n", steps);
-  // calculate cumulative number of functions
+
+  //Calculate cumulative number of functions
   unsigned short *cumNf =
       (unsigned short *)malloc((n + 1) * sizeof(unsigned short));
   unsigned short *gpu_cumNf;
   cumNf[0] = 0;
   for (int i = 0; i < n; i++) {
     cumNf[i + 1] = cumNf[i] + nf[i];
-    cout << "cumNf - " << cumNf[i + 1] << "\n";
+    // cout << "cumNf - " << cumNf[i + 1] << "\n";
   }
 
-  // calculate cumulative number of variables
+  //Calculate cumulative number of variables
   unsigned short *cumNv = (unsigned short *)malloc(
-      (cumNf[n] + 1) * sizeof(unsigned short)); //[cumNf[n] + 1];
+      (cumNf[n] + 1) * sizeof(unsigned short));
   unsigned short *gpu_cumNv;
   cumNv[0] = 0;
   for (int i = 0; i < cumNf[n]; i++) {
     cumNv[i + 1] = cumNv[i] + num_v[i];
   }
 
-  
+  int *gpu_F;
+  unsigned short *gpu_varF;
+  int count = 0;
+
+  float *gpu_p;
+
+  float *gpu_cij;
+  count = 0;
+  float sum;
+  for (int i = 0; i < n; i++) {
+    sum = 0;
+    for (int j = 0; j < nf[i]; j++) {
+      sum += cij[count];
+      cij[count] = sum + epsilon;
+      count++;
+    }
+    if (cij[count - 1] < 1) {
+      cij[count - 1] = 1 + epsilon;
+    }
+  }
+
+  cout << "allocating finished\n";
+  free(nf);
+  free(num_v);
+
+  //Calculating how much shared memory we need.
+  size_sharedMemory += (cumNf[n] + 1) * sizeof(unsigned short); // cumNv
+
+  if ((cumNf[n] + 1) % 2 != 0)
+    size_sharedMemory += sizeof(unsigned short); // padding for cumNv
+
+  size_sharedMemory += cumNf[n] * sizeof(int);                   // F
+  size_sharedMemory += cumNv[cumNf[n]] * sizeof(unsigned short); // varF
+  if (cumNv[cumNf[n]] != 0)
+    size_sharedMemory += sizeof(unsigned short); // padding for varF
+
+  if (extraFCount != 0) {
+    size_sharedMemory += extraFIndexCount * sizeof(int);       // extraFIndex
+    size_sharedMemory += extraFCount * sizeof(int);            // extraF
+    size_sharedMemory += (1 + extraFIndexCount) * sizeof(int); // cumExtraF
+  }
+
+  size_sharedMemory += sizeof(int) * (g_npLength + 1); // npNode and its length
+
+  //Determine whether to put all information in shared memory.
+  if (size_sharedMemory > maxAllowedSharedMemory) {
+    int tmp = size_sharedMemory;
+    // size_sharedMemory=size_sharedMemory-(cumNf[n] + 1) * sizeof(int); //cumNv
+    // size_sharedMemory=size_sharedMemory-cumNf[n] * sizeof(int); //F
+    if (extraFCount != 0) {
+      size_sharedMemory -= extraFIndexCount * sizeof(int);       // extraFIndex
+      size_sharedMemory -= extraFCount * sizeof(int);            // extraF
+      size_sharedMemory -= (1 + extraFIndexCount) * sizeof(int); // cumExtraF
+      // size_sharedMemory -= 2 * sizeof(int); //extraFIndexCount and
+      // extraFCount
+    }
+    // size_sharedMemory -= cumNv[cumNf[n]] * sizeof(int); //varF
+    useTexture = true;
+    cout << "Using texture memory to store extraF, extraFindex, cumExtraF "
+            "size texture="
+         << (tmp - size_sharedMemory) << "bytes. " << endl;
+  }
+
+  if (blockInfor[0] != 0) {
+    blockSize = blockInfor[1];
+    block = blockInfor[0];
+  } else {
+    computeDeviceInfor(size_sharedMemory, stateSize, blockInfor);
+    block = blockInfor[1];
+    blockSize = blockInfor[0];
+  }
+
+  block /= 3;
+  blockSize /= 3;
+
+  N = block * blockSize; // Alokujemy wiecej blokow
+  // size_sharedMemory += stateSize * N * sizeof(int);
+  cout << "blockSize=" << blockSize << ", block=" << block
+       << ", precision=" << r << ", sharedMemorySize=" << size_sharedMemory
+       << " bytes.\n";
+
+  float memsettime;
+  cudaEvent_t start, stop;
+
+  // initialize CUDA timer
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  cudaEventRecord(start, 0);
+
+  // for German and Runbin method
+  int currentTrajectorySize = 0; // store the current trajectory size
+  int *gpu_currentTrajectorySize;
+  int trajectoryLength = 1000;
+  float *mean = (float *)malloc(2 * N * sizeof(float)); //[2 * N];
+  float *gpu_mean;
+
+  float *gpu_trajectory;
+
+  int *initialState; //[N * stateSize];
+  initialState = (int *)malloc(N * stateSize * sizeof(int));
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < stateSize; j++) {
+      initialState[i * stateSize + j] = 25;
+    }
+  }
+  // cout<<"after allocating initial state\n";
+  int *gpu_initialState;
+  // int* gpu_initialStateCopy;
+  int *gpu_stateSize;
+  int *gpu_trajectoryKernel;
+  int *gpu_positiveIndex;
+  int *gpu_negativeIndex;
+  int *gpu_extraF;
+  int *gpu_extraFIndex;
+  int *gpu_cumExtraF;
+  int *gpu_extraFCount;
+  int *gpu_extraFIndexCount;
+
+  int *gpu_npNode;
+  int *gpu_npLength;
+
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_extraF, sizeof(int) * extraFCount));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_extraFIndex,
+                          sizeof(unsigned short) * extraFIndexCount));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_cumExtraF,
+                          sizeof(unsigned short) * (extraFIndexCount + 1)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_extraFCount, sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_extraFIndexCount, sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_npNode, sizeof(int) * g_npLength));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_npLength, sizeof(int)));
+
+  if (extraFCount != 0) {
+    HANDLE_ERROR(cudaMemcpy(gpu_extraF, extraF, extraFCount * sizeof(int),
+                            cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(gpu_extraFIndex, extraFIndex,
+                            extraFIndexCount * sizeof(unsigned short),
+                            cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(gpu_cumExtraF, cumExtraF,
+                            (extraFIndexCount + 1) * sizeof(unsigned short),
+                            cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(gpu_extraFCount, &extraFCount, sizeof(int),
+                            cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(gpu_extraFIndexCount, &extraFIndexCount,
+                            sizeof(int), cudaMemcpyHostToDevice));
+  }
+  HANDLE_ERROR(cudaMemcpy(gpu_npNode, g_npNode, g_npLength * sizeof(int),
+                          cudaMemcpyHostToDevice));
+
+  HANDLE_ERROR(cudaMemcpy(gpu_npLength, &g_npLength, sizeof(int),
+                          cudaMemcpyHostToDevice));
+
+  // allocate method in device
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_n, sizeof(int)));
+  // HANDLE_ERROR(cudaMalloc((void** ) &gpu_nf, n * sizeof(unsigned short)));
+  // HANDLE_ERROR(cudaMalloc((void** ) &gpu_nv, cumNf[n] * sizeof(unsigned
+  // short)));
+  HANDLE_ERROR(
+      cudaMalloc((void **)&gpu_cumNf, (n + 1) * sizeof(unsigned short)));
+  HANDLE_ERROR(
+      cudaMalloc((void **)&gpu_cumNv, (cumNf[n] + 1) * sizeof(unsigned short)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_F, (cumNf[n]) * sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_varF,
+                          (cumNv[cumNf[n]]) * sizeof(unsigned short)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_cij, (cumNf[n]) * sizeof(float)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_p, sizeof(float)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_steps, sizeof(int)));
+  // HANDLE_ERROR(cudaMalloc((void**) &gpu_countGPU, n * N * sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_currentTrajectorySize, sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_mean, 2 * N * sizeof(float)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_trajectory,
+                          N * trajectoryLength * sizeof(float)));
+  HANDLE_ERROR(
+      cudaMalloc((void **)&gpu_initialState, stateSize * N * sizeof(int)));
+  HANDLE_ERROR(cudaMalloc((void **)&gpu_stateSize, sizeof(int)));
+
+  // copy data from host to device
+  HANDLE_ERROR(cudaMemcpy(gpu_n, &n, sizeof(int), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_cumNf, cumNf, (n + 1) * sizeof(unsigned short),
+                          cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_cumNv, cumNv,
+                          (cumNf[n] + 1) * sizeof(unsigned short),
+                          cudaMemcpyHostToDevice));
+  HANDLE_ERROR(
+      cudaMemcpy(gpu_F, F, cumNf[n] * sizeof(int), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_varF, varF,
+                          (cumNv[cumNf[n]]) * sizeof(unsigned short),
+                          cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_cij, cij, cumNf[n] * sizeof(float),
+                          cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_p, &p, sizeof(float), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(
+      cudaMemcpy(gpu_steps, &steps, sizeof(int), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_currentTrajectorySize, &currentTrajectorySize,
+                          sizeof(int), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(gpu_stateSize, &stateSize, sizeof(int),
+                          cudaMemcpyHostToDevice));
+  HANDLE_ERROR(
+      cudaMemcpy(gpu_initialState, initialState,
+                 N * stateSize * sizeof(int), // MC: dlaczego tu byl float? xd
+                 cudaMemcpyHostToDevice));
+
+  // host constant data
+  int hPowNum[2][32];
+  hPowNum[1][0] = 1;
+  hPowNum[0][0] = 0;
+  for (int i = 1; i < 32; i++) {
+    hPowNum[0][i] = 0;
+    hPowNum[1][i] = hPowNum[1][i - 1] * 2;
+  }
+  // copy host data to constant memory
+  cudaMemcpyToSymbol(powNum, hPowNum, sizeof(int) * 32 * 2);
+  cudaMemcpyToSymbol(nodeNum, &n, sizeof(int));
+  cudaMemcpyToSymbol(constantP, &p, sizeof(float));
+  cudaMemcpyToSymbol(constantCumNf, cumNf, sizeof(unsigned short) * (n + 1));
+  cudaMemcpyToSymbol(constantCij, cij, sizeof(float) * cumNf[n]);
+
+  // free variables in host
+  free(cij);
+  free(F);
+  free(varF);
+  free(extraF);
+  free(cumExtraF);
+  free(extraFIndex);
+  free(initialState);
+  free(cumNf);
+  free(cumNv);
+  // CUDA's random number library uses curandState_t to keep track of the seed
+  // value we will store a random state for every thread
+  curandState_t *states;
+
+  // allocate space on the GPU for the random states
+  HANDLE_ERROR(cudaMalloc((void **)&states, N * sizeof(curandState_t)));
+
+  // invoke the GPU to initialize all of the random states
+  init<<<block, blockSize>>>(time(0), states);
+
+  float psrf;
+  bool done = false, done1 = false;
+  float threshold = 1e-3; // judge when to converge
+  currentTrajectorySize = 0;
+
+  // german and rubin method
+  cout << "before calling kernelconvergeInitial\n";
+
+  double *newArray = new double[4];
+  return newArray;
 }
 
 double *german_gpu_run() {
