@@ -1,8 +1,5 @@
 /** In the cases that a PBN is too large, both shared memory and texture memory
  * are used to store it*/
-#include "./shared/German.h"
-#include "./shared/ltqnorm.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
