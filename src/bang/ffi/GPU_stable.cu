@@ -32,9 +32,9 @@ namespace py = pybind11;
 #define maxAllowedSharedMemory 40960 // the maximum allowed shared memory 40KB
 
 // declare texture reference
-texture<int, 1, cudaReadModeElementType> texExtraF;
-texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
-texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
+// texture<int, 1, cudaReadModeElementType> texExtraF;
+// texture<unsigned short, 1, cudaReadModeElementType> texExtraFIndex;
+// texture<unsigned short, 1, cudaReadModeElementType> texCumExtraF;
 
 /**Simulation info */
 int n_trajectories;
@@ -1392,13 +1392,13 @@ double *german_gpu_run() {
   // bind texture reference with linear memory
   // cudaBindTexture(0,texcumNv,gpu_cumNv,sizeof(int)*(cumNf[n] + 1));
   // cudaBindTexture(0,texVarF,gpu_varF,sizeof(int)*cumNv[cumNf[n]]);
-  cudaBindTexture(0, texExtraF, gpu_extraF, sizeof(int) * extraFCount);
-  cudaBindTexture(0, texExtraFIndex, gpu_extraFIndex,
-                  sizeof(unsigned short) * extraFIndexCount);
-  cudaBindTexture(0, texCumExtraF, gpu_cumExtraF,
-                  sizeof(unsigned short) * (extraFIndexCount + 1));
+  // cudaBindTexture(0, texExtraF, gpu_extraF, sizeof(int) * extraFCount);
+  // cudaBindTexture(0, texExtraFIndex, gpu_extraFIndex,
+  //                 sizeof(unsigned short) * extraFIndexCount);
+  // cudaBindTexture(0, texCumExtraF, gpu_cumExtraF,
+  //                 sizeof(unsigned short) * (extraFIndexCount + 1));
 
-  German german;
+  // German german;
   float psrf;
   bool done = false, done1 = false;
   float threshold = 1e-3; // judge when to converge
