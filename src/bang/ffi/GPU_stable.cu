@@ -27,7 +27,7 @@ using namespace std;
 
 namespace py = pybind11;
 
-#define epsilon 1e-9;   // to adjust the precision of float number
+#define epsilon 1e-9   // to adjust the precision of float number
 #define RegPerThread 63 // this value is obtained via compiling command
 #define maxAllowedSharedMemory 40960 // the maximum allowed shared memory 40KB
 
