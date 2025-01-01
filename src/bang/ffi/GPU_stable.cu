@@ -2136,6 +2136,6 @@ namespace py = pybind11;
 PYBIND11_MODULE(_gpu_stable, m) {
   m.def("german_gpu_run", &german_gpu_run, "Run German GPU method");
   m.def("initialise_PBN", &initialisePBN_GPU, "Initialise PBN on GPU",
-        py::arg("PBN"));
+        py::arg("PBN"), py::arg("n_trajectories"));
   m.def("simple_step", &simple_step, "Run n steps on PBN", py::arg("steps"));
 }
