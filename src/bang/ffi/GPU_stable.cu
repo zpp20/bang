@@ -888,6 +888,129 @@ void calAlphaBeta(long transitionsLast[][2], float *alphabeta) {
                    (float)(transitionsLast[1][0] + transitionsLast[1][1]);
   // printf("Calculated alpha=%f, beta=%f\n",alphabeta[0],alphabeta[1]);
 }
+
+// returns how many trajectories were picked
+int computeDeviceInfor_Traj(int sizeSharedMemory1, int stateSize, int trajectory_length, int trajectory_num ,int* blockInfor) {
+  // get device information
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0); // always use the first device
+  int numMP = prop.multiProcessorCount;
+  // int maxThreadPerBlock = 1024;
+  int maxSharedMemoryPerBlock = prop.sharedMemPerBlock; // in bytes
+
+  // every GPU has 1024K registers per MP
+  int numRegisterPerMP =
+      64 * 1024; // in unit. 1 unit=32 bits, specially for K20m
+  
+  // check compute capability
+  int major = prop.major;
+  int minor = prop.minor;
+  int wrapSize = 32;
+
+  // int countSize = 0;
+  
+  // int allowedThreadPerBlock;
+  int maxBlocksPerMP =
+      16; // Maximum number of resident blocks per multiprocessor
+  
+  
+  int activeBLocksPerMp;
+  if (major < 3 || (major < 4 && minor < 2)) {
+    numRegisterPerMP = 32 * 1024;
+    printf(
+        "Caution! The device computational capability is too small. The "
+        "program requires computational capability to be bigger than 3.0.\n");
+  }
+  if (major < 3) {            //TODO: Hardcode constants for newer compute capabilities
+    maxBlocksPerMP = 8;
+  } else if (major >= 5) {
+    maxBlocksPerMP = 32;
+  }
+  /*if (major == 5 && minor == 3) {
+   maxRegistersPerBlock = 32 * 1024;
+   } else {
+   maxRegistersPerBlock = 64 * 1024;
+   }*/
+  if (sizeSharedMemory1 + stateSize * trajectory_length > maxSharedMemoryPerBlock) {
+    printf("The PBN is too large to handle with the current device.\n");
+  }
+
+  // how many blocks and threads per block we want
+  int selectBlockSize = 32, selectNumBlock = 1;
+  int numBlock, blockSize; // numRegistersPerBlock;
+
+  int occupancy = 0;
+  bool possible = true;
+  int countBlockSize = 1, countBlocks = 1;    // how many threads in block and how many blocks in one SM (more blocks can lead to better occupancy)
+
+  
+  blockSize = countBlockSize * wrapSize;
+  numBlock = countBlocks * numMP;       // number of blocks is multiply of number of SMs
+
+  // each block needs enough shared memory to hold PBN info and blockSize trajectories.
+  int trajectory_size = stateSize * trajectory_length;
+  int sizeSharedMemoryTrajectory = sizeSharedMemory1 + trajectory_size * blockSize;
+  int i = 1, tmp = 0;
+  bool enough = false;        //do we have enough threads to compute all trajectories?
+  int allThreads;
+
+
+  // main loop increasing countBlocks
+  // shared memory needs to be divided into all blocks from countBlocks so that SM can run them all in parallel
+  while (possible) {
+    possible = false;
+    activeBLocksPerMp = countBlocks;
+
+    // every SM can handle only maxBlocksPerMP blocks at once
+    if (activeBLocksPerMp > maxBlocksPerMP)
+      activeBLocksPerMp = maxBlocksPerMP;
+
+    // find max blocksize that SM can support. 
+    countBlockSize = 1;
+    blockSize = countBlockSize * wrapSize;
+    sizeSharedMemoryTrajectory = sizeSharedMemory1 + trajectory_size * blockSize;
+    allThreads = blockSize * countBlocks * numMP;
+    //must be enough registers per thread, enough shared memory and enough something ???idk about last one
+    while (blockSize < (numRegisterPerMP / countBlocks) / RegPerThread &&  // check if there are enought registers for blocks
+           sizeSharedMemoryTrajectory < maxSharedMemoryPerBlock / countBlocks &&  // check if trajectory can fit into space for one block
+           allThreads <= 7680 &&   // this was in legacy code for some reason
+           allThreads <= trajectory_num) { // we need only this much threads for trajectories 
+      // check if less blocks than before are active
+      if (maxSharedMemoryPerBlock / countBlocks < activeBLocksPerMp)
+        activeBLocksPerMp = maxSharedMemoryPerBlock / countBlocks;
+      if ((numRegisterPerMP / RegPerThread / blockSize) < activeBLocksPerMp) {
+        activeBLocksPerMp = (numRegisterPerMP / RegPerThread / blockSize);
+      }
+
+      //compute temporary occupancy (how many threads are running at once)
+      tmp = activeBLocksPerMp * blockSize;
+      if (tmp > occupancy || (tmp == occupancy && numBlock > selectNumBlock)) { // if temp occupancy better use new blockSize and numBlock
+        occupancy = tmp;
+        selectBlockSize = blockSize;
+        selectNumBlock = numBlock;
+      }
+
+      // try one more time to see if higher occupancy is possible with larger block
+      possible = true;
+      countBlockSize++;
+      blockSize = countBlockSize * wrapSize;
+      allThreads = blockSize * countBlocks * numMP;
+      i++;
+    }
+
+    // try one more time to see if higher occupancy is possible with higher block number
+    countBlocks++;
+    numBlock = countBlocks * numMP;
+  }
+
+  // printf("Choose solution: blockSize = %d, numBlock=%d.\n", selectBlockSize,
+  //		selectNumBlock);
+  blockInfor[0] = selectBlockSize;
+  blockInfor[1] = selectNumBlock;
+  // printf("block=%d,blockSize=%d\n", numBlock, blockSize);
+  return selectBlockSize * selectNumBlock;
+}
+
 /**
  * sizeSharedMemory1 is the amount of shared memory used to store the PBN and
  * the property, not including the initial states blockInfor[0] will store
@@ -1211,9 +1334,6 @@ double *simple_step(int py_steps) {
     block = blockInfor[1];
     blockSize = blockInfor[0];
   }
-
-  block /= 3;
-  blockSize /= 3;
 
   N = block * blockSize; // Alokujemy wiecej blokow
   // size_sharedMemory += stateSize * N * sizeof(int);
