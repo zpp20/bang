@@ -1,46 +1,46 @@
 from typing import List
 from libsbml import *
 import itertools
-import os
-#from parseSBML import parseSBMLDocument
+import numpy as np
+import math
+
 
 class PBN:
-
+  
     def __init__(self, n : int,
-                nf : List[int], 
+                nf : List[int],
                 nv : List[int],
                 F : List[List[bool]],
                 varFInt : List[List[int]],
                 cij : List[List[float]],
                 perturbation : float,
                 npNode : List[int]):
-        
+
         self.n = n  #the number of nodes
         self.nf = nf    #the size is n
         self.nv = nv    #the sizef = cum(nf)
         self.F = F  #each element of F stores a column of the truth table "F"， e.g., F.get(0)=[true false], the length of the element is 2^nv(boolean function index)
-        self.varFInt = varFInt  
+        self.varFInt = varFInt
         self.cij = cij  #the size=n, each element represents the selection probability of a node, and therefore the size of each element equals to the number of functions of each node
         self.perturbation = perturbation    #perturbation rate
         self.npNode = npNode    #index of those nodes without perturbation. To make simulation easy, the last element of npNode will always be n, which also indicate the end of the list. If there is only one element, it means there is no disabled node.
-
 
     def getN(self):
         return self.n
 
     def getNf(self):
         return self.nf
-    
+
     def getNv(self):
         return self.nv
-    
+
     def getVector(self, elemF, extraF):
         """
         based on fromVector function from original ASSA-PBN
         converts list of bools to 32 bit int with bits representing truth table
         extra bits are placed into extraF list
         """
-        
+
         retval = 0
         i = 0
         prefix = 0
@@ -52,36 +52,113 @@ class PBN:
 
             prefix += 32
             tempLen -= 32
-        
+
         else:                                                                  #we just return proper into
             for i in range(tempLen):
                 if elemF[i]:
                     retval |= 1 << i
-            
+
             return retval
-        
+
         while tempLen > 0:                                                     #switched condition to tempLen > 0 to get one more iteration after tempLen > 32 is false
             other = 0
             for i in range(32):
                 if elemF[i + prefix]:
                     other |= 1 << i
-            
+
             prefix += 32
             tempLen -= 32
             extraF.append(other)
 
         return retval
-        
+
+    def extraFCount(self):
+        """
+        Returns number of extraFs
+        """
+        extraFCount = 0
+        for elem in self.nv:
+            if elem > 5:
+                extraFCount += 2**(elem - 5) - 1
+
+        return extraFCount
+
+    def extraFIndexCount(self):
+        """
+        Returns number of extraFIndex
+        """
+        extraFIndexCount = 0
+
+        for elem in self.nv:
+            if elem > 5:
+                extraFIndexCount += 1
+
+        return extraFIndexCount
+
+    def extraFIndex(self):
+        """
+        Returns list of extraFIndex
+        """
+        extraFIndex = []
+
+        for i in range(len(self.nv)):
+            if self.nv[i] > 5:
+                extraFIndex.append(i)
+
+        return extraFIndex
+
+    def cumExtraF(self):
+        """
+        Returns list of cumExtraF
+        """
+        cumExtraF = [0]
+
+        for i in range(len(self.nv)):
+            if self.nv[i] > 5:
+                cumExtraF.append(cumExtraF[-1] + 2**(self.nv[i] - 5) - 1)
+
+        return cumExtraF
+
+    def extraF(self):
+        """
+        Returns list of extraFs
+        """
+        extraF = []
+
+        for i in range(len(self.F)):
+            extraF.append(self.getVector(self.F[i], extraF))
+
+        return extraF
+
+    def cumulativeNumberFunctions(self) -> np.ndarray:
+        """
+        Returns sum of all elements in nf
+        """
+        return np.cumsum([0] + self.nf)
+
+    def cumulativeNumberVariables(self) -> np.ndarray:
+        """
+        Returns sum of all elements in nv
+        """
+
+        return np.cumsum([0] + self.nv)
+
+    def stateSize(self):
+        """
+        Returns number of 32 bit integers needed to store all variables
+        """
+        return self.n // 32 + math.ceil(self.n / 32)
+
     def getFInfo(self):
         """
-        Returns list of size 6: 
+        Returns list of size 6:
         - getFInfo[0] is extraFCount
         - getFInfo[1] is extraFIndexCount
         - getFInfo[2] is list extraFIndex of size extraFIndexCount
         - getFInfo[3] is list cumExtraF of size extraFIndexCount + 1
         - getFInfo[4] is list extraF of size extraFCount
         - getFInfo[5] is list F of size cumnF
-        
+
         In case there are no extraFs extraFCount, extraFIndexCount are set to 1.
         extraFIndex is list of ones of size 1
         extraF is list of ones of size 1
@@ -105,7 +182,7 @@ class PBN:
                 if self.nv[i] > 5:
                     extraFIndex.append(i)
                     cumExtraF.append(cumExtraF[-1] + 2**(self.nv[i] - 5) - 1)
-                
+
         else:
             extraFCount = 1
             extraFIndexCount = 1
@@ -119,24 +196,22 @@ class PBN:
             F.append(self.getVector(self.F[i], extraF))
 
         return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF, extraF, F]
-             
+
 
     def getF(self):
         return self.F
-    
+
     def getVarFInt(self):
         return self.varFInt
-    
+
     def getCij(self):
         return self.cij
-    
+
     def getPerturbation(self):
         return self.perturbation
-    
+
     def getNpNode(self):
         return self.npNode
-    
-
 
 
 def load_sbml(path: str) -> PBN:
@@ -386,10 +461,4 @@ def load_from_file(path, format='sbml'):
         case _:
             raise ValueError("Invalid format")
         
-
-
-
-
-
-
 
