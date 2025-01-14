@@ -102,7 +102,7 @@ def kernel_converge(gpu_stateHistory, gpu_threadNum, gpu_powNum, gpu_cumNf, gpu_
         gpu_initialState[relative_index + node_index] = initialState[node_index]
 
 
-def german_gpu_run(pbn: PBN, steps):
+def german_gpu_run(pbn: PBN, steps, trajectories):
     n = pbn.getN()
     nf = pbn.getNf()
     nv = pbn.getNv()
@@ -126,8 +126,27 @@ def german_gpu_run(pbn: PBN, steps):
     cumExtraF = extraFInfo[3]
     extraF = extraFInfo[4]
 
-    block, blockSize = info._compute_device_info(, state_size, steps, pbn.trajectories)
+    PBN_memory_size = 0
+    PBN_memory_size += len(cumNf) * np.uint16().itemsize
+    
+    if (cumNf[n] + 1) % 2 != 0:
+        PBN_memory_size += np.uint16().itemsize
 
+    PBN_memory_size += len(F) * np.int32().itemsize
+    PBN_memory_size += len(varFInt) * np.uint16().itemsize
+
+    if len(varFInt) != 0:
+        PBN_memory_size += np.uint16().itemsize
+
+    if extraFCount != 0:
+        PBN_memory_size += len(extraFIndex) * np.uint32().itemsize
+        PBN_memory_size += len(extraF) * np.uint32().itemsize
+        PBN_memory_size += len(cumExtraF) * np.uint32().itemsize
+
+    PBN_memory_size += (len(npNode) + 1) *  np.uint32().itemsize
+
+    block, blockSize = info._compute_device_info(PBN_memory_size, stateSize, steps, trajectories)
+    print("Number of blocks", block, "  Block size: ", blockSize)
     N = block * blockSize
     gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.uint16))
     gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
