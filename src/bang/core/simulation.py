@@ -5,6 +5,7 @@ from numba.cuda.random import create_xoroshiro128p_states, xoroshiro128p_uniform
 import numba as nb
 from itertools import chain
 from . import PBN
+from . import device_info as info
 
 
 @cuda.jit
@@ -125,23 +126,20 @@ def german_gpu_run(pbn: PBN, steps):
     cumExtraF = extraFInfo[3]
     extraF = extraFInfo[4]
 
-    block = 1
-    blockSize = 32
+    block, blockSize = info._compute_device_info(, state_size, steps, pbn.trajectories)
 
     N = block * blockSize
-
-    gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
+    gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.uint16))
     gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
-    gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.int32))
+    gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.uint16))
     gpu_initialState = cuda.to_device(np.zeros(N * stateSize, dtype=np.int32))
     gpu_stateHistory = cuda.to_device(np.zeros(N * stateSize * (steps + 1), dtype=np.int32))
-    gpu_threadNum = cuda.to_device(np.array([N], dtype=np.int32))
-    gpu_mean = cuda.to_device(np.zeros((N, 2), dtype=np.float32))
+    gpu_threadNum = cuda.to_device(np.array([N], dtype=np.uint16))
     gpu_steps = cuda.to_device(np.array([steps], dtype=np.int32))
     gpu_stateSize = cuda.to_device(np.array([stateSize], dtype=np.int32))
     gpu_extraF = cuda.to_device(np.array(extraF, dtype=np.int32))
-    gpu_extraFIndex = cuda.to_device(np.array(extraFIndex, dtype=np.int32))
-    gpu_cumExtraF = cuda.to_device(np.array(cumExtraF, dtype=np.int32))
+    gpu_extraFIndex = cuda.to_device(np.array(extraFIndex, dtype=np.uint16))
+    gpu_cumExtraF = cuda.to_device(np.array(cumExtraF, dtype=np.uint16))
     gpu_extraFCount = cuda.to_device(np.array([extraFCount], dtype=np.int32))
     gpu_extraFIndexCount = cuda.to_device(np.array([extraFIndexCount], dtype=np.int32))
     gpu_npNode = cuda.to_device(np.array(npNode, dtype=np.int32))
@@ -162,7 +160,7 @@ def german_gpu_run(pbn: PBN, steps):
 
     states = create_xoroshiro128p_states(N, seed=time.time())
 
-    kernel_converge[block, blockSize](gpu_stateHistory, gpu_threadNum, gpu_powNum, gpu_cumNf, gpu_cumCij, states, n, gpu_perturbation_rate, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_mean, gpu_steps, gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode)
+    kernel_converge[block, blockSize](gpu_stateHistory, gpu_threadNum, gpu_powNum, gpu_cumNf, gpu_cumCij, states, n, gpu_perturbation_rate, gpu_cumNv, gpu_F, gpu_varF, gpu_initialState, gpu_steps, gpu_stateSize, gpu_extraF, gpu_extraFIndex, gpu_cumExtraF, gpu_extraFCount, gpu_extraFIndexCount, gpu_npLength, gpu_npNode)
 
     last_state = gpu_initialState.copy_to_host()
     history = gpu_stateHistory.copy_to_host()
