@@ -6,7 +6,14 @@ build-backend = "setuptools.build_meta"
 # See https://setuptools.pypa.io/en/latest/userguide/quickstart.html for more project configuration options.
 name = "bang-gpu"
 readme = "README.md"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.4"
+
+authors = [
+    { name = "Mikołaj Czarnecki", email = "mc448206@students.mimuw.edu.pl" },
+    { name = "Jan Jagodziński", email = "jan.jagodzinski@gmail.com" },
+    { name = "Bartłomiej Parapura", email = "b.parapura@student.uw.edu.pl" },
+    { name = "Paweł Zając", email = "pawel.andrzej.zajac@gmail.com" },
+]
 
 requires-python = ">=3.8"
 dependencies = ["python-libsbml", "numba"]
@@ -21,10 +28,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pavozayac/bang"
-Repository = "https://github.com/pavozayac/bang"
-Changelog = "https://github.com/pavozayac/bang/blob/main/CHANGELOG.md"
-# Documentation = "https://bang.readthedocs.io/"
+Homepage = "https://github.com/zpp20/bang"
+Repository = "https://github.com/zpp20/bang"
+Changelog = "https://github.com/zpp20/bang/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -51,10 +57,6 @@ dev = [
 [tool.setuptools.packages.find]
 exclude = ["*.tests", "*.tests.*", "tests.*", "tests", "docs*", "scripts*"]
 where = ["src"]
-
-[tool.setuptools]
-# include-package-data = true
-# package-dir = { "" = "src" }
 
 [tool.setuptools.package-data]
 bang = ["py.typed"]
