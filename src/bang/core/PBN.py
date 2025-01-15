@@ -3,6 +3,7 @@ import numpy as np
 import math
 from itertools import chain
 from bang.core.cuda.simulation import kernel_converge
+import numba
 from numba import cuda
 
 from bang.parsing.assa import load_assa
@@ -277,7 +278,7 @@ class PBN:
 
         gpu_powNum = cuda.to_device(pow_num)
 
-        states = create_xoroshiro128p_states(N, seed=datetime.datetime.now().timestamp())
+        states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
 
         kernel_converge[block, blockSize](
             gpu_stateHistory,
