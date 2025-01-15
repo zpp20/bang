@@ -159,15 +159,8 @@ for i in range(2):
     for j in range(8):
         f6.append(False)
     
-
     
-
-
-
-
-
-
-
+# This is the example from the paper of dr Mizera 
 pbn2 = PBN(6, [1, 1, 1, 1, 1, 1], [2, 2, 1, 3, 2, 2], [[f1, f2, f3, f4, f5, f6]], [[0, 1], [0, 1], [1], [1,2,4], [3,4], [2,5]], [[1.], [1.], [1.], [1.], [1.], [1.]], 0.01, [2, 3, 4, 5])
 
 
