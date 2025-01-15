@@ -9,6 +9,7 @@ from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
 from numba.cuda.random import create_xoroshiro128p_states
+import datetime
 
 
 class PBN:
@@ -23,8 +24,8 @@ class PBN:
         cij: List[List[float]],
         perturbation: float,
         npNode: List[int],
+        n_parallel: int = 512,
     ):
-
         self.n = n  # the number of nodes
         self.nf = nf  # the size is n
         self.nv = nv  # the sizef = cum(nf)
@@ -33,6 +34,11 @@ class PBN:
         self.cij = cij  # the size=n, each element represents the selection probability of a node, and therefore the size of each element equals to the number of functions of each node
         self.perturbation = perturbation  # perturbation rate
         self.npNode = npNode  # index of those nodes without perturbation. To make simulation easy, the last element of npNode will always be n, which also indicate the end of the list. If there is only one element, it means there is no disabled node.
+        # TODO, informacje z GPU powinny posłużyć żeby ustawić sensowny default
+        self.n_parallel = n_parallel
+
+        self.history: np.ndarray | None = None
+        self.latest_state: np.ndarray | None = None
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
@@ -85,6 +91,34 @@ class PBN:
             extra_functions.append(other)
 
         return retval
+
+    def get_last_state(self) -> np.ndarray | None:
+        return self.latest_state
+
+    def get_trajectories(self) -> np.ndarray | None:
+        return self.history
+
+    def _bools_to_state_array(self, bools: list[bool]) -> np.ndarray:
+        """
+        Converts list of bools to integer
+        """
+        if len(bools) != self.n:
+            raise ValueError("Number of bools must be equal to number of nodes")
+
+        integer_state = np.zeros((self.stateSize()), dtype=np.int32)
+
+        for i in range(self.stateSize())[::-1]:
+            for bit in range(32):
+                if bools[i * 32 + bit]:
+                    integer_state[i] |= 1 << bit
+
+        return integer_state
+
+    def set_states(self, states: list[list[bool]]):
+        converted_states = [self._bools_to_state_array(state) for state in states]
+        self.latest_state = np.array(converted_states)
+
+        self.history = None
 
     def extraFCount(self):
         """
@@ -163,54 +197,6 @@ class PBN:
         """
         return self.n // 32 + math.ceil(self.n / 32)
 
-    # def getFInfo(self):
-    #     """
-    #     Returns list of size 6:
-    #     - getFInfo[0] is extraFCount
-    #     - getFInfo[1] is extraFIndexCount
-    #     - getFInfo[2] is list extraFIndex of size extraFIndexCount
-    #     - getFInfo[3] is list cumExtraF of size extraFIndexCount + 1
-    #     - getFInfo[4] is list extraF of size extraFCount
-    #     - getFInfo[5] is list F of size cumnF
-
-    #     In case there are no extraFs extraFCount, extraFIndexCount are set to 1.
-    #     extraFIndex is list of ones of size 1
-    #     extraF is list of ones of size 1
-    #     cumExtraF is list of ones of size 2
-    #     (in original implementation lists were allocated but no numbers were assigned)
-    #     """
-    #     extraFCount = 0
-    #     extraFIndexCount = 0
-    #     for elem in self.nv:
-    #         if elem > 5:
-    #             extraFIndexCount += 1
-    #             extraFCount += 2**(elem - 5) - 1
-
-    #     if extraFIndexCount > 0:
-    #         extraFIndex = list()
-    #         cumExtraF = list()
-    #         extraF = list()
-
-    #         cumExtraF.append(0)
-    #         for i in range(len(self.nv)):
-    #             if self.nv[i] > 5:
-    #                 extraFIndex.append(i)
-    #                 cumExtraF.append(cumExtraF[-1] + 2**(self.nv[i] - 5) - 1)
-
-    #     else:
-    #         extraFCount = 1
-    #         extraFIndexCount = 1
-    #         extraFIndex = [1]
-    #         cumExtraF = [1,1]
-    #         extraF = [1]
-
-    #     F = list()
-
-    #     for i in range(len(self.F)):
-    #         F.append(self.getVector(self.F[i], extraF))
-
-    #     return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF, extraF, F]
-
     def getF(self) -> list[list[bool]]:
         return self.F
 
@@ -252,10 +238,14 @@ class PBN:
         cumExtraF = self.cumExtraF()
         extraF = self.extraF()
 
-        block = 1
+        # TODO, tutaj powinno być wyciąganie informacji z GPU
+        block = self.n_parallel // 32
         blockSize = 32
 
-        N = block * blockSize
+        N = self.n_parallel
+
+        initial_state = np.zeros(N * stateSize, dtype=np.int32) if self.latest_state is None else self.latest_state
+        initial_state = initial_state.reshape(N * stateSize)
 
         gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
         gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
@@ -287,7 +277,7 @@ class PBN:
 
         gpu_powNum = cuda.to_device(pow_num)
 
-        states = create_xoroshiro128p_states(N, seed=time.time())
+        states = create_xoroshiro128p_states(N, seed=datetime.datetime.now().timestamp())
 
         kernel_converge[block, blockSize](
             gpu_stateHistory,
@@ -315,11 +305,20 @@ class PBN:
         )
 
         last_state = gpu_initialState.copy_to_host()
-        history = gpu_stateHistory.copy_to_host()
+        run_history = gpu_stateHistory.copy_to_host()
 
-        print(last_state)
-        print(last_state.shape)
-        print(history.reshape((n_steps + 1, -1)))
+        self.latest_state = last_state.reshape((N, stateSize))
+
+        run_history = run_history.reshape((N, n_steps + 1, stateSize))
+
+        if self.history is not None:
+            self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
+        else:
+            self.history = run_history
+
+        # print(last_state)
+        # print(last_state.shape)
+        # print(history.reshape((n_steps + 1, -1)))
 
 
 def load_sbml(path: str) -> tuple:
