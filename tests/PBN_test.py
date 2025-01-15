@@ -11,6 +11,10 @@
 
 # pbn = bang.PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
 
+<<<<<<< Updated upstream
 # bang.initialise_PBN(pbn)
 
 # bang.german_gpu_run()
+=======
+pbn.simple_steps(1000)
+>>>>>>> Stashed changes
