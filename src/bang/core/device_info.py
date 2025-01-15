@@ -1,4 +1,5 @@
 import pycuda.driver as drv
+import bang
 
 def _compute_device_info(shared_memory_size : int, 
                         state_size : int,
@@ -7,21 +8,25 @@ def _compute_device_info(shared_memory_size : int,
     """
     Function computing number of blocks and blockSize for kernel in a way that maximizes occupancy.
     """
-    drv.init()
 
-    device = drv.Device(0)
-
-    major = device.COMPUTE_CAPABILITY_MAJOR
-    minor = device.COMPUTE_CAPABILITY_MINOR
+    # major = device.COMPUTE_CAPABILITY_MAJOR
+    # minor = device.COMPUTE_CAPABILITY_MINOR
+    major = bang.major
+    minor = bang.minor
 
     if (major < 3 or (major < 4 and minor < 2)):
         raise ValueError("Compute capability to small. Compute capability bigger than 3.0 required!")
 
     
-    SM_count = device.MULTIPROCESSOR_COUNT
-    max_shmem_per_block = device.MAX_SHARED_MEMORY_PER_BLOCK
-    register_per_SM = device.MAX_REGISTERS_PER_MULTIPROCESSOR
-    max_blocks_per_SM = device.MAX_BLOCKS_PER_MULTIPROCESSOR
+    # SM_count = device.MULTIPROCESSOR_COUNT
+    # max_shmem_per_block = device.MAX_SHARED_MEMORY_PER_BLOCK
+    # register_per_SM = device.MAX_REGISTERS_PER_MULTIPROCESSOR
+    # max_blocks_per_SM = device.MAX_BLOCKS_PER_MULTIPROCESSOR
+    SM_count = bang.SM_count
+    max_shmem_per_block = bang.max_shmem_per_block
+    register_per_SM = bang.register_per_SM
+    max_blocks_per_SM = bang.max_blocks_per_SM
+    
     warp_size = 32
     register_per_thread = 63                     #TODO: figure out how to compute this based on PBN stats
 
