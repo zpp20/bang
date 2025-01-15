@@ -8,6 +8,8 @@ from numba import cuda
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
+from numba.cuda.random import create_xoroshiro128p_states
+
 
 class PBN:
 
@@ -44,7 +46,7 @@ class PBN:
     def getNv(self):
         return self.nv
 
-    def getVector(self, elemF, extraF):
+    def _get_integer_functions(self, f: list[bool], extra_functions: list[int]) -> int:
         """
         based on fromVector function from original ASSA-PBN
         converts list of bools to 32 bit int with bits representing truth table
@@ -54,10 +56,10 @@ class PBN:
         retval = 0
         i = 0
         prefix = 0
-        tempLen = len(elemF)
+        tempLen = len(f)
         if tempLen > 32:  # we have to add values to extraF
             for i in range(32):
-                if elemF[i + prefix]:
+                if f[i + prefix]:
                     retval |= 1 << i
 
             prefix += 32
@@ -65,7 +67,7 @@ class PBN:
 
         else:  # we just return proper into
             for i in range(tempLen):
-                if elemF[i]:
+                if f[i]:
                     retval |= 1 << i
 
             return retval
@@ -75,12 +77,12 @@ class PBN:
         ):  # switched condition to tempLen > 0 to get one more iteration after tempLen > 32 is false
             other = 0
             for i in range(32):
-                if elemF[i + prefix]:
+                if f[i + prefix]:
                     other |= 1 << i
 
             prefix += 32
             tempLen -= 32
-            extraF.append(other)
+            extra_functions.append(other)
 
         return retval
 
@@ -138,7 +140,7 @@ class PBN:
         extraF = []
 
         for i in range(len(self.F)):
-            extraF.append(self.getVector(self.F[i], extraF))
+            extraF.append(self._get_integer_functions(self.F[i], extraF))
 
         return extraF
 
@@ -209,8 +211,11 @@ class PBN:
 
     #     return [extraFCount, extraFIndexCount, extraFIndex, cumExtraF, extraF, F]
 
-    def getF(self):
+    def getF(self) -> list[list[bool]]:
         return self.F
+
+    def get_integer_f(self):
+        return [self._get_integer_functions(func, []) for func in self.F]
 
     def getVarFInt(self):
         return self.varFInt
@@ -228,7 +233,7 @@ class PBN:
         n = self.getN()
         nf = self.getNf()
         nv = self.getNv()
-        F = list(chain.from_iterable(self.getF()))
+        F = self.get_integer_f()
         varFInt = list(chain.from_iterable(self.getVarFInt()))
         cij = list(chain.from_iterable(self.getCij()))
 
