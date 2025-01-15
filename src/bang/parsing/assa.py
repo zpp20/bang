@@ -238,7 +238,5 @@ def load_assa(path: str) -> tuple:
             i += 1
 
         np = sorted(np)
-        np.append(n)
-        i += 1
 
     return (n, nf, nv, F, varFInt, cij, perturbation, np)
