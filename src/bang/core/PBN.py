@@ -2,6 +2,7 @@ from typing import List
 from libsbml import *
 import itertools
 import os
+from math import floor
 #from parseSBML import parseSBMLDocument
 
 class PBN:
@@ -386,7 +387,57 @@ def load_from_file(path, format='sbml'):
         case _:
             raise ValueError("Invalid format")
         
+    def reduce_F(self, states : List[List[int]]):
+    """
+    Reduces truth tables of PBN by removing states that does not change
 
+    Parameters
+    ----------
+
+    states : List[int]
+        List of investigated states. States are lists of int with length n
+        where i-th index represents i-th variable. 0 represents False and 1 represents True.
+
+    Returns
+    -------
+    active_variables : List[List[int]]
+        List of indeces of variables that change between states
+
+    F_reduced : List[List[Bool]]
+        Truth tables with removed constant variables
+    """
+        initial_state = states[0]
+
+        constant_vars = {i for i in range(1, self.n)}
+
+        for state in states[1:]: 
+            for var in constant_vars:
+                if intial_state[var] != constant_vars[var]:
+                    constant_vars.remove(var)
+        
+        new_F = list()
+        new_varF = list()
+        for F_list, varF_list in zip(self.F, self.varFInt):
+            new_F.append(list())
+            new_varF.append(list())
+            for F_func, F_vars in zip(F_list, varF_list):           #assumes F contains truthtables for sorted vars
+                new_varF[-1].append(list())
+                curr_num_vars = len(F_vars)
+                curr_F = F_func
+                curr_vars = F_vars
+                for i, var in enumerate(F_vars):
+                    if var in constant_vars:
+                        var_state = initial_state[var]
+                        curr_F = [F_func[j + (j // (2**i)) + i * var_state] for j in range(2**(curr_num_vars - 1))]
+                        curr_num_vars -= 1
+                    else:
+                        new_varF[-1].append(var)
+
+                new_F[-1].append(curr_F)
+
+        return new_varF, new_F
+
+        
 
 
 
