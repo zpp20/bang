@@ -222,6 +222,10 @@ for i in graph2.nodes:
 print(graph2.sccs)
 print(graph2.blocks)
 
+
+# Function to get the blocks from the paper of a PBN
+# Input: PBN class object
+# Output: list of blocks, where each block is a list of indices of nodes in the block
 def get_blocks(pbn):
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
