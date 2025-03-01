@@ -221,3 +221,8 @@ for i in graph2.nodes:
     print(graph2.nodes[i].scc_id)
 print(graph2.sccs)
 print(graph2.blocks)
+
+def get_blocks(pbn):
+    graph = Graph_PBN(pbn)
+    graph.find_scc_and_blocks()
+    return graph.blocks
