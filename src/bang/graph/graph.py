@@ -86,6 +86,37 @@ class Graph_PBN:
         for scc_id in sccs_ids:
             self.sccs.append([n.id for n in self.nodes.values() if n.scc_id == scc_id])
 
+
+
+        # topo sorting sccs
+        sorted_sccs = []
+        sccs_to_sort = self.sccs.copy()
+        ins = [set() for i in range(len(sccs_to_sort))]
+        inf_pool = set()
+
+
+        for i, scc in enumerate(sccs_to_sort):
+            for node_id in scc:
+                node_ins = set()
+                for in_node in self.nodes[node_id].in_nodes:
+                    node_ins.add(in_node)
+                ins[i] = ins[i].union(node_ins)
+        #print(ins)
+        
+        #print(self.sccs)
+        while sccs_to_sort:
+            for i, scc in enumerate(sccs_to_sort):
+                if ins[i] - set(scc) - inf_pool == set():
+                    sorted_sccs.append(scc)
+                    inf_pool = inf_pool.union(set(scc))
+                    sccs_to_sort.pop(i)
+                    ins.pop(i)
+                    break
+               
+        #print(sorted_sccs)
+
+
+
         for scc in self.sccs:
             block = scc.copy()
             # influencers are nodes that are not in the block and influence at least one node in the block
@@ -93,6 +124,9 @@ class Graph_PBN:
             block += influencers
             block = sorted(list(set(block)))
             self.blocks.append(block)
+
+
+
         
 
         
@@ -136,11 +170,11 @@ class PBN_Node:
 
         
 
-pbn = PBN(2, [1, 1], [1, 1], [[True, False], [False, True]], [[1], [0]], [[1.], [1.]], 0.01, [2])
+#pbn = PBN(2, [1, 1], [1, 1], [[True, False], [False, True]], [[1], [0]], [[1.], [1.]], 0.01, [2])
 
-graph = Graph_PBN(pbn)
-graph.dfs_numerate()
-graph.find_scc_and_blocks()
+#graph = Graph_PBN(pbn)
+#graph.dfs_numerate()
+#graph.find_scc_and_blocks()
 # for i in graph.nodes:
 #     print(graph.nodes[i].in_nodes)
 #     print(graph.nodes[i].out_nodes)
@@ -164,13 +198,13 @@ for i in range(16):
 
 f3 = []
 for i in range(16):
-    f1.append(True)
+    f3.append(True)
 for i in range(16):
-    f1.append(False)
+    f3.append(False)
 for i in range(16):
-    f1.append(True)
+    f3.append(True)
 for i in range(16):
-    f1.append(False)
+    f3.append(False)
 
 f4 = []
 for k in range(2):
@@ -212,21 +246,19 @@ for i in range(2):
     
     
 # This is the example from the paper of dr Mizera, page 10 on the left
-pbn2 = PBN(6, [1, 1, 1, 1, 1, 1], [2, 2, 1, 3, 2, 2], [f1, f2, f3, f4, f5, f6], [[0, 1], [0, 1], [1], [1,2,4], [3,4], [2,5]], [[1.], [1.], [1.], [1.], [1.], [1.]], 0.01, [2, 3, 4, 5])
+pbn2 = PBN(6, [1, 1, 1, 1, 1, 1], [3, 2, 1, 2, 2, 2], [f4, f2, f3, f1, f5, f6], [[1,2,4], [3, 1], [1], [3,1], [0,4], [2,5]], [[1.], [1.], [1.], [1.], [1.], [1.]], 0.01, [2, 3, 4, 5])
 
 
 graph2 = Graph_PBN(pbn2)
 graph2.find_scc_and_blocks()
-for i in graph2.nodes:
-    print(graph2.nodes[i].scc_id)
 print(graph2.sccs)
 print(graph2.blocks)
 
 
-# Function to get the blocks from the paper of a PBN
-# Input: PBN class object
-# Output: list of blocks, where each block is a list of indices of nodes in the block
+
+
 def get_blocks(pbn):
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
+    #print(graph.blocks)
     return graph.blocks
