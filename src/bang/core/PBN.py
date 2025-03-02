@@ -1,5 +1,6 @@
 from typing import List
 import numpy as np
+import numpy.typing as npt
 import math
 from itertools import chain
 from bang.core.cuda.simulation import kernel_converge
@@ -115,11 +116,22 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]]):
+    def set_states(self, states: list[list[bool]], reset_history=True):
+        """
+        Sets the initial states of the PBN.
+
+        Parameters
+        ----------
+        states : list[list[bool]]
+            List of states to be set.
+        reset_history : bool, optional
+            If True, the history of the PBN will be reset. Defaults to True.
+        """
         converted_states = [self._bools_to_state_array(state) for state in states]
         self.latest_state = np.array(converted_states)
 
-        self.history = None
+        if reset_history:
+            self.history = None
 
     def extraFCount(self):
         """
@@ -216,7 +228,32 @@ class PBN:
     def getNpNode(self):
         return self.npNode
 
-    def simple_steps(self, n_steps):
+    def _perturb_state_by_actions(self, actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
+        if state is None:
+            raise ValueError("State must be set before explicit perturbation")
+
+        copystate = state.copy()
+
+        for index in actions:
+            state_index = index // 32
+            bit_index = index % 32
+
+            if state_index >= self.stateSize():
+                raise IndexError("State index out of bounds")
+
+
+            copystate[:, state_index] ^= 1 << bit_index
+        
+        return copystate
+
+    def simple_steps(self, n_steps, actions: npt.NDArray[np.uint] | None = None):
+        if self.latest_state is None or self.history is None:
+            raise ValueError("Initial state must be set before simulation")
+        
+        if actions is not None:
+            self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
+            self.history = np.concatenate([self.history, self.latest_state], axis=1)
+
         n = self.getN()
         nf = self.getNf()
         nv = self.getNv()
@@ -316,11 +353,6 @@ class PBN:
             self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
         else:
             self.history = run_history
-
-        # print(last_state)
-        # print(last_state.shape)
-        # print(history.reshape((n_steps + 1, -1)))
-
 
 def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
