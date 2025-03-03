@@ -1,0 +1,48 @@
+from typing import List
+import numpy as np
+import numpy.typing as npt
+import numba
+from numba import cuda
+
+class BDD:
+    #Every state in takes 63 bits. Youngest 5 bits code number of variable, next 29 bits code index of left child, next 29 bits code index of right child.
+    def __init__(
+        self,
+        n: int
+        states : List[int]
+        variables : List[int]
+    ):
+        self.n = n
+        self.states = states
+        self.variables = variables
+
+    def get_states(self):
+        return np.array(self.states).astype(np.uint64)
+
+    def get_variables(self):
+        return np.array(self.variables).astype(np.uint32)
+
+def traverse_BDD(BDDs: List[BDD], initial_states: npt.NDArray[np.uint64], int n_states):
+    if len(BDDs) != n_states:
+        raise ValueError("Number of BDDs must be equal to number of states!")
+
+    BDD_states = [bdd.get_states() for bdd in BDDs]
+    BDD_variables = [bdd.get_variables() for bdd in BDDs]
+
+    n_states = [len(bdd.get_states()) for bdd in BDDs]
+    n_variables = [len(bdd.get_variables()) for bdd in BDDs]
+
+    #Starting indeces for states and variables in 1d BDD array
+    cum_n_states = np.cumsum([0] + n_states, dtype=np.uint32)
+    cum_n_variables = np.cumsum([0] + n_variables, dtype=np.uint32)
+
+    flat_BDD_states = np.concatenate(BDD_states).astype(np.uint64)
+    flat_BDD_variables = np.concatenate(BDD_variables).astype(np.uint32)
+
+    gpu_BDD_states = cuda.to_device(np.array(flat_BDD_states, dtype=uint64))
+    gpu_BDD_variables = cuda.to_device(np.array(flat_BDD_variables, dtype=uint32))
+    gpu_cum_n_states = cuda.to_device(np.array(cum_n_states, dtype=uint32))
+    gpu_cum_n_variables = cuda.to_device(np.array(cum_n_variables, dtype=uint32))
+    gpu_BDD_initial_states = cuda.to_device(np.array(initial_states, dtype=uint64))
+    
+    
