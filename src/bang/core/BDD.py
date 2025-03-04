@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 import numba
 from numba import cuda
+from bang.core.cuda.bdd_traverse import kernel_BDD_step
 
 class BDD:
     #Every state in takes 63 bits. Youngest 5 bits code number of variable, next 29 bits code index of left child, next 29 bits code index of right child.
@@ -45,4 +46,4 @@ def traverse_BDD(BDDs: List[BDD], initial_states: npt.NDArray[np.uint64], int n_
     gpu_cum_n_variables = cuda.to_device(np.array(cum_n_variables, dtype=uint32))
     gpu_BDD_initial_states = cuda.to_device(np.array(initial_states, dtype=uint64))
     
-    
+
