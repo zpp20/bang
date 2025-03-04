@@ -1,4 +1,6 @@
 from typing import List
+import os
+from math import floor
 import numpy as np
 import math
 from itertools import chain
@@ -215,138 +217,64 @@ class PBN:
 
     def getNpNode(self):
         return self.npNode
+    
+    def reduce_F(self, states : List[List[int]]):
+        """
+        Reduces truth tables of PBN by removing states that does not change
 
-    def simple_steps(self, n_steps):
-        n = self.getN()
-        nf = self.getNf()
-        nv = self.getNv()
-        F = self.get_integer_f()
-        varFInt = list(chain.from_iterable(self.getVarFInt()))
-        cij = list(chain.from_iterable(self.getCij()))
+        Parameters
+        ----------
 
-        cumCij = np.cumsum(cij, dtype=np.float32)
-        cumNv = np.cumsum([0] + nv, dtype=np.int32)
-        cumNf = np.cumsum([0] + nf, dtype=np.int32)
+        states : List[int]
+            List of investigated states. States are lists of int with length n
+            where i-th index represents i-th variable. 0 represents False and 1 represents True.
 
-        perturbation = self.getPerturbation()
-        npNode = self.getNpNode()
+        Returns
+        -------
+        active_variables : List[List[int]]
+            List of indeces of variables that change between states
 
-        stateSize = self.stateSize()
-
-        extraFCount = self.extraFCount()
-        extraFIndexCount = self.extraFIndexCount()
-        extraFIndex = self.extraFIndex()
-        cumExtraF = self.cumExtraF()
-        extraF = self.extraF()
-
-        # TODO, tutaj powinno być wyciąganie informacji z GPU
-        block = self.n_parallel // 32
-        blockSize = 32
-
-        N = self.n_parallel
-
-        initial_state = np.zeros(N * stateSize, dtype=np.int32) if self.latest_state is None else self.latest_state
-        initial_state = initial_state.reshape(N * stateSize)
-
-        gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
-        gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
-        gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.int32))
-        gpu_initialState = cuda.to_device(np.zeros(N * stateSize, dtype=np.int32))
-        gpu_stateHistory = cuda.to_device(np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32))
-        gpu_threadNum = cuda.to_device(np.array([N], dtype=np.int32))
-        gpu_mean = cuda.to_device(np.zeros((N, 2), dtype=np.float32))
-        gpu_steps = cuda.to_device(np.array([n_steps], dtype=np.int32))
-        gpu_stateSize = cuda.to_device(np.array([stateSize], dtype=np.int32))
-        gpu_extraF = cuda.to_device(np.array(extraF, dtype=np.int32))
-        gpu_extraFIndex = cuda.to_device(np.array(extraFIndex, dtype=np.int32))
-        gpu_cumExtraF = cuda.to_device(np.array(cumExtraF, dtype=np.int32))
-        gpu_extraFCount = cuda.to_device(np.array([extraFCount], dtype=np.int32))
-        gpu_extraFIndexCount = cuda.to_device(np.array([extraFIndexCount], dtype=np.int32))
-        gpu_npNode = cuda.to_device(np.array(npNode, dtype=np.int32))
-        gpu_npLength = cuda.to_device(np.array([len(npNode)], dtype=np.int32))
-        gpu_cumCij = cuda.to_device(np.array(cumCij, dtype=np.float32))
-        gpu_cumNf = cuda.to_device(np.array(cumNf, dtype=np.int32))
-        gpu_perturbation_rate = cuda.to_device(np.array([perturbation], dtype=np.float32))
-
-        pow_num = np.zeros((2, 32), dtype=np.int32)
-        pow_num[1][0] = 1
-        pow_num[0][0] = 0
-
-        for i in range(1, 32):
-            pow_num[0][i] = 0
-            pow_num[1][i] = pow_num[1][i - 1] * 2
-
-        gpu_powNum = cuda.to_device(pow_num)
-
-        states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
-
-        kernel_converge[block, blockSize](
-            gpu_stateHistory,
-            gpu_threadNum,
-            gpu_powNum,
-            gpu_cumNf,
-            gpu_cumCij,
-            states,
-            n,
-            gpu_perturbation_rate,
-            gpu_cumNv,
-            gpu_F,
-            gpu_varF,
-            gpu_initialState,
-            gpu_mean,
-            gpu_steps,
-            gpu_stateSize,
-            gpu_extraF,
-            gpu_extraFIndex,
-            gpu_cumExtraF,
-            gpu_extraFCount,
-            gpu_extraFIndexCount,
-            gpu_npLength,
-            gpu_npNode,
-        )
-
-        last_state = gpu_initialState.copy_to_host()
-        run_history = gpu_stateHistory.copy_to_host()
-
-        self.latest_state = last_state.reshape((N, stateSize))
-
-        run_history = run_history.reshape((N, n_steps + 1, stateSize))
-
-        if self.history is not None:
-            self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
-        else:
-            self.history = run_history
-
-        # print(last_state)
-        # print(last_state.shape)
-        # print(history.reshape((n_steps + 1, -1)))
+        F_reduced : List[List[Bool]]
+            Truth tables with removed constant variables
+        """
+        initial_state = states[0]
 
 
-def load_sbml(path: str) -> tuple:
-    return parseSBMLDocument(path)
+        constant_vars = {i for i in range(0, self.n)}
+        
+        for state in states[1:]: 
+            for var in range(0, self.n):
+                if initial_state[var] != state[var]:
+                    constant_vars.remove(var)
+        
+        # print("constant - ", constant_vars)
+        new_F = list()
+        new_varF = list()
+        for F_func, F_vars in zip(self.F, self.varFInt):
+            #assumes F contains truthtables for sorted vars
+            # print("F_vars ", F_vars)
+            new_varF.append(list())
+            new_F.append(list())
+            curr_num_vars = len(F_vars)
+            curr_F = F_func
+            curr_vars = F_vars
+            current_removed = 0
+            for i, var in enumerate(F_vars):
+                if var in constant_vars:
+                    curr_i = i - current_removed
+                    var_state = initial_state[var]
+                    indeces = [j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state for j in range(2**(curr_num_vars - 1))]
+                    # print("indeces - ", indeces)
+                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_num_vars -= 1
+                    current_removed += 1
+                else:
+                    new_varF[-1].append(var)
+
+            new_F[-1].append(curr_F)
+
+        return new_varF, new_F
 
 
-def load_from_file(path, format="sbml"):
-    """
-    Loads a PBN from files of format .pbn or .sbml.
 
-    Parameters
-    ----------
-    path : str
-        Path to the file of format .pbn.
-    format : str, optional
-        Choose the format. Can be either 'sbml' for files with .sbml format
-        or 'assa' for files with .pbn format. Defaults to 'sbml'.
 
-    Returns
-    -------
-    PBN
-        PBN object representing the network from the file.
-    """
-    match format:
-        case "sbml":
-            return PBN(*load_sbml(path))
-        case "assa":
-            return PBN(*load_assa(path))
-        case _:
-            raise ValueError("Invalid format")
