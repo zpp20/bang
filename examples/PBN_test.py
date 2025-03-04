@@ -11,4 +11,4 @@ npNode = [2]
 
 pbn = bang.PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
 
-bang.german_gpu_run(pbn, 1000)
+pbn.simple_steps(1000)

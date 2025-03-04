@@ -228,7 +228,8 @@ class PBN:
     def getNpNode(self):
         return self.npNode
 
-    def _perturb_state_by_actions(self, actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
+    @staticmethod
+    def _perturb_state_by_actions(actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
         if state is None:
             raise ValueError("State must be set before explicit perturbation")
 
@@ -238,7 +239,7 @@ class PBN:
             state_index = index // 32
             bit_index = index % 32
 
-            if state_index >= self.stateSize():
+            if state_index >= state.size:
                 raise IndexError("State index out of bounds")
 
 
