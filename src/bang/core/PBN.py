@@ -2,6 +2,7 @@ from typing import List
 import os
 from math import floor
 import numpy as np
+import numpy.typing as npt
 import math
 from itertools import chain
 from bang.core.cuda.simulation import kernel_converge
@@ -117,11 +118,22 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]]):
+    def set_states(self, states: list[list[bool]], reset_history=True):
+        """
+        Sets the initial states of the PBN.
+
+        Parameters
+        ----------
+        states : list[list[bool]]
+            List of states to be set.
+        reset_history : bool, optional
+            If True, the history of the PBN will be reset. Defaults to True.
+        """
         converted_states = [self._bools_to_state_array(state) for state in states]
         self.latest_state = np.array(converted_states)
 
-        self.history = None
+        if reset_history:
+            self.history = None
 
     def extraFCount(self):
         """
@@ -228,7 +240,6 @@ class PBN:
         states : List[int]
             List of investigated states. States are lists of int with length n
             where i-th index represents i-th variable. 0 represents False and 1 represents True.
-
         Returns
         -------
         active_variables : List[List[int]]
@@ -238,7 +249,6 @@ class PBN:
             Truth tables with removed constant variables
         """
         initial_state = states[0]
-
 
         constant_vars = {i for i in range(0, self.n)}
         
@@ -274,6 +284,133 @@ class PBN:
             new_F[-1].append(curr_F)
 
         return new_varF, new_F
+
+    @staticmethod
+    def _perturb_state_by_actions(actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
+        if state is None:
+            raise ValueError("State must be set before explicit perturbation")
+
+        copystate = state.copy()
+
+        for index in actions:
+            state_index = index // 32
+            bit_index = index % 32
+
+            if state_index >= state.size:
+                raise IndexError("State index out of bounds")
+
+
+            copystate[:, state_index] ^= 1 << bit_index
+        
+        return copystate
+
+    def simple_steps(self, n_steps, actions: npt.NDArray[np.uint] | None = None):
+        if self.latest_state is None or self.history is None:
+            raise ValueError("Initial state must be set before simulation")
+        
+        if actions is not None:
+            self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
+            self.history = np.concatenate([self.history, self.latest_state], axis=1)
+
+        n = self.getN()
+        nf = self.getNf()
+        nv = self.getNv()
+        F = self.get_integer_f()
+        varFInt = list(chain.from_iterable(self.getVarFInt()))
+        cij = list(chain.from_iterable(self.getCij()))
+
+        cumCij = np.cumsum(cij, dtype=np.float32)
+        cumNv = np.cumsum([0] + nv, dtype=np.int32)
+        cumNf = np.cumsum([0] + nf, dtype=np.int32)
+
+        perturbation = self.getPerturbation()
+        npNode = self.getNpNode()
+
+        stateSize = self.stateSize()
+
+        extraFCount = self.extraFCount()
+        extraFIndexCount = self.extraFIndexCount()
+        extraFIndex = self.extraFIndex()
+        cumExtraF = self.cumExtraF()
+        extraF = self.extraF()
+
+        # TODO, tutaj powinno być wyciąganie informacji z GPU
+        block = self.n_parallel // 32
+        blockSize = 32
+
+        N = self.n_parallel
+
+        initial_state = np.zeros(N * stateSize, dtype=np.int32) if self.latest_state is None else self.latest_state
+        initial_state = initial_state.reshape(N * stateSize)
+
+        gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
+        gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
+        gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.int32))
+        gpu_initialState = cuda.to_device(np.zeros(N * stateSize, dtype=np.int32))
+        gpu_stateHistory = cuda.to_device(np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32))
+        gpu_threadNum = cuda.to_device(np.array([N], dtype=np.int32))
+        gpu_mean = cuda.to_device(np.zeros((N, 2), dtype=np.float32))
+        gpu_steps = cuda.to_device(np.array([n_steps], dtype=np.int32))
+        gpu_stateSize = cuda.to_device(np.array([stateSize], dtype=np.int32))
+        gpu_extraF = cuda.to_device(np.array(extraF, dtype=np.int32))
+        gpu_extraFIndex = cuda.to_device(np.array(extraFIndex, dtype=np.int32))
+        gpu_cumExtraF = cuda.to_device(np.array(cumExtraF, dtype=np.int32))
+        gpu_extraFCount = cuda.to_device(np.array([extraFCount], dtype=np.int32))
+        gpu_extraFIndexCount = cuda.to_device(np.array([extraFIndexCount], dtype=np.int32))
+        gpu_npNode = cuda.to_device(np.array(npNode, dtype=np.int32))
+        gpu_npLength = cuda.to_device(np.array([len(npNode)], dtype=np.int32))
+        gpu_cumCij = cuda.to_device(np.array(cumCij, dtype=np.float32))
+        gpu_cumNf = cuda.to_device(np.array(cumNf, dtype=np.int32))
+        gpu_perturbation_rate = cuda.to_device(np.array([perturbation], dtype=np.float32))
+
+        pow_num = np.zeros((2, 32), dtype=np.int32)
+        pow_num[1][0] = 1
+        pow_num[0][0] = 0
+
+        for i in range(1, 32):
+            pow_num[0][i] = 0
+            pow_num[1][i] = pow_num[1][i - 1] * 2
+
+        gpu_powNum = cuda.to_device(pow_num)
+
+        states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
+
+        kernel_converge[block, blockSize](
+            gpu_stateHistory,
+            gpu_threadNum,
+            gpu_powNum,
+            gpu_cumNf,
+            gpu_cumCij,
+            states,
+            n,
+            gpu_perturbation_rate,
+            gpu_cumNv,
+            gpu_F,
+            gpu_varF,
+            gpu_initialState,
+            gpu_mean,
+            gpu_steps,
+            gpu_stateSize,
+            gpu_extraF,
+            gpu_extraFIndex,
+            gpu_cumExtraF,
+            gpu_extraFCount,
+            gpu_extraFIndexCount,
+            gpu_npLength,
+            gpu_npNode,
+        )
+
+        last_state = gpu_initialState.copy_to_host()
+        run_history = gpu_stateHistory.copy_to_host()
+
+        self.latest_state = last_state.reshape((N, stateSize))
+
+        run_history = run_history.reshape((N, n_steps + 1, stateSize))
+
+        if self.history is not None:
+            self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
+        else:
+            self.history = run_history
 
 
 def load_sbml(path: str) -> tuple:
