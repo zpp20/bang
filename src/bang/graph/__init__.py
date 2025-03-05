@@ -1,3 +1,2 @@
-from bang.core.PBN import PBN, load_from_file
-
-__all__ = ["PBN", "load_from_file"]
+from bang.graph.graph import  get_blocks
+__all__ = ["get_blocks"]

@@ -251,14 +251,16 @@ pbn2 = PBN(6, [1, 1, 1, 1, 1, 1], [3, 2, 1, 2, 2, 2], [f4, f2, f3, f1, f5, f6], 
 
 graph2 = Graph_PBN(pbn2)
 graph2.find_scc_and_blocks()
-print(graph2.sccs)
-print(graph2.blocks)
+# print(graph2.sccs)
+# print(graph2.blocks)
 
 
 
-
+# Returns topologically sorted blocks of the PBN
 def get_blocks(pbn):
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
     #print(graph.blocks)
     return graph.blocks
+
+
