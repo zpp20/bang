@@ -51,3 +51,5 @@ docs/build
 site/
 
 .devcontainer
+
+SAT_attractors.py
