@@ -38,7 +38,7 @@ jobs:
           - python: "3.12"
             task:
               name: Type check
-              run: mypy .
+              run: pyright src/
 
           - python: "3.12"
             task:
@@ -56,19 +56,10 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: |
           python -m pip install --upgrade pip setuptools wheel virtualenv auditwheel pipx
-          python -m pip install -e .[dev]
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
           python -m venv .venv
-
-      - name: Restore mypy cache
-        if: matrix.task.name == 'Type check'
-        uses: actions/cache@v3
-        with:
-          path: .mypy_cache
-          key: mypy-${{ env.CACHE_PREFIX }}-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('*requirements.txt') }}-${{ github.ref }}-${{ github.sha }}
-          restore-keys: |
-            mypy-${{ env.CACHE_PREFIX }}-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('*requirements.txt') }}-${{ github.ref }}
-            mypy-${{ env.CACHE_PREFIX }}-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('*requirements.txt') }}
+          . .venv/bin/activate
+          python -m pip install -e .[dev]
 
       - name: ${{ matrix.task.name }}
         run: |
