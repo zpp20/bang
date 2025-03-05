@@ -283,9 +283,9 @@ class PBN:
                 if var in constant_vars:
                     curr_i = i - current_removed
                     var_state = initial_state[var]
-                    indeces = [j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state for j in range(2**(curr_num_vars - 1))]
-                    # print("indeces - ", indeces)
-                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state] for j in range(2**(curr_num_vars - 1))]
+                    # indeces = [j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state for j in range(2**(curr_num_vars - 1))]
+                    # print("indeces - ", indeces, " var_state ", var_state, " curr_i ", curr_i)
+                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state] for j in range(2**(curr_num_vars - 1))]
                     curr_num_vars -= 1
                     current_removed += 1
                 else:
