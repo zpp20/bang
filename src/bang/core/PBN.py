@@ -120,7 +120,7 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]], reset_history=True):
+    def set_states(self, states: list[list[bool]], reset_history=False):
         """
         Sets the initial states of the PBN.
 
@@ -129,7 +129,7 @@ class PBN:
         states : list[list[bool]]
             List of states to be set.
         reset_history : bool, optional
-            If True, the history of the PBN will be reset. Defaults to True.
+            If True, the history of the PBN will be reset. Defaults to False.
         """
         converted_states = [
             self._bools_to_state_array(state, self.n)
@@ -138,8 +138,8 @@ class PBN:
 
         self.latest_state = np.array(converted_states)
 
-        if reset_history:
-            self.history = np.array([converted_states])
+        if reset_history or self.history is None:
+            self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
 
     def extraFCount(self):
         """
