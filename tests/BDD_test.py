@@ -22,5 +22,8 @@ bdd2 = BDD.build_BDD(simple_BDD_2, [0,1])
 
 initial_states = np.array([0b00, 0b01, 0b10], dtype=np.uint64)
 
-traverse_BDD([bdd1, bdd2], initial_states, 2)
+for state in bdd2.states:
+    print(f"{state:b}")
+
+# traverse_BDD([bdd1, bdd2], initial_states, 2)
 
