@@ -139,7 +139,7 @@ class PBN:
         self.latest_state = np.array(converted_states)
 
         if reset_history:
-            self.history = None
+            self.history = np.array([converted_states])
 
     def extraFCount(self):
         """
