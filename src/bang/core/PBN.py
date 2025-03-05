@@ -1,4 +1,6 @@
 from typing import List
+import os
+from math import floor
 import numpy as np
 import numpy.typing as npt
 import math
@@ -227,6 +229,61 @@ class PBN:
 
     def getNpNode(self):
         return self.npNode
+    
+    def reduce_F(self, states : List[List[int]]):
+        """
+        Reduces truth tables of PBN by removing states that does not change
+
+        Parameters
+        ----------
+
+        states : List[int]
+            List of investigated states. States are lists of int with length n
+            where i-th index represents i-th variable. 0 represents False and 1 represents True.
+        Returns
+        -------
+        active_variables : List[List[int]]
+            List of indeces of variables that change between states
+
+        F_reduced : List[List[Bool]]
+            Truth tables with removed constant variables
+        """
+        initial_state = states[0]
+
+        constant_vars = {i for i in range(0, self.n)}
+        
+        for state in states[1:]: 
+            for var in range(0, self.n):
+                if initial_state[var] != state[var]:
+                    constant_vars.remove(var)
+        
+        # print("constant - ", constant_vars)
+        new_F = list()
+        new_varF = list()
+        for F_func, F_vars in zip(self.F, self.varFInt):
+            #assumes F contains truthtables for sorted vars
+            # print("F_vars ", F_vars)
+            new_varF.append(list())
+            new_F.append(list())
+            curr_num_vars = len(F_vars)
+            curr_F = F_func
+            curr_vars = F_vars
+            current_removed = 0
+            for i, var in enumerate(F_vars):
+                if var in constant_vars:
+                    curr_i = i - current_removed
+                    var_state = initial_state[var]
+                    indeces = [j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state for j in range(2**(curr_num_vars - 1))]
+                    # print("indeces - ", indeces)
+                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + curr_i * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_num_vars -= 1
+                    current_removed += 1
+                else:
+                    new_varF[-1].append(var)
+
+            new_F[-1].append(curr_F)
+
+        return new_varF, new_F
 
     @staticmethod
     def _perturb_state_by_actions(actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
@@ -355,8 +412,9 @@ class PBN:
         else:
             self.history = run_history
 
+
 def load_sbml(path: str) -> tuple:
-    return parseSBMLDocument(path)
+        return parseSBMLDocument(path)
 
 
 def load_from_file(path, format="sbml"):
@@ -383,3 +441,7 @@ def load_from_file(path, format="sbml"):
             return PBN(*load_assa(path))
         case _:
             raise ValueError("Invalid format")
+
+
+
+
