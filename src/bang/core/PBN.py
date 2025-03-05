@@ -102,17 +102,19 @@ class PBN:
     def get_trajectories(self) -> np.ndarray | None:
         return self.history
 
-    def _bools_to_state_array(self, bools: list[bool]) -> np.ndarray:
+    @staticmethod
+    def _bools_to_state_array(bools: list[bool], node_count: int) -> np.ndarray:
+        state_size = PBN._calc_state_size(node_count)
         """
         Converts list of bools to integer
         """
-        if len(bools) != self.n:
+        if len(bools) != node_count:
             raise ValueError("Number of bools must be equal to number of nodes")
 
-        integer_state = np.zeros((self.stateSize()), dtype=np.int32)
+        integer_state = np.zeros((state_size), dtype=np.int32)
 
-        for i in range(self.stateSize())[::-1]:
-            for bit in range(32):
+        for i in range(state_size)[::-1]:
+            for bit in range((len(bools) - 32 * i) % 32):
                 if bools[i * 32 + bit]:
                     integer_state[i] |= 1 << bit
 
@@ -129,7 +131,11 @@ class PBN:
         reset_history : bool, optional
             If True, the history of the PBN will be reset. Defaults to True.
         """
-        converted_states = [self._bools_to_state_array(state) for state in states]
+        converted_states = [
+            self._bools_to_state_array(state, self.n)
+            for state in states
+        ]
+
         self.latest_state = np.array(converted_states)
 
         if reset_history:
@@ -206,11 +212,15 @@ class PBN:
 
         return np.cumsum([0] + self.nv)
 
-    def stateSize(self):
+    @staticmethod
+    def _calc_state_size(node_count: int) -> int:
+        return math.ceil(node_count / 32)
+
+    def stateSize(self) -> int:
         """
         Returns number of 32 bit integers needed to store all variables
         """
-        return self.n // 32 + math.ceil(self.n / 32)
+        return self._calc_state_size(self.n)
 
     def getF(self) -> list[list[bool]]:
         return self.F
@@ -299,9 +309,8 @@ class PBN:
             if state_index >= state.size:
                 raise IndexError("State index out of bounds")
 
-
             copystate[:, state_index] ^= 1 << bit_index
-        
+            
         return copystate
 
     def simple_steps(self, n_steps, actions: npt.NDArray[np.uint] | None = None):
@@ -375,7 +384,7 @@ class PBN:
 
         states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
 
-        kernel_converge[block, blockSize](
+        kernel_converge[block, blockSize]( # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
             gpu_powNum,

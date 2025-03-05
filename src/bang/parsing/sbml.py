@@ -1,4 +1,4 @@
-from libsbml import *
+from libsbml import SBMLReader, SBMLDocument, ASTNode
 from .bool_func import parseFunction
 
 
@@ -14,7 +14,7 @@ def enumerateNodes(qual_model):
 # TODO: add errors
 def parseSBMLDocument(path: str):
     reader = SBMLReader()
-    doc: SBMLDocument = reader.readSBML(path)
+    doc: SBMLDocument = reader.readSBML(path) # type: ignore
     F: list[list[bool]] = []
     nf: list[int]
     nv: list[int] = []

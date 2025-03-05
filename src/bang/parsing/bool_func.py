@@ -1,3 +1,5 @@
+# type: ignore
+
 from libsbml import *
 from collections.abc import Callable
 
