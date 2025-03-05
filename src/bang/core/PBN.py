@@ -384,7 +384,7 @@ class PBN:
 
         states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
 
-        kernel_converge[block, blockSize](
+        kernel_converge[block, blockSize]( # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
             gpu_powNum,
