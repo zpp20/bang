@@ -10,8 +10,11 @@ def cross_attractors(attractor1 :list[np.uint256], nodes1: list[graph.PBN_Node],
 def find_lower_sccs(network :PBN, initial_states :list[np.uint256]) -> list[list[np.uint256]]:
     return []
 
-def states(Block) -> list[np.uint256]:
-    return []
+def states(Block :list[graph.PBN_Node]) -> list[np.uint256]:
+    states = [np.uint256(0)]
+    for node in Block:
+        states = states + [state + np.power(2, node.id) for state in states]
+    return states
 
 def cross(Block, attractor) -> list[np.uint256]:
     return []
