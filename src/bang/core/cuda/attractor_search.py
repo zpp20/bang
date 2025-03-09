@@ -1,10 +1,11 @@
 from bang.core.PBN import PBN
 import bang.graph.graph as graph
 import numpy as np
+from itertools import product
 
 def cross_attractors(attractor1 :list[np.uint256], nodes1: list[graph.PBN_Node], 
                      attractor2 :list[np.uint256], nodes2: list[graph.PBN_Node]) -> tuple[list[np.uint256], list[graph.PBN_Node]]:
-    return [], []
+    return [x + y for x,y in product(attractor1, attractor2)], nodes1 + nodes2
 
 def find_lower_sccs(network :PBN, initial_states :list[np.uint256]) -> list[list[np.uint256]]:
     return []
@@ -35,7 +36,7 @@ def find_realisation_attractors(network :PBN, Block :list[graph.PBN_Node],
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
                              child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1]) 
-        result += find_lower_sccs(network, cross(attractor, Block))
+        result += find_lower_sccs(network, cross(Block, attractor))
         inc()
         pass
     return []
