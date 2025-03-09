@@ -17,7 +17,7 @@ def states(Block :list[graph.PBN_Node]) -> list[np.uint256]:
     return states
 
 def cross(Block, attractor) -> list[np.uint256]:
-    return []
+    return cross_attractors(states(Block), Block, attractor, [])[0]
 
 def find_realisation_attractors(network :PBN, Block :list[graph.PBN_Node], 
                                 child_attractors :list[tuple[list[list[np.uint256]], list[graph.PBN_Node]]] = []) -> list[list[np.uint256]]:
