@@ -7,8 +7,26 @@ def cross_attractors(attractor1 :list[np.uint256], nodes1: list[graph.PBN_Node],
                      attractor2 :list[np.uint256], nodes2: list[graph.PBN_Node]) -> tuple[list[np.uint256], list[graph.PBN_Node]]:
     return [x + y for x,y in product(attractor1, attractor2)], nodes1 + nodes2
 
-def find_lower_sccs(network :PBN, initial_states :list[np.uint256]) -> list[list[np.uint256]]:
-    return []
+def to_bool(integer :np.uint256, n) -> list[bool]:
+    result :list[bool] = []
+    for i in range(n):
+        result.append(bool(integer % 2))
+        integer = integer // 2
+    return result
+        
+
+def find_attractors_realisation(network :PBN, initial_states :list[np.uint256]) -> list[list[np.uint256]]:
+    states = [to_bool(state, network.getN()) for state in initial_states]
+    network.set_states(states)
+    
+    n_unique_states = len(network.get_last_state())
+    last_n_unique_states = 0
+    
+    while (n_unique_states != last_n_unique_states):
+        network.simple_steps(1)
+        last_n_unique_states = n_unique_states
+        n_unique_states = len(network.get_last_state())
+    return network.get_last_state()
 
 def states(Block :list[graph.PBN_Node]) -> list[np.uint256]:
     states = [np.uint256(0)]
@@ -39,7 +57,7 @@ def find_realisation_attractors(network :PBN, Block :list[graph.PBN_Node],
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
                              child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1]) 
-        result += find_lower_sccs(network, cross(Block, attractor))
+        result += find_attractors_realisation(network, cross(Block, attractor))
         inc()
         pass
     return []
