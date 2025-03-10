@@ -2,7 +2,19 @@
 
 from collections.abc import Callable
 
-from libsbml import *
+from libsbml import (
+    AST_CONSTANT_FALSE,
+    AST_CONSTANT_TRUE,
+    AST_INTEGER,
+    AST_LOGICAL_AND,
+    AST_LOGICAL_NOT,
+    AST_LOGICAL_OR,
+    AST_LOGICAL_XOR,
+    AST_NAME,
+    AST_RELATIONAL_EQ,
+    AST_RELATIONAL_NEQ,
+    ASTNode,
+)
 
 
 # Returns a function evaluating expression in mathExpression and a set of relevant nodes
@@ -43,7 +55,7 @@ def incrementNodes(bits: dict[int, bool], nodes: list[int]) -> bool:
     carry = True
 
     for i in range(len(nodes)):
-        if bits[nodes[i]] == True:
+        if bits[nodes[i]]:
             bits[nodes[i]] = False
         else:
             bits[nodes[i]] = True

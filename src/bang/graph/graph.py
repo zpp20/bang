@@ -1,7 +1,4 @@
 # import bang.parsing.assa
-import itertools
-
-from bang.core.PBN import PBN
 
 
 class Graph_PBN:

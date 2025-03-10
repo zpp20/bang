@@ -34,7 +34,7 @@ def parseSBMLDocument(path: str):
 
     for transition in qual_model.getListOfTransitions():  # Scan all the transitions.
         # Get the output variable
-        output = transition.getListOfOutputs()
+        # output = transition.getListOfOutputs()
         logic_terms = transition.getListOfFunctionTerms()
         if len(logic_terms) > 0:
             math: ASTNode = logic_terms[0].getMath()

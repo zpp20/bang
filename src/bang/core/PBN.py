@@ -4,9 +4,7 @@ Module containing the PBN class and helpers.
 
 import datetime
 import math
-import os
 from itertools import chain
-from math import floor
 from typing import List
 
 import numba
@@ -394,7 +392,9 @@ class PBN:
             new_F.append(list())
             curr_num_vars = len(F_vars)
             curr_F = F_func
-            curr_vars = F_vars
+
+            # curr_vars = F_vars
+
             current_removed = 0
             for i, var in enumerate(F_vars):
                 if var in constant_vars:

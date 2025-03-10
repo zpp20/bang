@@ -1,5 +1,3 @@
-import numpy as np
-
 from bang.core import PBN
 from bang.graph.graph import Graph_PBN
 
