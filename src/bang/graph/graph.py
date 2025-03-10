@@ -38,7 +38,7 @@ class Graph_PBN:
         
         self.sccs = []
         self.blocks = []
-        
+        self.block_children = []
     
 # dfs numbering functions
     def dfs_aux(self, node):
@@ -120,10 +120,12 @@ class Graph_PBN:
         for scc in self.sccs:
             block = scc.copy()
             # influencers are nodes that are not in the block and influence at least one node in the block
-            influencers = [node.id for node in self.nodes.values() if node.id not in block and any([i in block for i in node.out_nodes])]
-            block += influencers
+            children = [i for i in range(len(self.blocks)) if any(
+                [node for node in self.nodes.values() if node.id not in block and any([j in self.blocks[i][0] for j in node.out_nodes])]
+                )]
+            # block += influencers
             block = sorted(list(set(block)))
-            self.blocks.append(block)
+            self.blocks.append((block, children))
 
 
 

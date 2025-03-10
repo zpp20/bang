@@ -3,9 +3,11 @@ import bang.graph.graph as graph
 import numpy as np
 from itertools import product
 
-def cross_attractors(attractor1 :list[np.uint256], nodes1: list[graph.PBN_Node], 
-                     attractor2 :list[np.uint256], nodes2: list[graph.PBN_Node]) -> tuple[list[np.uint256], list[graph.PBN_Node]]:
-    return [x + y for x,y in product(attractor1, attractor2)], nodes1 + nodes2
+def cross_attractors(attractor1 :list[np.uint256], nodes1: list[int], 
+                     attractor2 :list[np.uint256], nodes2: list[int]) -> tuple[list[np.uint256], list[int]]:
+    result = nodes1 + nodes2
+    result.sort()
+    return [x + y for x,y in product(attractor1, attractor2)], result
 
 def to_bool(integer :np.uint256, n) -> list[bool]:
     result :list[bool] = []
@@ -28,17 +30,17 @@ def find_attractors_realisation(network :PBN, initial_states :list[np.uint256]) 
         n_unique_states = len(network.get_last_state())
     return network.get_last_state()
 
-def states(Block :list[graph.PBN_Node]) -> list[np.uint256]:
+def states(Block :list[int]) -> list[np.uint256]:
     states = [np.uint256(0)]
     for node in Block:
-        states = states + [state + np.power(2, node.id) for state in states]
+        states = states + [state + np.power(2, node) for state in states]
     return states
 
 def cross(Block, attractor) -> list[np.uint256]:
     return cross_attractors(states(Block), Block, attractor, [])[0]
 
-def find_realisation_attractors(network :PBN, Block :list[graph.PBN_Node], 
-                                child_attractors :list[tuple[list[list[np.uint256]], list[graph.PBN_Node]]] = []) -> list[list[np.uint256]]:
+def find_realisation_attractors(network :PBN, Block :list[int], 
+                                child_attractors :list[tuple[list[list[np.uint256]], list[int]]] = []) -> list[list[np.uint256]]:
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
     
@@ -65,7 +67,7 @@ def find_realisation_attractors(network :PBN, Block :list[graph.PBN_Node],
 def divide_and_counquer(network : PBN):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks()
-    blocks :list[tuple[list[graph.PBN_Node], list[int]]] = PBN_graph.blocks #blocks shoudl be without influencers
+    blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks #blocks shoudl be without influencers
     attractors :list[list[list[np.uint256]]] = []
     for block, chilren in blocks:
         if len(chilren) == 0:
