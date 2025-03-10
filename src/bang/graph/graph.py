@@ -103,7 +103,7 @@ class Graph_PBN:
                 ins[i] = ins[i].union(node_ins)
         #print(ins)
         
-        #print(self.sccs)
+        # print(self.sccs)
         while sccs_to_sort:
             for i, scc in enumerate(sccs_to_sort):
                 if ins[i] - set(scc) - inf_pool == set():
@@ -123,7 +123,6 @@ class Graph_PBN:
             children = [i for i in range(len(self.blocks)) if any(
                 [node for node in self.nodes.values() if node.id not in block and any([j in self.blocks[i][0] for j in node.out_nodes])]
                 )]
-            # block += influencers
             block = sorted(list(set(block)))
             self.blocks.append((block, children))
 
