@@ -35,6 +35,9 @@ def find_block_attractors(network :PBN, Block :list[int],
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
     
+    if child_attractors == []:
+        return find_attractors_realisation(network, states(Block))
+    
     indices = [0 for length in lengths]
     def inc():
         i = 0
