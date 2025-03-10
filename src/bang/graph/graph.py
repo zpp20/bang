@@ -95,15 +95,16 @@ class Graph_PBN:
         inf_pool = set()
 
 
+
         for i, scc in enumerate(sccs_to_sort):
             for node_id in scc:
                 node_ins = set()
                 for in_node in self.nodes[node_id].in_nodes:
                     node_ins.add(in_node)
                 ins[i] = ins[i].union(node_ins)
-        #print(ins)
+
+
         
-        # print(self.sccs)
         while sccs_to_sort:
             for i, scc in enumerate(sccs_to_sort):
                 if ins[i] - set(scc) - inf_pool == set():
@@ -113,8 +114,6 @@ class Graph_PBN:
                     ins.pop(i)
                     break
                
-        #print(sorted_sccs)
-
 
 
         for scc in self.sccs:
