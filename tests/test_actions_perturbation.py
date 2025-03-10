@@ -1,4 +1,5 @@
 import numpy as np
+
 from bang.core.PBN import PBN
 
 

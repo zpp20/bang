@@ -1,7 +1,8 @@
 # type: ignore
 
-from libsbml import *
 from collections.abc import Callable
+
+from libsbml import *
 
 
 # Returns a function evaluating expression in mathExpression and a set of relevant nodes

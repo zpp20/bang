@@ -2,22 +2,22 @@
 Module containing the PBN class and helpers.
 """
 
-from typing import List
+import datetime
+import math
 import os
+from itertools import chain
 from math import floor
+from typing import List
+
+import numba
 import numpy as np
 import numpy.typing as npt
-import math
-from itertools import chain
-from bang.core.cuda.simulation import kernel_converge
-import numba
 from numba import cuda
+from numba.cuda.random import create_xoroshiro128p_states
 
+from bang.core.cuda.simulation import kernel_converge
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
-
-from numba.cuda.random import create_xoroshiro128p_states
-import datetime
 
 
 class PBN:
@@ -196,10 +196,7 @@ class PBN:
         :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
         :type reset_history: bool, optional
         """
-        converted_states = [
-            self._bools_to_state_array(state, self.n)
-            for state in states
-        ]
+        converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.latest_state = np.array(converted_states)
 
@@ -403,7 +400,10 @@ class PBN:
                 if var in constant_vars:
                     curr_i = i - current_removed
                     var_state = initial_state[var]
-                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_F = [
+                        curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state]
+                        for j in range(2 ** (curr_num_vars - 1))
+                    ]
                     curr_num_vars -= 1
                     current_removed += 1
                 else:
@@ -414,7 +414,9 @@ class PBN:
         return new_varF, new_F
 
     @staticmethod
-    def _perturb_state_by_actions(actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
+    def _perturb_state_by_actions(
+        actions: npt.NDArray[np.uint32], state: np.ndarray | None
+    ) -> np.ndarray:
         """
         Perturbs the state by performing the given actions.
 
@@ -486,7 +488,11 @@ class PBN:
 
         N = self.n_parallel
 
-        initial_state = np.zeros(N * stateSize, dtype=np.int32) if self.latest_state is None else self.latest_state
+        initial_state = (
+            np.zeros(N * stateSize, dtype=np.int32)
+            if self.latest_state is None
+            else self.latest_state
+        )
         initial_state = initial_state.reshape(N * stateSize)
 
         gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
@@ -519,9 +525,11 @@ class PBN:
 
         gpu_powNum = cuda.to_device(pow_num)
 
-        states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
+        states = create_xoroshiro128p_states(
+            N, seed=numba.uint64(datetime.datetime.now().timestamp())
+        )
 
-        kernel_converge[block, blockSize]( # type: ignore
+        kernel_converge[block, blockSize](  # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
             gpu_powNum,
@@ -560,7 +568,7 @@ class PBN:
 
 
 def load_sbml(path: str) -> tuple:
-        return parseSBMLDocument(path)
+    return parseSBMLDocument(path)
 
 
 def load_from_file(path: str, format: str = "sbml") -> PBN:
