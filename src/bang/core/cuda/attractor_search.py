@@ -38,16 +38,13 @@ def states(Block :list[int]) -> list[list[bool]]:
         states = [state + [True] for state in states] + [state + [False] for state in states]
     return states
 
-def cross(Block, attractor) -> list[list[bool]]:
-    return cross_attractors(states(Block), Block, attractor, [])[0]
-
 def find_block_attractors(network :PBN, Block :list[int], 
                                 child_attractors :list[tuple[list[list[list[bool]]], list[int]]] = []) -> list[list[list[bool]]]:
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
     
     if child_attractors == []:
-        return find_attractors_realisation(network, states(Block))
+        return find_attractors_realisation(network, states(Block), Block)
     
     indices = [0 for length in lengths]
     def inc():
@@ -64,7 +61,7 @@ def find_block_attractors(network :PBN, Block :list[int],
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
                              child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1]) 
-        result += find_attractors_realisation(network, cross(Block, attractor))
+        result += find_attractors_realisation(network, *cross_attractors(states(Block), Block, attractor, nodes))
         inc()
         pass
     return result
