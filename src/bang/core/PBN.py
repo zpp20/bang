@@ -435,9 +435,10 @@ class PBN:
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
-            n_unique_states = len({state_bytes})
+            n_unique_states = len(set(state_bytes))
 
-        return self.get_last_state()
+        state_bytes_set = list(set(state_bytes))
+        return [np.frombuffer(state, dtype=np.int32) for state in state_bytes_set]
             
 
 
