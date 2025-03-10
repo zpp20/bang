@@ -9,14 +9,6 @@ def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int],
     result.sort()
     return [x + y for x,y in product(attractor1, attractor2)], result
 
-def to_bool(integer :np.uint256, n) -> list[bool]:
-    result :list[bool] = []
-    for i in range(n):
-        result.append(bool(integer % 2))
-        integer = integer // 2
-    return result
-        
-
 def find_attractors_realisation(network :PBN, initial_states :list[list[bool]]) -> list[list[np.uint256]]:
     network.set_states(initial_states)
     
