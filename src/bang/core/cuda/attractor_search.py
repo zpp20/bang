@@ -3,8 +3,8 @@ import bang.graph.graph as graph
 import numpy as np
 from itertools import product
 
-def cross_attractors(attractor1 :list[np.uint256], nodes1: list[int], 
-                     attractor2 :list[np.uint256], nodes2: list[int]) -> tuple[list[np.uint256], list[int]]:
+def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int], 
+                     attractor2 :list[list[bool]], nodes2: list[int]) -> tuple[list[list[bool]], list[int]]:
     result = nodes1 + nodes2
     result.sort()
     return [x + y for x,y in product(attractor1, attractor2)], result
@@ -17,9 +17,8 @@ def to_bool(integer :np.uint256, n) -> list[bool]:
     return result
         
 
-def find_attractors_realisation(network :PBN, initial_states :list[np.uint256]) -> list[list[np.uint256]]:
-    states = [to_bool(state, network.getN()) for state in initial_states]
-    network.set_states(states)
+def find_attractors_realisation(network :PBN, initial_states :list[list[bool]]) -> list[list[np.uint256]]:
+    network.set_states(initial_states)
     
     n_unique_states = len(network.get_last_state())
     last_n_unique_states = 0
@@ -30,17 +29,17 @@ def find_attractors_realisation(network :PBN, initial_states :list[np.uint256]) 
         n_unique_states = len(network.get_last_state())
     return network.get_last_state()
 
-def states(Block :list[int]) -> list[np.uint256]:
-    states = [np.uint256(0)]
+def states(Block :list[int]) -> list[list[bool]]:
+    states :list[list[bool]] = [[]]
     for node in Block:
-        states = states + [state + np.power(2, node) for state in states]
+        states = [state + [True] for state in states] + [state + [False] for state in states]
     return states
 
-def cross(Block, attractor) -> list[np.uint256]:
+def cross(Block, attractor) -> list[list[bool]]:
     return cross_attractors(states(Block), Block, attractor, [])[0]
 
-def find_realisation_attractors(network :PBN, Block :list[int], 
-                                child_attractors :list[tuple[list[list[np.uint256]], list[int]]] = []) -> list[list[np.uint256]]:
+def find_block_attractors(network :PBN, Block :list[int], 
+                                child_attractors :list[tuple[list[list[list[bool]]], list[int]]] = []) -> list[list[list[bool]]]:
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
     
@@ -62,16 +61,16 @@ def find_realisation_attractors(network :PBN, Block :list[int],
         result += find_attractors_realisation(network, cross(Block, attractor))
         inc()
         pass
-    return []
+    return result
 
 def divide_and_counquer(network : PBN):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks()
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks #blocks shoudl be without influencers
-    attractors :list[list[list[np.uint256]]] = []
+    attractors :list[list[list[list[bool]]]] = []
     for block, chilren in blocks:
         if len(chilren) == 0:
-            attractors.append(find_realisation_attractors(network, block))
+            attractors.append(find_block_attractors(network, block))
         else:
-            attractors.append(find_realisation_attractors(network, block, [(attractors[i], blocks[i][0]) for i in chilren]))
+            attractors.append(find_block_attractors(network, block, [(attractors[i], blocks[i][0]) for i in chilren]))
     return attractors[len(attractors) - 1]
