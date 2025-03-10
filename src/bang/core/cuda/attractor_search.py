@@ -9,8 +9,19 @@ def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int],
     result.sort()
     return [x + y for x,y in product(attractor1, attractor2)], result
 
-def find_attractors_realisation(network :PBN, initial_states :list[list[bool]]) -> list[list[list[bool]]]:
-    network.set_states(initial_states)
+def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], nodes :list[int]) -> list[list[list[bool]]]:
+    def convert(state):
+        node = 0
+        result = []
+        for i in range(network.n):
+            if nodes[node] == i:
+                result.append(state[node])
+                node += 1
+            else:
+                result.append(False)
+        return result
+                
+    network.set_states([convert(state) for state in initial_states])
     
     n_unique_states = len(network.get_last_state())
     last_n_unique_states = 0
