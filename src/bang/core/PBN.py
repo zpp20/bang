@@ -137,7 +137,7 @@ class PBN:
         ]
 
         self.latest_state = np.array(converted_states)
-
+        print(self.latest_state)
         if reset_history or self.history is None:
             self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
 
@@ -325,6 +325,7 @@ class PBN:
         nf = self.getNf()
         nv = self.getNv()
         F = self.get_integer_f()
+        print(F)
         varFInt = list(chain.from_iterable(self.getVarFInt()))
         cij = list(chain.from_iterable(self.getCij()))
 
@@ -345,6 +346,8 @@ class PBN:
 
         # TODO, tutaj powinno być wyciąganie informacji z GPU
         block = self.n_parallel // 32
+        if block == 0:
+            block = 1
         blockSize = 32
 
         N = self.n_parallel
@@ -355,7 +358,7 @@ class PBN:
         gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
         gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
         gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.int32))
-        gpu_initialState = cuda.to_device(np.zeros(N * stateSize, dtype=np.int32))
+        gpu_initialState = cuda.to_device(initial_state)
         gpu_stateHistory = cuda.to_device(np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32))
         gpu_threadNum = cuda.to_device(np.array([N], dtype=np.int32))
         gpu_mean = cuda.to_device(np.zeros((N, 2), dtype=np.float32))
@@ -420,6 +423,23 @@ class PBN:
             self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
         else:
             self.history = run_history
+
+    def detect_attractor(self, initial_states):
+        self.set_states(initial_states)
+        
+        state_bytes = tuple(state.tobytes() for state in self.get_last_state())
+        n_unique_states = len({state_bytes})
+        last_n_unique_states = 0
+
+        while (n_unique_states != last_n_unique_states):
+            self.simple_steps(1)
+            last_n_unique_states = n_unique_states
+            state_bytes = tuple(state.tobytes() for state in self.get_last_state())
+            n_unique_states = len({state_bytes})
+
+        return self.get_last_state()
+            
+
 
 
 def load_sbml(path: str) -> tuple:
