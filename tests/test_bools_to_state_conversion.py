@@ -1,6 +1,7 @@
-from bang.core import PBN
 import numpy as np
 import pytest
+
+from bang.core import PBN
 
 
 def test_should_convert_short_list_of_bools_to_state():

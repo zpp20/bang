@@ -5,7 +5,7 @@ nf = [1, 1]
 nv = [1, 1]
 F = [[True, False], [False, True]]
 varFInt = [[1], [0]]
-cij = [[1.], [1.]]
+cij = [[1.0], [1.0]]
 perturbation = 0.01
 npNode = [2]
 

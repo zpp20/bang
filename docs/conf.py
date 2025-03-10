@@ -6,23 +6,29 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'bang'
-copyright = '2024, Pawel Zajac, Jan Jagodzinski, Bartlomiej Parapura, Mikolaj Czarnecki'
-author = 'Pawel Zajac, Jan Jagodzinski, Bartlomiej Parapura, Mikolaj Czarnecki'
-release = '10.12.2024'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path("..", "src").resolve()))
+
+project = "bang"
+copyright = "2024, Pawel Zajac, Jan Jagodzinski, Bartlomiej Parapura, Mikolaj Czarnecki"
+author = "Pawel Zajac, Jan Jagodzinski, Bartlomiej Parapura, Mikolaj Czarnecki"
+release = "10.12.2024"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = [
+    "sphinx.ext.autodoc",
+]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
-html_static_path = ['_static']
+html_theme = "alabaster"
+html_static_path = ["_static"]
