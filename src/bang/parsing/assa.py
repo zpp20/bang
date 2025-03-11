@@ -1,14 +1,10 @@
 import itertools
 
-FORBIDDEN_CHARS = [' ', '\t', '\n', '\r', '\v', '\f', '&', '*', '!', '^', '/', '|', ':', '(', ')']
+FORBIDDEN_CHARS = [" ", "\t", "\n", "\r", "\v", "\f", "&", "*", "!", "^", "/", "|", ":", "(", ")"]
 # forbidden variable names
-FORBIDDEN_NAMES = ['or', 'not', 'and']
+FORBIDDEN_NAMES = ["or", "not", "and"]
 # for python eval function
-LOGICAL_REPLACEMENTS = {
-    '|': ' or ',
-    '&': ' and ',
-    '!': ' not '
-}
+LOGICAL_REPLACEMENTS = {"|": " or ", "&": " and ", "!": " not "}
 
 
 def delete_comments_and_empty_lines(lines):
@@ -24,7 +20,7 @@ def delete_comments_and_empty_lines(lines):
 # extract variable names in the 'fun' function expression  in ASSA format
 def get_vars_from_assa_expr(fun, names_dict):
     vars = []
-    cur = ''
+    cur = ""
     started = False
 
     for i in range(len(fun)):
@@ -35,7 +31,7 @@ def get_vars_from_assa_expr(fun, names_dict):
                     if cur not in names_dict:
                         raise ValueError("Invalid file format")
                     vars.append(cur)
-                cur = ''
+                cur = ""
                 started = False
             else:
                 continue
@@ -75,7 +71,7 @@ def get_type(line: str):
 
     type = line.split("=")[1]
 
-    if type not in ['synchronous', 'rog', 'rmg', 'rmgrm', 'rmgro', 'rmgrorm', 'aro']:
+    if type not in ["synchronous", "rog", "rmg", "rmgrm", "rmgro", "rmgrorm", "aro"]:
         raise ValueError("Invalid file format")
 
     return type
@@ -178,7 +174,7 @@ def load_assa(path: str) -> tuple:
     names_dict = {}
     index_dict = {}
 
-    with open(path, 'r') as f:
+    with open(path, "r") as f:
         # clean the file
         lines = delete_comments_and_empty_lines(f.readlines())
 

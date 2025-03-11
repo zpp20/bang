@@ -1,4 +1,5 @@
-from libsbml import SBMLReader, SBMLDocument, ASTNode
+from libsbml import ASTNode, SBMLDocument, SBMLReader
+
 from .bool_func import parseFunction
 
 
@@ -14,7 +15,7 @@ def enumerateNodes(qual_model):
 # TODO: add errors
 def parseSBMLDocument(path: str):
     reader = SBMLReader()
-    doc: SBMLDocument = reader.readSBML(path) # type: ignore
+    doc: SBMLDocument = reader.readSBML(path)  # type: ignore
     F: list[list[bool]] = []
     nf: list[int]
     nv: list[int] = []
@@ -33,7 +34,7 @@ def parseSBMLDocument(path: str):
 
     for transition in qual_model.getListOfTransitions():  # Scan all the transitions.
         # Get the output variable
-        output = transition.getListOfOutputs()
+        # output = transition.getListOfOutputs()
         logic_terms = transition.getListOfFunctionTerms()
         if len(logic_terms) > 0:
             math: ASTNode = logic_terms[0].getMath()

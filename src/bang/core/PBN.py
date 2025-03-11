@@ -1,22 +1,49 @@
-from typing import List
-import os
-from math import floor
-import numpy as np
-import numpy.typing as npt
+"""
+Module containing the PBN class and helpers.
+"""
+
+import datetime
 import math
 from itertools import chain
-from bang.core.cuda.simulation import kernel_converge
-import numba
-from numba import cuda
+from typing import List
 
+import numba
+import numpy as np
+import numpy.typing as npt
+from numba import cuda
+from numba.cuda.random import create_xoroshiro128p_states
+
+from bang.core.cuda.simulation import kernel_converge
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
-from numba.cuda.random import create_xoroshiro128p_states
-import datetime
-
 
 class PBN:
+    """Class representing the PBN and the execution of simulations on it.
+
+    :param n: The number of nodes.
+    :type n: int
+    :param nf: The size of each node.
+    :type nf: List[int]
+    :param nv: The size of each node's truth table.
+    :type nv: List[int]
+    :param F: The truth table of each node.
+    :type F: List[List[bool]]
+    :param varFInt: The index of each node's truth table.
+    :type varFInt: List[List[int]]
+    :param cij: The selection probability of each node.
+    :type cij: List[List[float]]
+    :param perturbation: The perturbation rate.
+    :type perturbation: float
+    :param npNode: Index of nodes without perturbation.
+    :type npNode: List[int]
+    :param n_parallel: The number of parallel simulations. Defaults to 512.
+    :type n_parallel: int, optional
+    :param history: The execution history of the PBN, tracking the states of all trajectories.
+    :type history: np.ndarray or None
+    :param latest_state: The last encountered state of the PBN's trajectories.
+    :type latest_state: np.ndarray or None
+    """
 
     def __init__(
         self,
@@ -30,44 +57,64 @@ class PBN:
         npNode: List[int],
         n_parallel: int = 512,
     ):
-        self.n = n  # the number of nodes
-        self.nf = nf  # the size is n
-        self.nv = nv  # the sizef = cum(nf)
-        self.F = F  # each element of F stores a column of the truth table "F"， e.g., F.get(0)=[true false], the length of the element is 2^nv(boolean function index)
+        self.n = n
+        self.nf = nf
+        self.nv = nv
+        self.F = F
         self.varFInt = varFInt
-        self.cij = cij  # the size=n, each element represents the selection probability of a node, and therefore the size of each element equals to the number of functions of each node
-        self.perturbation = perturbation  # perturbation rate
-        self.npNode = npNode  # index of those nodes without perturbation. To make simulation easy, the last element of npNode will always be n, which also indicate the end of the list. If there is only one element, it means there is no disabled node.
-        # TODO, informacje z GPU powinny posłużyć żeby ustawić sensowny default
+        self.cij = cij
+        self.perturbation = perturbation
+        self.npNode = npNode
         self.n_parallel = n_parallel
-
         self.history: np.ndarray | None = None
         self.latest_state: np.ndarray | None = None
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
 
-    def getN(self):
+    def getN(self) -> int:
+        """
+        Returns the number of nodes.
+
+        :returns: The number of nodes.
+        :rtype: int
+        """
         return self.n
 
-    def getNf(self):
+    def getNf(self) -> List[int]:
+        """
+        Returns the size of each node.
+
+        :returns: The size of each node.
+        :rtype: List[int]
+        """
         return self.nf
 
-    def getNv(self):
+    def getNv(self) -> List[int]:
+        """
+        Returns the size of each node's truth table.
+
+        :returns: The size of each node's truth table.
+        :rtype: List[int]
+        """
         return self.nv
 
-    def _get_integer_functions(self, f: list[bool], extra_functions: list[int]) -> int:
+    def _get_integer_functions(self, f: List[bool], extra_functions: List[int]) -> int:
         """
-        based on fromVector function from original ASSA-PBN
-        converts list of bools to 32 bit int with bits representing truth table
-        extra bits are placed into extraF list
-        """
+        Converts list of bools to 32-bit int with bits representing truth table.
 
+        :param f: List of boolean values representing the truth table.
+        :type f: List[bool]
+        :param extra_functions: List to store extra functions if the truth table exceeds 32 bits.
+        :type extra_functions: List[int]
+        :returns: Integer representation of the truth table.
+        :rtype: int
+        """
         retval = 0
         i = 0
         prefix = 0
         tempLen = len(f)
-        if tempLen > 32:  # we have to add values to extraF
+        if tempLen > 32:
             for i in range(32):
                 if f[i + prefix]:
                     retval |= 1 << i
@@ -75,16 +122,14 @@ class PBN:
             prefix += 32
             tempLen -= 32
 
-        else:  # we just return proper into
+        else:
             for i in range(tempLen):
                 if f[i]:
                     retval |= 1 << i
 
             return retval
 
-        while (
-            tempLen > 0
-        ):  # switched condition to tempLen > 0 to get one more iteration after tempLen > 32 is false
+        while tempLen > 0:
             other = 0
             for i in range(32):
                 if f[i + prefix]:
@@ -97,17 +142,37 @@ class PBN:
         return retval
 
     def get_last_state(self) -> np.ndarray | None:
+        """
+        Returns the last encountered state of the PBN's trajectories.
+
+        :returns: The last encountered state of the PBN's trajectories.
+        :rtype: np.ndarray or None
+        """
         return self.latest_state
 
     def get_trajectories(self) -> np.ndarray | None:
+        """
+        Returns the execution history of the PBN, tracking the states of all trajectories.
+
+        :returns: The execution history of the PBN.
+        :rtype: np.ndarray or None
+        """
         return self.history
 
     @staticmethod
-    def _bools_to_state_array(bools: list[bool], node_count: int) -> np.ndarray:
+    def _bools_to_state_array(bools: List[bool], node_count: int) -> np.ndarray:
+        """
+        Converts list of bools to integer array.
+
+        :param bools: List of boolean values representing the state.
+        :type bools: List[bool]
+        :param node_count: Number of nodes.
+        :type node_count: int
+        :raises ValueError: If the number of bools is not equal to the number of nodes.
+        :returns: Integer array representing the state.
+        :rtype: np.ndarray
+        """
         state_size = PBN._calc_state_size(node_count)
-        """
-        Converts list of bools to integer
-        """
         if len(bools) != node_count:
             raise ValueError("Number of bools must be equal to number of nodes")
 
@@ -120,30 +185,28 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]], reset_history=False):
+    def set_states(self, states: List[List[bool]], reset_history: bool = False):
         """
         Sets the initial states of the PBN.
 
-        Parameters
-        ----------
-        states : list[list[bool]]
-            List of states to be set.
-        reset_history : bool, optional
-            If True, the history of the PBN will be reset. Defaults to False.
+        :param states: List of states to be set.
+        :type states: List[List[bool]]
+        :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
+        :type reset_history: bool, optional
         """
-        converted_states = [
-            self._bools_to_state_array(state, self.n)
-            for state in states
-        ]
+        converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.latest_state = np.array(converted_states)
         print(self.latest_state)
         if reset_history or self.history is None:
             self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
 
-    def extraFCount(self):
+    def extraFCount(self) -> int:
         """
-        Returns number of extraFs
+        Returns the number of extra functions.
+
+        :returns: The number of extra functions.
+        :rtype: int
         """
         extraFCount = 0
         for elem in self.nv:
@@ -152,9 +215,12 @@ class PBN:
 
         return extraFCount
 
-    def extraFIndexCount(self):
+    def extraFIndexCount(self) -> int:
         """
-        Returns number of extraFIndex
+        Returns the number of extra function indices.
+
+        :returns: The number of extra function indices.
+        :rtype: int
         """
         extraFIndexCount = 0
 
@@ -164,9 +230,12 @@ class PBN:
 
         return extraFIndexCount
 
-    def extraFIndex(self):
+    def extraFIndex(self) -> List[int]:
         """
-        Returns list of extraFIndex
+        Returns a list of extra function indices.
+
+        :returns: List of extra function indices.
+        :rtype: List[int]
         """
         extraFIndex = []
 
@@ -176,9 +245,12 @@ class PBN:
 
         return extraFIndex
 
-    def cumExtraF(self):
+    def cumExtraF(self) -> List[int]:
         """
-        Returns list of cumExtraF
+        Returns a list of cumulative extra functions.
+
+        :returns: List of cumulative extra functions.
+        :rtype: List[int]
         """
         cumExtraF = [0]
 
@@ -188,9 +260,12 @@ class PBN:
 
         return cumExtraF
 
-    def extraF(self):
+    def extraF(self) -> List[int]:
         """
-        Returns list of extraFs
+        Returns a list of extra functions.
+
+        :returns: List of extra functions.
+        :rtype: List[int]
         """
         extraF = []
 
@@ -201,91 +276,134 @@ class PBN:
 
     def cumulativeNumberFunctions(self) -> np.ndarray:
         """
-        Returns sum of all elements in nf
+        Returns the cumulative sum of all elements in nf.
+
+        :returns: Cumulative sum of all elements in nf.
+        :rtype: np.ndarray
         """
         return np.cumsum([0] + self.nf)
 
     def cumulativeNumberVariables(self) -> np.ndarray:
         """
-        Returns sum of all elements in nv
-        """
+        Returns the cumulative sum of all elements in nv.
 
+        :returns: Cumulative sum of all elements in nv.
+        :rtype: np.ndarray
+        """
         return np.cumsum([0] + self.nv)
 
     @staticmethod
     def _calc_state_size(node_count: int) -> int:
+        """
+        Calculates the number of 32-bit integers needed to store all variables.
+
+        :param node_count: Number of nodes.
+        :type node_count: int
+        :returns: Number of 32-bit integers needed to store all variables.
+        :rtype: int
+        """
         return math.ceil(node_count / 32)
 
     def stateSize(self) -> int:
         """
-        Returns number of 32 bit integers needed to store all variables
+        Returns the number of 32-bit integers needed to store all variables.
+
+        :returns: Number of 32-bit integers needed to store all variables.
+        :rtype: int
         """
         return self._calc_state_size(self.n)
 
-    def getF(self) -> list[list[bool]]:
+    def getF(self) -> List[List[bool]]:
+        """
+        Returns the truth table of each node.
+
+        :returns: The truth table of each node.
+        :rtype: List[List[bool]]
+        """
         return self.F
 
-    def get_integer_f(self):
+    def get_integer_f(self) -> List[int]:
+        """
+        Returns the integer representation of the truth table for each node.
+
+        :returns: Integer representation of the truth table for each node.
+        :rtype: List[int]
+        """
         return [self._get_integer_functions(func, []) for func in self.F]
 
-    def getVarFInt(self):
+    def getVarFInt(self) -> List[List[int]]:
+        """
+        Returns the index of each node's truth table.
+
+        :returns: The index of each node's truth table.
+        :rtype: List[List[int]]
+        """
         return self.varFInt
 
-    def getCij(self):
+    def getCij(self) -> List[List[float]]:
+        """
+        Returns the selection probability of each node.
+
+        :returns: The selection probability of each node.
+        :rtype: List[List[float]]
+        """
         return self.cij
 
-    def getPerturbation(self):
+    def getPerturbation(self) -> float:
+        """
+        Returns the perturbation rate.
+
+        :returns: The perturbation rate.
+        :rtype: float
+        """
         return self.perturbation
 
-    def getNpNode(self):
-        return self.npNode
-    
-    def reduce_F(self, states : List[List[int]]):
+    def getNpNode(self) -> List[int]:
         """
-        Reduces truth tables of PBN by removing states that does not change
+        Returns the index of nodes without perturbation.
 
-        Parameters
-        ----------
+        :returns: The index of nodes without perturbation.
+        :rtype: List[int]
+        """
+        return self.npNode
 
-        states : List[int]
-            List of investigated states. States are lists of int with length n
-            where i-th index represents i-th variable. 0 represents False and 1 represents True.
-        Returns
-        -------
-        active_variables : List[List[int]]
-            List of indeces of variables that change between states
+    def reduce_F(self, states: List[List[int]]) -> tuple:
+        """
+        Reduces truth tables of PBN by removing states that do not change.
 
-        F_reduced : List[List[Bool]]
-            Truth tables with removed constant variables
+        :param states: List of investigated states. States are lists of int with length n where i-th index represents i-th variable. 0 represents False and 1 represents True.
+        :type states: List[List[int]]
+        :returns: Tuple containing list of indices of variables that change between states and truth tables with removed constant variables.
+        :rtype: tuple
         """
         initial_state = states[0]
 
         constant_vars = {i for i in range(0, self.n)}
-        
-        for state in states[1:]: 
+
+        for state in states[1:]:
             for var in range(0, self.n):
                 if initial_state[var] != state[var]:
                     constant_vars.remove(var)
-        
-        # print("constant - ", constant_vars)
+
         new_F = list()
         new_varF = list()
         for F_func, F_vars in zip(self.F, self.varFInt):
-            #assumes F contains truthtables for sorted vars
-            # print("F_vars ", F_vars)
             new_varF.append(list())
             new_F.append(list())
             curr_num_vars = len(F_vars)
             curr_F = F_func
-            curr_vars = F_vars
+
+            # curr_vars = F_vars
+
             current_removed = 0
             for i, var in enumerate(F_vars):
                 if var in constant_vars:
                     curr_i = i - current_removed
                     var_state = initial_state[var]
-                    # indeces = [j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state for j in range(2**(curr_num_vars - 1))]
-                    # print("indeces - ", indeces, " var_state ", var_state, " curr_i ", curr_i)
-                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_F = [
+                        curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state]
+                        for j in range(2 ** (curr_num_vars - 1))
+                    ]
                     curr_num_vars -= 1
                     current_removed += 1
                 else:
@@ -296,7 +414,20 @@ class PBN:
         return new_varF, new_F
 
     @staticmethod
-    def _perturb_state_by_actions(actions: npt.NDArray[np.uint32], state: np.ndarray | None) -> np.ndarray:
+    def _perturb_state_by_actions(
+        actions: npt.NDArray[np.uint32], state: np.ndarray | None
+    ) -> np.ndarray:
+        """
+        Perturbs the state by performing the given actions.
+
+        :param actions: Array of actions to be performed on the state.
+        :type actions: npt.NDArray[np.uint32]
+        :param state: The current state of the PBN.
+        :type state: np.ndarray or None
+        :raises ValueError: If the state is not set before explicit perturbation.
+        :returns: The perturbed state.
+        :rtype: np.ndarray
+        """
         if state is None:
             raise ValueError("State must be set before explicit perturbation")
 
@@ -310,13 +441,22 @@ class PBN:
                 raise IndexError("State index out of bounds")
 
             copystate[:, state_index] ^= 1 << bit_index
-            
+
         return copystate
 
-    def simple_steps(self, n_steps, actions: npt.NDArray[np.uint] | None = None):
+    def simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+        """
+        Simulates the PBN for a given number of steps.
+
+        :param n_steps: Number of steps to simulate.
+        :type n_steps: int
+        :param actions: Array of actions to be performed on the PBN. Defaults to None.
+        :type actions: npt.NDArray[np.uint], optional
+        :raises ValueError: If the initial state is not set before simulation.
+        """
         if self.latest_state is None or self.history is None:
             raise ValueError("Initial state must be set before simulation")
-        
+
         if actions is not None:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=1)
@@ -344,7 +484,6 @@ class PBN:
         cumExtraF = self.cumExtraF()
         extraF = self.extraF()
 
-        # TODO, tutaj powinno być wyciąganie informacji z GPU
         block = self.n_parallel // 32
         if block == 0:
             block = 1
@@ -352,7 +491,11 @@ class PBN:
 
         N = self.n_parallel
 
-        initial_state = np.zeros(N * stateSize, dtype=np.int32) if self.latest_state is None else self.latest_state
+        initial_state = (
+            np.zeros(N * stateSize, dtype=np.int32)
+            if self.latest_state is None
+            else self.latest_state
+        )
         initial_state = initial_state.reshape(N * stateSize)
 
         gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
@@ -385,9 +528,11 @@ class PBN:
 
         gpu_powNum = cuda.to_device(pow_num)
 
-        states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
+        states = create_xoroshiro128p_states(
+            N, seed=numba.uint64(datetime.datetime.now().timestamp())
+        )
 
-        kernel_converge[block, blockSize]( # type: ignore
+        kernel_converge[block, blockSize](  # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
             gpu_powNum,
@@ -459,25 +604,20 @@ class PBN:
 
 
 def load_sbml(path: str) -> tuple:
-        return parseSBMLDocument(path)
+    return parseSBMLDocument(path)
 
 
-def load_from_file(path, format="sbml"):
+def load_from_file(path: str, format: str = "sbml") -> PBN:
     """
     Loads a PBN from files of format .pbn or .sbml.
 
-    Parameters
-    ----------
-    path : str
-        Path to the file of format .pbn.
-    format : str, optional
-        Choose the format. Can be either 'sbml' for files with .sbml format
-        or 'assa' for files with .pbn format. Defaults to 'sbml'.
-
-    Returns
-    -------
-    PBN
-        PBN object representing the network from the file.
+    :param path: Path to the file of format .pbn.
+    :type path: str
+    :param format: Choose the format. Can be either 'sbml' for files with .sbml format or 'assa' for files with .pbn format. Defaults to 'sbml'.
+    :type format: str, optional
+    :returns: PBN object representing the network from the file.
+    :rtype: PBN
+    :raises ValueError: If the format is invalid.
     """
     match format:
         case "sbml":
@@ -486,7 +626,3 @@ def load_from_file(path, format="sbml"):
             return PBN(*load_assa(path))
         case _:
             raise ValueError("Invalid format")
-
-
-
-
