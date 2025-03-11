@@ -344,7 +344,7 @@ class PBN:
         extraF = self.extraF()
 
         # TODO, tutaj powinno być wyciąganie informacji z GPU
-        block = self.n_parallel // 32
+        block = max(self.n_parallel // 32, 1) # max is for the edge case of self.n_parralel < 32
         blockSize = 32
 
         N = self.n_parallel
@@ -383,7 +383,6 @@ class PBN:
         gpu_powNum = cuda.to_device(pow_num)
 
         states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
-
         kernel_converge[block, blockSize]( # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
