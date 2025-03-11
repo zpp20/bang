@@ -1,6 +1,5 @@
 from bang.core.PBN import PBN
 import bang.graph.graph as graph
-import numpy as np
 from itertools import product
 
 def cross_states(state1 :list[bool], nodes1 :list[int], state2 :list[bool], nodes2 :list[int]) -> list[bool]:
