@@ -14,13 +14,14 @@ def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], 
         node = 0
         result = []
         for i in range(network.n):
-            if nodes[node] == i:
+            if node < len(nodes) and nodes[node] == i:
                 result.append(state[node])
                 node += 1
             else:
                 result.append(False)
         return result
-                
+    
+    network.n_parallel = len(initial_states)            
     network.set_states([convert(state) for state in initial_states])
     
     n_unique_states = len(network.get_last_state())
