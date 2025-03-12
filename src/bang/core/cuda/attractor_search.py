@@ -98,7 +98,6 @@ def divide_and_counquer(network : PBN):
     for block, chilren in blocks:
         if len(chilren) == 0:
             attractors.append(find_block_attractors(network, block))
-            print("attractors {}".format(attractors))
         else:
             attractors.append(find_block_attractors(network, block, [(attractors[i], blocks[i][0]) for i in chilren]))
     return attractors[len(attractors) - 1]
