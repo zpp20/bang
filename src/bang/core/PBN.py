@@ -68,7 +68,7 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = npNode
         self.n_parallel = n_parallel
-        self.history: np.ndarray = np.zeros((n_parallel, 1, self.stateSize()), dtype=np.int32)
+        self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
         self.previous_simulations: List[np.ndarray] = []
 
@@ -200,23 +200,23 @@ class PBN:
         """
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
-        self.latest_state = np.array(converted_states)
         self.n_parallel = len(states)
+        self.latest_state = np.array(converted_states).reshape(self.n_parallel, self.stateSize())
 
         print(self.latest_state)
         if reset_history:
-            self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
+            self.history = np.array(converted_states).reshape(1, self.n_parallel, self.stateSize())
         else:
             if len(states) != self.history.shape[0]:
                 self.previous_simulations.append(self.history)
                 self.history = np.array(converted_states).reshape(
-                    self.n_parallel, 1, self.stateSize()
+                    1, self.n_parallel, self.stateSize()
                 )
             else:
                 self.history = np.concatenate(
                     [
                         self.history,
-                        np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize()),
+                        np.array(converted_states).reshape(1, self.n_parallel, self.stateSize()),
                     ],
                     axis=1,
                 )
@@ -479,7 +479,7 @@ class PBN:
 
         if actions is not None:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
-            self.history = np.concatenate([self.history, self.latest_state], axis=1)
+            self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
         n = self.getN()
         nf = self.getNf()
@@ -582,10 +582,10 @@ class PBN:
 
         self.latest_state = last_state.reshape((N, stateSize))
 
-        run_history = run_history.reshape((N, n_steps + 1, stateSize))
+        run_history = run_history.reshape((n_steps + 1, N, stateSize))
 
         if self.history is not None:
-            self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
+            self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
         else:
             self.history = run_history
 
