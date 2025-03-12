@@ -10,9 +10,16 @@ def cross_states(state1 :list[bool], nodes1 :list[int], state2 :list[bool], node
         if nodes1[counter1] < nodes2[counter2]:
             result.append(state1[counter1])
             counter1 += 1
-        else:
+        elif nodes1[counter1] > nodes2[counter2]:
             result.append(state2[counter2])
             counter2 += 1
+        else:
+            if state1[counter1] != state2[counter2]:
+                return []
+            result.append(state1[counter1])
+            counter1 += 1
+            counter2 += 1
+        
         if counter1 == len(nodes1):
             return result  + state2[counter2:]
         elif counter2 == len(nodes2):
@@ -22,10 +29,10 @@ def cross_states(state1 :list[bool], nodes1 :list[int], state2 :list[bool], node
 
 def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int], 
                      attractor2 :list[list[bool]], nodes2: list[int]) -> tuple[list[list[bool]], list[int]]:
-    result_nodes = nodes1 + nodes2
+    result_nodes = list(set(nodes1 + nodes2))
     result_nodes.sort()
             
-    return [cross_states(x, nodes1, y,  nodes2) for x,y in product(attractor1, attractor2)], result_nodes
+    return [cross_states(x, nodes1, y,  nodes2) for x,y in product(attractor1, attractor2) if len(cross_states(x, nodes1, y,  nodes2)) != 0], result_nodes
 
 def apply(function, function_nodes, state :list[bool], nodes) -> bool:
     f_counter = len(function_nodes) - 1
@@ -83,7 +90,7 @@ def find_block_attractors(network :PBN, Block :list[int],
         attractor, nodes = child_attractors[0][0][indices[0]], child_attractors[0][1]
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
-                             child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1]) 
+                             child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1])
         result += find_attractors_realisation(network, *cross_attractors(states(Block), Block, attractor, nodes))
         if not inc():
             break
@@ -103,10 +110,13 @@ def divide_and_counquer(network : PBN):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks()
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks 
-    attractors :list[list[list[list[bool]]]] = []
+    attractors :list[tuple[list[list[list[bool]]], list[int]]] = []
     for block, chilren in blocks:
         if len(chilren) == 0:
-            attractors.append(find_block_attractors(network, block))
+            attractors.append((find_block_attractors(network, block), block))
         else:
-            attractors.append(find_block_attractors(network, block, [(attractors[i], get_all_nodes(blocks, i)) for i in chilren]))
+            res = set(block)
+            for i in chilren:
+                res.update(attractors[i][1])
+            attractors.append((find_block_attractors(network, block, [(attractors[i][0], attractors[i][1]) for i in chilren]), list(res)))
     return attractors[len(attractors) - 1]
