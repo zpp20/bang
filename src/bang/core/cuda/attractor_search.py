@@ -28,13 +28,14 @@ def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int],
     return [cross_states(x, nodes1, y,  nodes2) for x,y in product(attractor1, attractor2)], result_nodes
 
 def apply(function, function_nodes, state :list[bool], nodes) -> bool:
-    f_counter = 0
+    f_counter = len(function_nodes) - 1
     function_index :int = 0
-    for i in range(len(nodes)):
+    for i in range(len(nodes) - 1, -1 , -1):
         if nodes[i] == function_nodes[f_counter]:
-            function_index = (function_index << 1) + 1 if state[i] else 0
-            f_counter += 1
-        if f_counter == len(function_nodes):
+            function_index = (function_index << 1) + (1 if state[i] else 0)
+            f_counter -= 1
+        
+        if f_counter == -1:
             break
     return function[function_index]
 
@@ -43,6 +44,13 @@ def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], 
     current_len, prev_len = len(initial_states), 0
     while current_len != prev_len:
         states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
+        
+        unique_states= []
+        for state in states:
+            if state not in unique_states:
+                unique_states.append(state)
+        states = unique_states
+        
         prev_len = current_len
         current_len = len(states)
     
