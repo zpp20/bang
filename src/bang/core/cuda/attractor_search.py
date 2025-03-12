@@ -44,13 +44,11 @@ def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], 
     current_len, prev_len = len(initial_states), 0
     while current_len != prev_len:
         states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
-        
         unique_states= []
         for state in states:
             if state not in unique_states:
                 unique_states.append(state)
         states = unique_states
-        
         prev_len = current_len
         current_len = len(states)
     
@@ -69,25 +67,28 @@ def find_block_attractors(network :PBN, Block :list[int],
     
     if child_attractors == []:
         return find_attractors_realisation(network, states(Block), Block)
-    
     indices = [0 for length in lengths]
     def inc():
         i = 0
         while True:
-            if indices[i] < lengths[i]:
+            if indices[i] < lengths[i] - 1:
                 indices[i] += 1
-                return
+                return True
             else:
                 indices[i] = 0
+                i += 1
+                if i == len(lengths):
+                    return False
     
-    while indices != lengths:
+    while True:
+        print(child_attractors, lengths, indices)
         attractor, nodes = child_attractors[0][0][indices[0]], child_attractors[0][1]
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
                              child_attractors[i + 1][0][indices[i + 1]], child_attractors[i + 1][1]) 
         result += find_attractors_realisation(network, *cross_attractors(states(Block), Block, attractor, nodes))
-        inc()
-        pass
+        if not inc():
+            break
     return result
 
 def divide_and_counquer(network : PBN):
