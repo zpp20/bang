@@ -190,7 +190,7 @@ class PBN:
 
     def set_states(self, states: List[List[bool]], reset_history: bool = False):
         """
-        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories, 
+        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
         the history will be pushed into `self.previous_simulations` and the active history will be reset.
 
         :param states: List of states to be set.
@@ -209,11 +209,17 @@ class PBN:
         else:
             if len(states) != self.history.shape[0]:
                 self.previous_simulations.append(self.history)
-                self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
+                self.history = np.array(converted_states).reshape(
+                    self.n_parallel, 1, self.stateSize()
+                )
             else:
-                self.history = np.concatenate([self.history, np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())], axis=1)
-            
-
+                self.history = np.concatenate(
+                    [
+                        self.history,
+                        np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize()),
+                    ],
+                    axis=1,
+                )
 
     def extraFCount(self) -> int:
         """
@@ -583,38 +589,32 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states):
+    def detect_attractor(self, initial_states: List[List[bool]]) -> np.ndarray:
         """
-            Detects all atractor states in PBN
+        Detects all atractor states in PBN
 
-            Parameters
-            ----------
+        :param initial_states: List of investigated states.
+        :type initial_states: List[List[bool]]
 
-            initial_states : List[List[Bool]]
-                List of investigated states. 
-            Returns
-            -------
-            attractor_states : np.array(int)
-                List of states where attractors are coded as ints
-
+        :returns: List of states where attractors are coded as ints
+        :rtype: np.ndarray
         """
+
         self.set_states(initial_states)
-        
+
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
         n_unique_states = len({state_bytes})
         last_n_unique_states = 0
 
-        while (n_unique_states != last_n_unique_states):
+        while n_unique_states != last_n_unique_states:
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
 
-
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
         return np.array(ret_list)
-
 
 
 def load_sbml(path: str) -> tuple:
