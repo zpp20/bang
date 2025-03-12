@@ -64,7 +64,6 @@ def find_block_attractors(network :PBN, Block :list[int],
                                 child_attractors :list[tuple[list[list[list[bool]]], list[int]]] = []) -> list[list[list[bool]]]:
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
-    print(child_attractors)
     if child_attractors == []:
         return find_attractors_realisation(network, states(Block), Block)
     indices = [0 for length in lengths]
