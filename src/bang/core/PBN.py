@@ -40,9 +40,11 @@ class PBN:
     :param n_parallel: The number of parallel simulations. Defaults to 512.
     :type n_parallel: int, optional
     :param history: The execution history of the PBN, tracking the states of all trajectories.
-    :type history: np.ndarray or None
+    :type history: np.ndarray
     :param latest_state: The last encountered state of the PBN's trajectories.
-    :type latest_state: np.ndarray or None
+    :type latest_state: np.ndarray
+    :param previous_simulations: List of previous simulations.
+    :type previous_simulations: List[np.ndarray]
     """
 
     def __init__(
@@ -66,8 +68,9 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = npNode
         self.n_parallel = n_parallel
-        self.history: np.ndarray | None = None
-        self.latest_state: np.ndarray | None = None
+        self.history: np.ndarray = np.zeros((n_parallel, 1, self.stateSize()), dtype=np.int32)
+        self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
+        self.previous_simulations: List[np.ndarray] = []
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
@@ -141,21 +144,21 @@ class PBN:
 
         return retval
 
-    def get_last_state(self) -> np.ndarray | None:
+    def get_last_state(self) -> np.ndarray:
         """
         Returns the last encountered state of the PBN's trajectories.
 
         :returns: The last encountered state of the PBN's trajectories.
-        :rtype: np.ndarray or None
+        :rtype: np.ndarray
         """
         return self.latest_state
 
-    def get_trajectories(self) -> np.ndarray | None:
+    def get_trajectories(self) -> np.ndarray:
         """
         Returns the execution history of the PBN, tracking the states of all trajectories.
 
         :returns: The execution history of the PBN.
-        :rtype: np.ndarray or None
+        :rtype: np.ndarray
         """
         return self.history
 
@@ -187,7 +190,8 @@ class PBN:
 
     def set_states(self, states: List[List[bool]], reset_history: bool = False):
         """
-        Sets the initial states of the PBN.
+        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories, 
+        the history will be pushed into `self.previous_simulations` and the active history will be reset.
 
         :param states: List of states to be set.
         :type states: List[List[bool]]
@@ -197,9 +201,19 @@ class PBN:
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.latest_state = np.array(converted_states)
+        self.n_parallel = len(states)
+
         print(self.latest_state)
-        if reset_history or self.history is None:
+        if reset_history:
             self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
+        else:
+            if len(states) != self.history.shape[0]:
+                self.previous_simulations.append(self.history)
+                self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
+            else:
+                self.history = np.concatenate([self.history, np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())], axis=1)
+            
+
 
     def extraFCount(self) -> int:
         """
