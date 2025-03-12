@@ -111,6 +111,7 @@ def divide_and_counquer(network : PBN):
     PBN_graph.find_scc_and_blocks()
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks 
     attractors :list[tuple[list[list[list[bool]]], list[int]]] = []
+    max :int = 0
     for block, chilren in blocks:
         if len(chilren) == 0:
             attractors.append((find_block_attractors(network, block), block))
@@ -119,4 +120,13 @@ def divide_and_counquer(network : PBN):
             for i in chilren:
                 res.update(attractors[i][1])
             attractors.append((find_block_attractors(network, block, [(attractors[i][0], attractors[i][1]) for i in chilren]), list(res)))
-    return attractors[len(attractors) - 1]
+    
+    for i in range(len(blocks)):
+        if not any([i in children for block, children in blocks]):
+            max = i
+            break
+    result, nodes = attractors[max]
+    for i in range(max + 1, len(attractors)):
+        result = [cross_attractors(x, nodes, y, attractors[i][1])[0] for x,y in product(result, attractors[i][0])]
+        nodes = list(set(nodes + attractors[i][1]))
+    return result
