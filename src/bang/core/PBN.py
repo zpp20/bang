@@ -584,7 +584,10 @@ class PBN:
                 List of states where attractors are coded as ints
 
         """
-        self.set_states(initial_states)
+        
+        self.set_states(initial_states, reset_history=True)
+
+        history = self.get_last_state()
         
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
         n_unique_states = len({state_bytes})
@@ -595,13 +598,51 @@ class PBN:
             last_n_unique_states = n_unique_states
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
-
-
+            history = np.hstack((history, self.get_last_state()))
+            
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
-        return np.array(ret_list)
+        return (np.array(ret_list), history)
 
+    def segment_attractor(self, attractor_states, history):
+        active_states = attractor_states
+        transition = dict()
 
+        for trajectory in history:
+            print(trajectory)
+            for i in range(len(trajectory) - 1):
+                if trajectory[i] in transition:
+                    if transition[trajectory[i]] != trajectory[i+1]:
+                        raise ValueError("Two different states from the same state")
+
+                transition[trajectory[i]] = trajectory[i+1]
+
+        num_states = len(active_states)
+
+        attractors = []
+
+        while num_states > 0:
+            initial_state = active_states[0]
+            
+            rm_idx = np.where(active_states==initial_state)[0]
+            active_states = np.delete(active_states, rm_idx)
+            attractor_states = [initial_state]
+
+            curr_state = transition[initial_state]
+            while curr_state != initial_state:
+                attractor_states.append(curr_state)
+                
+                rm_idx = np.where(active_states==curr_state)[0]
+                active_states = np.delete(active_states, rm_idx)
+
+                curr_state = transition[curr_state]
+
+            attractors.append(attractor_states)
+            num_states = len(active_states)
+
+        return attractors
+        
+                
 
 def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
