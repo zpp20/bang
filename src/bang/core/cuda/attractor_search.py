@@ -1,6 +1,7 @@
 from bang.core.PBN import PBN
 import bang.graph.graph as graph
 from itertools import product
+import numpy as np
 
 def cross_states(state1 :list[bool], nodes1 :list[int], state2 :list[bool], nodes2 :list[int]) -> list[bool]:
     counter1, counter2 = 0, 0
@@ -26,29 +27,26 @@ def cross_attractors(attractor1 :list[list[bool]], nodes1: list[int],
             
     return [cross_states(x, nodes1, y,  nodes2) for x,y in product(attractor1, attractor2)], result_nodes
 
+def apply(function, function_nodes, state :list[bool], nodes) -> bool:
+    f_counter = 0
+    function_index :int = 0
+    for i in range(len(nodes)):
+        if nodes[i] == function_nodes[f_counter]:
+            function_index = (function_index << 1) + 1 if state[i] else 0
+            f_counter += 1
+        if f_counter == len(function_nodes):
+            break
+    return function[function_index]
+
 def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], nodes :list[int]) -> list[list[list[bool]]]:
-    def convert(state):
-        node = 0
-        result = []
-        for i in range(network.n):
-            if node < len(nodes) and nodes[node] == i:
-                result.append(state[node])
-                node += 1
-            else:
-                result.append(False)
-        return result
+    states = initial_states
+    current_len, prev_len = len(initial_states), 0
+    while current_len != prev_len:
+        states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
+        prev_len = current_len
+        current_len = len(states)
     
-    network.n_parallel = len(initial_states)            
-    network.set_states([convert(state) for state in initial_states])
-    
-    n_unique_states = len(network.get_last_state())
-    last_n_unique_states = 0
-    
-    while (n_unique_states != last_n_unique_states):
-        network.simple_steps(1)
-        last_n_unique_states = n_unique_states
-        n_unique_states = len(network.get_last_state())
-    return network.get_last_state()
+    return [states]
 
 def states(Block :list[int]) -> list[list[bool]]:
     states :list[list[bool]] = [[]]
@@ -92,6 +90,7 @@ def divide_and_counquer(network : PBN):
     for block, chilren in blocks:
         if len(chilren) == 0:
             attractors.append(find_block_attractors(network, block))
+            print("attractors {}".format(attractors))
         else:
             attractors.append(find_block_attractors(network, block, [(attractors[i], blocks[i][0]) for i in chilren]))
     return attractors[len(attractors) - 1]
