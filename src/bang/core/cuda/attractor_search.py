@@ -64,7 +64,7 @@ def find_block_attractors(network :PBN, Block :list[int],
                                 child_attractors :list[tuple[list[list[list[bool]]], list[int]]] = []) -> list[list[list[bool]]]:
     lengths :list[int] = [len(tup[0]) for tup in child_attractors]
     result = []
-    
+    print(child_attractors)
     if child_attractors == []:
         return find_attractors_realisation(network, states(Block), Block)
     indices = [0 for length in lengths]
@@ -81,7 +81,6 @@ def find_block_attractors(network :PBN, Block :list[int],
                     return False
     
     while True:
-        print(child_attractors, lengths, indices)
         attractor, nodes = child_attractors[0][0][indices[0]], child_attractors[0][1]
         for i in range(len(child_attractors) - 1):
             attractor, nodes = cross_attractors(attractor, nodes, 
@@ -91,14 +90,24 @@ def find_block_attractors(network :PBN, Block :list[int],
             break
     return result
 
+def get_all_nodes(blocks :list[tuple[list[int], list[int]]], i :int) -> list[int]:
+    if len(blocks[i][1]) == 0:
+        return blocks[i][0]
+    else:
+        result = blocks[i][0].copy()
+        for j in blocks[i][1]:
+            result += get_all_nodes(blocks, j)
+            return sorted(result)
+    return []
+
 def divide_and_counquer(network : PBN):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks()
-    blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks #blocks shoudl be without influencers
+    blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks 
     attractors :list[list[list[list[bool]]]] = []
     for block, chilren in blocks:
         if len(chilren) == 0:
             attractors.append(find_block_attractors(network, block))
         else:
-            attractors.append(find_block_attractors(network, block, [(attractors[i], blocks[i][0]) for i in chilren]))
+            attractors.append(find_block_attractors(network, block, [(attractors[i], get_all_nodes(blocks, i)) for i in chilren]))
     return attractors[len(attractors) - 1]
