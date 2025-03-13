@@ -7,7 +7,8 @@ import math
 from itertools import chain
 from typing import List, Literal
 
-import graphviz
+from enum import Enum
+
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +21,14 @@ from bang.core.cuda.simulation import kernel_converge
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
+
+class updateType(Enum):
+    """
+    Enum representing the type of update.
+    """
+
+    ASYNCHRONOUS = 0
+    SYNCHRONOUS = 1
 
 class PBN:
     """Class representing the PBN and the execution of simulations on it.
@@ -61,6 +70,8 @@ class PBN:
         perturbation: float,
         npNode: List[int],
         n_parallel: int = 512,
+        update_type_int: int = 0
+
     ):
         self.n = n
         self.nf = nf
@@ -71,6 +82,7 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = npNode
         self.n_parallel = n_parallel
+        self.update_type = updateType(update_type_int)
         self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
         self.previous_simulations: List[np.ndarray] = []
