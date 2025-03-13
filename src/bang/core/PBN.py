@@ -40,9 +40,11 @@ class PBN:
     :param n_parallel: The number of parallel simulations. Defaults to 512.
     :type n_parallel: int, optional
     :param history: The execution history of the PBN, tracking the states of all trajectories.
-    :type history: np.ndarray or None
+    :type history: np.ndarray
     :param latest_state: The last encountered state of the PBN's trajectories.
-    :type latest_state: np.ndarray or None
+    :type latest_state: np.ndarray
+    :param previous_simulations: List of previous simulations.
+    :type previous_simulations: List[np.ndarray]
     """
 
     def __init__(
@@ -66,8 +68,9 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = npNode
         self.n_parallel = n_parallel
-        self.history: np.ndarray | None = None
-        self.latest_state: np.ndarray | None = None
+        self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
+        self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
+        self.previous_simulations: List[np.ndarray] = []
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
@@ -141,21 +144,21 @@ class PBN:
 
         return retval
 
-    def get_last_state(self) -> np.ndarray | None:
+    def get_last_state(self) -> np.ndarray:
         """
         Returns the last encountered state of the PBN's trajectories.
 
         :returns: The last encountered state of the PBN's trajectories.
-        :rtype: np.ndarray or None
+        :rtype: np.ndarray
         """
         return self.latest_state
 
-    def get_trajectories(self) -> np.ndarray | None:
+    def get_trajectories(self) -> np.ndarray:
         """
         Returns the execution history of the PBN, tracking the states of all trajectories.
 
         :returns: The execution history of the PBN.
-        :rtype: np.ndarray or None
+        :rtype: np.ndarray
         """
         return self.history
 
@@ -187,7 +190,8 @@ class PBN:
 
     def set_states(self, states: List[List[bool]], reset_history: bool = False):
         """
-        Sets the initial states of the PBN.
+        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
+        the history will be pushed into `self.previous_simulations` and the active history will be reset.
 
         :param states: List of states to be set.
         :type states: List[List[bool]]
@@ -196,10 +200,26 @@ class PBN:
         """
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
-        self.latest_state = np.array(converted_states)
+        self.n_parallel = len(states)
+        self.latest_state = np.array(converted_states).reshape(self.n_parallel, self.stateSize())
+
         print(self.latest_state)
-        if reset_history or self.history is None:
-            self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
+        if reset_history:
+            self.history = np.array(converted_states).reshape(1, self.n_parallel, self.stateSize())
+        else:
+            if len(states) != self.history.shape[0]:
+                self.previous_simulations.append(self.history)
+                self.history = np.array(converted_states).reshape(
+                    1, self.n_parallel, self.stateSize()
+                )
+            else:
+                self.history = np.concatenate(
+                    [
+                        self.history,
+                        np.array(converted_states).reshape(1, self.n_parallel, self.stateSize()),
+                    ],
+                    axis=1,
+                )
 
     def extraFCount(self) -> int:
         """
@@ -459,7 +479,7 @@ class PBN:
 
         if actions is not None:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
-            self.history = np.concatenate([self.history, self.latest_state], axis=1)
+            self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
         n = self.getN()
         nf = self.getNf()
@@ -562,44 +582,39 @@ class PBN:
 
         self.latest_state = last_state.reshape((N, stateSize))
 
-        run_history = run_history.reshape((N, n_steps + 1, stateSize))
+        run_history = run_history.reshape((n_steps + 1, N, stateSize))
 
         if self.history is not None:
-            self.history = np.concatenate([self.history, run_history[:, 1:, :]], axis=1)
+            self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states):
+    def detect_attractor(self, initial_states: List[List[bool]]) -> np.ndarray:
         """
-            Detects all atractor states in PBN
+        Detects all atractor states in PBN
 
-            Parameters
-            ----------
+        :param initial_states: List of investigated states.
+        :type initial_states: List[List[bool]]
 
-            initial_states : List[List[Bool]]
-                List of investigated states. 
-            Returns
-            -------
-            attractor_states : np.array(int)
-                List of states where attractors are coded as ints
-
+        :returns: List of states where attractors are coded as ints
+        :rtype: np.ndarray
         """
-        
+
         self.set_states(initial_states, reset_history=True)
 
         history = self.get_last_state()
-        
+
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
         n_unique_states = len({state_bytes})
         last_n_unique_states = 0
 
-        while (n_unique_states != last_n_unique_states):
+        while n_unique_states != last_n_unique_states:
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
             history = np.hstack((history, self.get_last_state()))
-            
+
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
         return (np.array(ret_list), history)
@@ -612,10 +627,10 @@ class PBN:
             print(trajectory)
             for i in range(len(trajectory) - 1):
                 if trajectory[i] in transition:
-                    if transition[trajectory[i]] != trajectory[i+1]:
+                    if transition[trajectory[i]] != trajectory[i + 1]:
                         raise ValueError("Two different states from the same state")
 
-                transition[trajectory[i]] = trajectory[i+1]
+                transition[trajectory[i]] = trajectory[i + 1]
 
         num_states = len(active_states)
 
@@ -623,16 +638,16 @@ class PBN:
 
         while num_states > 0:
             initial_state = active_states[0]
-            
-            rm_idx = np.where(active_states==initial_state)[0]
+
+            rm_idx = np.where(active_states == initial_state)[0]
             active_states = np.delete(active_states, rm_idx)
             attractor_states = [initial_state]
 
             curr_state = transition[initial_state]
             while curr_state != initial_state:
                 attractor_states.append(curr_state)
-                
-                rm_idx = np.where(active_states==curr_state)[0]
+
+                rm_idx = np.where(active_states == curr_state)[0]
                 active_states = np.delete(active_states, rm_idx)
 
                 curr_state = transition[curr_state]
@@ -641,8 +656,7 @@ class PBN:
             num_states = len(active_states)
 
         return attractors
-        
-                
+
 
 def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
