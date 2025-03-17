@@ -494,7 +494,47 @@ class PBN:
 
         return attractors
 
+    def select_nodes(self, nodes : List[int]):
+        new_F = list()
+        new_varF = list()
+        new_nv = list()
+        for F_func, F_vars, n_vars in zip(self.F, self.varFInt, self.nv):
+            #assumes F contains truthtables for sorted vars
+            # print("F_vars ", F_vars)
+            new_nv.append(0)
+            new_varF.append(list())
+            new_F.append(list())
+            curr_num_vars = len(F_vars)
+            curr_F = F_func
+            curr_vars = F_vars
+            current_removed = 0
+            for i, var in enumerate(F_vars):
+                if var not in nodes:
+                    curr_i = i - current_removed
+                    var_state = 0
+                    # indeces = [j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state for j in range(2**(curr_num_vars - 1))]
+                    # print("indeces - ", indeces, " var_state ", var_state, " curr_i ", curr_i)
+                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_num_vars -= 1
+                    current_removed += 1
+                else:
+                    new_varF[-1].append(var)
+                    new_nv[-1] += 1
 
+            new_F[-1].append(curr_F)
+
+        n = len(nodes)
+        nf = self.nf
+        nv = new_nv
+        F = new_F
+        varFInt = new_varF
+        cij = self.cij
+        perturbation = self.perturbation
+        npNode = self.npNode
+
+
+        return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
+            
 
 def load_sbml(path: str) -> tuple:
         return parseSBMLDocument(path)
