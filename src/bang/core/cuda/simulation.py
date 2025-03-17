@@ -1,8 +1,8 @@
 # type: ignore
 
+import numba as nb
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
-import numba as nb
 
 
 @cuda.jit
@@ -118,9 +118,9 @@ def kernel_converge(
                     initialStateCopy[node_index] = initialState[node_index]
 
                 relative_index = stateSize * idx
-                gpu_stateHistory[(step + 1) * gpu_threadNum[0] + relative_index + node_index] = (
-                    initialState[node_index]
-                )
+                gpu_stateHistory[
+                    (step + 1) * gpu_threadNum[0] + relative_index + node_index
+                ] = initialState[node_index]
 
     relative_index = stateSize * idx
 
