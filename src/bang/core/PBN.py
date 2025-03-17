@@ -422,6 +422,20 @@ class PBN:
             self.history = run_history
 
     def detect_attractor(self, initial_states):
+        """
+            Detects all atractor states in PBN
+
+            Parameters
+            ----------
+
+            initial_states : List[List[Bool]]
+                List of investigated states. 
+            Returns
+            -------
+            attractor_states : np.array(int)
+                List of states where attractors are coded as ints
+
+        """
         self.set_states(initial_states)
         
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
@@ -434,9 +448,10 @@ class PBN:
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
 
+
         state_bytes_set = list(set(state_bytes))
-        return [np.frombuffer(state, dtype=np.int32) for state in state_bytes_set]
-            
+        ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
+        return np.array(ret_list)
 
 
 
