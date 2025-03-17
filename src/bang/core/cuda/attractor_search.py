@@ -47,19 +47,29 @@ def apply(function, function_nodes, state :list[bool], nodes) -> bool:
     return function[function_index]
 
 def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], nodes :list[int]) -> list[list[list[bool]]]:
-    states = initial_states
-    current_len, prev_len = len(initial_states), 0
-    while current_len != prev_len:
-        states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
-        unique_states= []
-        for state in states:
-            if state not in unique_states:
-                unique_states.append(state)
-        states = unique_states
-        prev_len = current_len
-        current_len = len(states)
     
-    return [states]
+    reduced_pbn = network.select_nodes(nodes)
+
+    attractor, history = reduced_pbn.detect_attractor(initial_states)
+
+    attractors = segment_attractor(attractor, history)
+
+    
+    
+    
+    # states = initial_states
+    # current_len, prev_len = len(initial_states), 0
+    # while current_len != prev_len:
+    #     states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
+    #     unique_states= []
+    #     for state in states:
+    #         if state not in unique_states:
+    #             unique_states.append(state)
+    #     states = unique_states
+    #     prev_len = current_len
+    #     current_len = len(states)
+    
+    return [attractors]
 
 def states(Block :list[int]) -> list[list[bool]]:
     states :list[list[bool]] = [[]]
