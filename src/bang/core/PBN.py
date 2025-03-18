@@ -14,11 +14,11 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core.cuda.simulation import kernel_converge
 import bang.graph
+import bang.visualization
+from bang.core.cuda.simulation import kernel_converge
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
-import bang.visualization
 
 
 class PBN:
@@ -168,7 +168,7 @@ class PBN:
     def get_blocks(self) -> list[list[int]]:
         """
         Returns the blocks of the PBN.
-        
+
         :returns: The blocks of the PBN.
         :rtype: list[list[int]]
         """
@@ -688,11 +688,11 @@ class PBN:
 
     def trajectory_graph(
         self,
-        index: int, 
-        filename: str | None = None, 
-        format: Literal['pdf', 'png', 'svg'] = 'svg',
-        show_labels: bool = True
-        ) -> graphviz.Digraph:
+        index: int,
+        filename: str | None = None,
+        format: Literal["pdf", "png", "svg"] = "svg",
+        show_labels: bool = True,
+    ) -> graphviz.Digraph:
         """
         Plot the trajectory of a Probabilistic Boolean Network (PBN).
 
@@ -715,21 +715,25 @@ class PBN:
         :rtype: graphviz.Digraph
         """
 
-        return bang.visualization.draw_trajectory_ndarray(self.get_trajectories()[:, index, :], filename, format, show_labels)
+        return bang.visualization.draw_trajectory_ndarray(
+            self.get_trajectories()[:, index, :], filename, format, show_labels
+        )
 
-    def block_graph(self, filename: str | None = None, format: Literal['pdf', 'png', 'svg'] = 'svg') -> graphviz.Digraph:
+    def block_graph(
+        self, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    ) -> graphviz.Digraph:
         """
         Plot the blocks of a Probabilistic Boolean Network (PBN).
 
         This function creates a directed graph where each node represents a block in the PBN,
         and each edge represents a transition between blocks.
-        
+
         :param filename: The filename to save the graph. If None, the graph is not saved.
         :type filename: str, optional
-        
+
         :param format: The format to save the graph in. Default is 'svg'.
         :type format: Literal['pdf', 'png', 'svg']
-        
+
         :return: A graphviz.Digraph object representing the block graph.
         :rtype: graphviz.Digraph
         """

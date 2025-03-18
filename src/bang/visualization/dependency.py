@@ -1,9 +1,14 @@
-import graphviz
-import numpy as np
-from bang.core import PBN
 from typing import Literal
 
-def draw_dependencies(pbn: PBN, filename: str | None = None, format: Literal['pdf', 'png', 'svg'] = 'svg') -> graphviz.Digraph:
+import graphviz
+import numpy as np
+
+from bang.core import PBN
+
+
+def draw_dependencies(
+    pbn: PBN, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+) -> graphviz.Digraph:
     """
     Plot the dependency graph of a Probabilistic Boolean Network (PBN).
 
@@ -24,7 +29,7 @@ def draw_dependencies(pbn: PBN, filename: str | None = None, format: Literal['pd
     """
     dot = graphviz.Digraph()
 
-    dot.attr('node', shape='circle')
+    dot.attr("node", shape="circle")
 
     for i in range(pbn.n):
         dot.node(str(i), label=f"{i}")
@@ -38,7 +43,16 @@ def draw_dependencies(pbn: PBN, filename: str | None = None, format: Literal['pd
             f_index = cumNf[node_ind] + func_ind
             f_parents = pbn.varFInt[f_index]
 
-            print('node_ind:', node_ind, 'func_ind:', func_ind, 'f_index:', f_index, 'f_parents:', f_parents)
+            print(
+                "node_ind:",
+                node_ind,
+                "func_ind:",
+                func_ind,
+                "f_index:",
+                f_index,
+                "f_parents:",
+                f_parents,
+            )
             for parent in f_parents:
                 if (parent, node_ind) not in edges:
                     dot.edge(str(parent), str(node_ind))

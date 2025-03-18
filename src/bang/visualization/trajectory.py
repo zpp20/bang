@@ -1,14 +1,15 @@
-import numpy as np
 from typing import Literal
+
 import graphviz
+import numpy as np
 
 
 def draw_trajectory_ndarray(
-    trajectory: np.ndarray, 
-    filename: str | None = None, 
-    format: Literal['pdf', 'png', 'svg'] = 'svg',
-    show_labels: bool = True
-    ) -> graphviz.Digraph:
+    trajectory: np.ndarray,
+    filename: str | None = None,
+    format: Literal["pdf", "png", "svg"] = "svg",
+    show_labels: bool = True,
+) -> graphviz.Digraph:
     """
     Plot the trajectory of a Probabilistic Boolean Network (PBN).
 
@@ -33,11 +34,11 @@ def draw_trajectory_ndarray(
     dot = graphviz.Digraph()
 
     if show_labels:
-        dot.attr('node', shape='circle')
+        dot.attr("node", shape="circle")
     else:
-        dot.attr('node', shape='point')
+        dot.attr("node", shape="point")
 
-    dot.attr('edge', arrowsize='0.5')
+    dot.attr("edge", arrowsize="0.5")
 
     nodes = set()
 
@@ -49,7 +50,7 @@ def draw_trajectory_ndarray(
             dot.node(str(next), str(next))
 
         dot.edge(str(prev), str(next))
-            
+
     if filename is not None:
         dot.render(filename, format, cleanup=True)
 

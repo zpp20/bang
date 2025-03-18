@@ -1,11 +1,13 @@
-import graphviz
+import colorsys
+import random
 from typing import Literal
 
+import graphviz
 import numpy as np
+
 from bang.core import PBN
 from bang.graph.graph import get_blocks
-import random
-import colorsys
+
 
 def generate_contrasting_colors(n: int) -> list[str]:
     colors = []
@@ -19,7 +21,10 @@ def generate_contrasting_colors(n: int) -> list[str]:
 
     return colors
 
-def create_color_string(node: int, node_to_blocks: dict[int, set[int]], color_list: list[str]) -> str:
+
+def create_color_string(
+    node: int, node_to_blocks: dict[int, set[int]], color_list: list[str]
+) -> str:
     colors = [color_list[block] for block in node_to_blocks[node]]
     fraction = 1 / len(colors)
 
@@ -27,7 +32,10 @@ def create_color_string(node: int, node_to_blocks: dict[int, set[int]], color_li
 
     return ":".join(scaled_colors)
 
-def draw_blocks(pbn: PBN, filename: str | None = None, format: Literal['pdf', 'png', 'svg'] = 'svg') -> graphviz.Digraph:
+
+def draw_blocks(
+    pbn: PBN, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+) -> graphviz.Digraph:
     """
     Plot the blocks of a Probabilistic Boolean Network (PBN).
 
@@ -58,10 +66,15 @@ def draw_blocks(pbn: PBN, filename: str | None = None, format: Literal['pdf', 'p
 
     dot = graphviz.Digraph()
 
-    dot.attr('node', shape='circle')
+    dot.attr("node", shape="circle")
 
     for i in range(pbn.n):
-        dot.node(str(i), label=f"{i}", color=create_color_string(i, node_to_blocks, contrasting_colors), style='wedged')
+        dot.node(
+            str(i),
+            label=f"{i}",
+            color=create_color_string(i, node_to_blocks, contrasting_colors),
+            style="wedged",
+        )
 
     cumNf = np.cumsum([0] + pbn.nf, dtype=np.int32)
 
