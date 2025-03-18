@@ -1,4 +1,5 @@
 import graphviz
+import numpy as np
 from bang.core import PBN
 from typing import Literal
 
@@ -28,9 +29,20 @@ def draw_dependencies(pbn: PBN, filename: str | None = None, format: Literal['pd
     for i in range(pbn.n):
         dot.node(str(i), label=f"{i}")
 
-    for i in range(pbn.n):
-        for j in range(pbn.nf[i]):
-            dot.edge(str(i), str(pbn.varFInt[i][j]))
+    cumNf = np.cumsum([0] + pbn.nf, dtype=np.int32)
+
+    edges = set()
+
+    for node_ind in range(pbn.n):
+        for func_ind in range(pbn.nf[node_ind]):
+            f_index = cumNf[node_ind] + func_ind
+            f_parents = pbn.varFInt[f_index]
+
+            print('node_ind:', node_ind, 'func_ind:', func_ind, 'f_index:', f_index, 'f_parents:', f_parents)
+            for parent in f_parents:
+                if (parent, node_ind) not in edges:
+                    dot.edge(str(parent), str(node_ind))
+                    edges.add((parent, node_ind))
 
     if filename is not None:
         dot.render(filename, format, cleanup=True)
