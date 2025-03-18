@@ -601,7 +601,7 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states: List[List[bool]]) -> np.ndarray:
+    def detect_attractor(self, initial_states: List[List[bool]]) -> tuple[np.ndarray, np.ndarray]:
         """
         Detects all atractor states in PBN
 
@@ -629,6 +629,7 @@ class PBN:
 
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
+
         return (np.array(ret_list), history)
 
     def segment_attractor(self, attractor_states, history):
