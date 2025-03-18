@@ -137,7 +137,7 @@ class PBN:
         ]
 
         self.latest_state = np.array(converted_states)
-        print(self.latest_state)
+        # print(self.latest_state)
         if reset_history or self.history is None:
             self.history = np.array(converted_states).reshape(self.n_parallel, 1, self.stateSize())
 
@@ -325,7 +325,7 @@ class PBN:
         nf = self.getNf()
         nv = self.getNv()
         F = self.get_integer_f()
-        print(F)
+        # print(F)
         varFInt = list(chain.from_iterable(self.getVarFInt()))
         cij = list(chain.from_iterable(self.getCij()))
 
@@ -438,7 +438,13 @@ class PBN:
         """
         
         self.set_states(initial_states, reset_history=True)
-
+        print("\n---------DETECT ATTRACTOR---------------")
+        print("Initial states - ", initial_states)
+        print("F - ", self.F)
+        print("varFInt - ", self.varFInt)
+        print("nf - ", self.nf)
+        print("nv - ", self.nv)
+        print("n parallel - ", self.n_parallel)
         history = self.get_last_state()
         
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
@@ -448,6 +454,7 @@ class PBN:
         while (n_unique_states != last_n_unique_states):
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
+            print("Last state: ", self.get_last_state())
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
             history = np.hstack((history, self.get_last_state()))
@@ -461,7 +468,7 @@ class PBN:
         transition = dict()
 
         for trajectory in history:
-            print(trajectory)
+            # print(trajectory)
             for i in range(len(trajectory) - 1):
                 if trajectory[i] in transition:
                     if transition[trajectory[i]] != trajectory[i+1]:
@@ -526,7 +533,7 @@ class PBN:
         n = len(nodes)
         nf = self.nf
         nv = new_nv
-        F = new_F
+        F = [sublist[0] for sublist in new_F]
         varFInt = new_varF
         cij = self.cij
         perturbation = self.perturbation

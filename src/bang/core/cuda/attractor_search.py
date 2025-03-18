@@ -47,29 +47,35 @@ def apply(function, function_nodes, state :list[bool], nodes) -> bool:
     return function[function_index]
 
 def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], nodes :list[int]) -> list[list[list[bool]]]:
-    
     reduced_pbn = network.select_nodes(nodes)
-
+    reduced_pbn.n_parallel = len(initial_states)
+    print("initial states - ", initial_states)
+    print(" ------- ")
     attractor, history = reduced_pbn.detect_attractor(initial_states)
+    print("attractor - ", attractor)
+    attractors = reduced_pbn.segment_attractor(attractor, history)
 
-    attractors = segment_attractor(attractor, history)
+    len_nodes = len(nodes)
+    list_bools = [[[bool(num_state & 1 << i) for i in range(len_nodes)] for num_state in attractor_system] for attractor_system in attractors]
+    
+    
+    states = initial_states
+    current_len, prev_len = len(initial_states), 0
+    while current_len != prev_len:
+        states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
+        unique_states= []
+        for state in states:
+            if state not in unique_states:
+                unique_states.append(state)
+        states = unique_states
+        prev_len = current_len
+        current_len = len(states)
 
+    print("simple step ", list_bools)
     
-    
-    
-    # states = initial_states
-    # current_len, prev_len = len(initial_states), 0
-    # while current_len != prev_len:
-    #     states = [[apply(network.F[nodes[i]], network.varFInt[nodes[i]], state, nodes) for i in range(len(nodes))] for state in states]
-    #     unique_states= []
-    #     for state in states:
-    #         if state not in unique_states:
-    #             unique_states.append(state)
-    #     states = unique_states
-    #     prev_len = current_len
-    #     current_len = len(states)
-    
-    return [attractors]
+    print("cpu ", [states])
+
+    return list_bools
 
 def states(Block :list[int]) -> list[list[bool]]:
     states :list[list[bool]] = [[]]
