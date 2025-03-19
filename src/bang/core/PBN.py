@@ -15,7 +15,7 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core.cuda.simulation import kernel_converge
+from bang.core.cuda.simulation import kernel_converge_sync
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
@@ -68,7 +68,7 @@ class PBN:
         perturbation: float,
         npNode: List[int],
         n_parallel: int = 512,
-        update_type_int: int = 0
+        update_type_int: int = 1 ## TODO change to 0, synchronous shouldnt be default
 
     ):
         self.n = n
@@ -78,7 +78,7 @@ class PBN:
         self.varFInt = varFInt
         self.cij = cij
         self.perturbation = perturbation
-        self.npNode = npNode
+        self.npNode = list(sorted(npNode))
         self.n_parallel = n_parallel
         self.update_type = updateType(update_type_int)
         self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
@@ -476,6 +476,7 @@ class PBN:
             copystate[:, state_index] ^= 1 << bit_index
 
         return copystate
+    
 
     def simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
         """
@@ -565,30 +566,33 @@ class PBN:
             N, seed=numba.uint64(datetime.datetime.now().timestamp())
         )
 
-        kernel_converge[block, blockSize](  # type: ignore
-            gpu_stateHistory,
-            gpu_threadNum,
-            gpu_powNum,
-            gpu_cumNf,
-            gpu_cumCij,
-            states,
-            n,
-            gpu_perturbation_rate,
-            gpu_cumNv,
-            gpu_F,
-            gpu_varF,
-            gpu_initialState,
-            gpu_mean,
-            gpu_steps,
-            gpu_stateSize,
-            gpu_extraF,
-            gpu_extraFIndex,
-            gpu_cumExtraF,
-            gpu_extraFCount,
-            gpu_extraFIndexCount,
-            gpu_npLength,
-            gpu_npNode,
-        )
+        if self.update_type == updateType.ASYNCHRONOUS:
+            raise NotImplementedError("Asynchronous update not implemented yet")
+        elif self.update_type == updateType.SYNCHRONOUS:
+            kernel_converge_sync[block, blockSize](  # type: ignore
+                gpu_stateHistory,
+                gpu_threadNum,
+                gpu_powNum,
+                gpu_cumNf,
+                gpu_cumCij,
+                states,
+                n,
+                gpu_perturbation_rate,
+                gpu_cumNv,
+                gpu_F,
+                gpu_varF,
+                gpu_initialState,
+                gpu_mean,
+                gpu_steps,
+                gpu_stateSize,
+                gpu_extraF,
+                gpu_extraFIndex,
+                gpu_cumExtraF,
+                gpu_extraFCount,
+                gpu_extraFIndexCount,
+                gpu_npLength,
+                gpu_npNode,
+            )
 
         last_state = gpu_initialState.copy_to_host()
         run_history = gpu_stateHistory.copy_to_host()
