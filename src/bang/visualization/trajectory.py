@@ -33,6 +33,8 @@ def draw_trajectory_ndarray(
     """
     dot = graphviz.Digraph()
 
+    edges: set[tuple[str, str]] = set()
+
     if show_labels:
         dot.attr("node", shape="circle")
     else:
@@ -49,7 +51,9 @@ def draw_trajectory_ndarray(
         if str(next) not in nodes:
             dot.node(str(next), str(next))
 
-        dot.edge(str(prev), str(next))
+        if (str(prev), str(next)) not in edges:
+            dot.edge(str(prev), str(next))
+            edges.add((str(prev), str(next)))
 
     if filename is not None:
         dot.render(filename, format, cleanup=True)
