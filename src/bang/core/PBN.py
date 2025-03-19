@@ -15,7 +15,7 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core.cuda.simulation import kernel_converge_sync
+from bang.core.cuda.simulation import kernel_converge_sync, kernel_converge_async
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
@@ -567,7 +567,30 @@ class PBN:
         )
 
         if self.update_type == updateType.ASYNCHRONOUS:
-            raise NotImplementedError("Asynchronous update not implemented yet")
+            kernel_converge_async[block, blockSize](  # type: ignore
+                gpu_stateHistory,
+                gpu_threadNum,
+                gpu_powNum,
+                gpu_cumNf,
+                gpu_cumCij,
+                states,
+                n,
+                gpu_perturbation_rate,
+                gpu_cumNv,
+                gpu_F,
+                gpu_varF,
+                gpu_initialState,
+                gpu_mean,
+                gpu_steps,
+                gpu_stateSize,
+                gpu_extraF,
+                gpu_extraFIndex,
+                gpu_cumExtraF,
+                gpu_extraFCount,
+                gpu_extraFIndexCount,
+                gpu_npLength,
+                gpu_npNode,
+            )
         elif self.update_type == updateType.SYNCHRONOUS:
             kernel_converge_sync[block, blockSize](  # type: ignore
                 gpu_stateHistory,
