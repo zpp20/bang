@@ -43,16 +43,6 @@ def draw_dependencies(
             f_index = cumNf[node_ind] + func_ind
             f_parents = pbn.varFInt[f_index]
 
-            print(
-                "node_ind:",
-                node_ind,
-                "func_ind:",
-                func_ind,
-                "f_index:",
-                f_index,
-                "f_parents:",
-                f_parents,
-            )
             for parent in f_parents:
                 if (parent, node_ind) not in edges:
                     dot.edge(str(parent), str(node_ind))
