@@ -5,14 +5,17 @@ Module containing the PBN class and helpers.
 import datetime
 import math
 from itertools import chain
-from typing import List
+from typing import List, Literal
 
+import graphviz
 import numba
 import numpy as np
 import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
+import bang.graph
+import bang.visualization
 from bang.core.cuda.simulation import kernel_converge
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
@@ -161,6 +164,15 @@ class PBN:
         :rtype: np.ndarray
         """
         return self.history
+
+    def get_blocks(self) -> list[list[int]]:
+        """
+        Returns the blocks of the PBN.
+
+        :returns: The blocks of the PBN.
+        :rtype: list[list[int]]
+        """
+        return bang.graph.get_blocks(self)
 
     @staticmethod
     def _bools_to_state_array(bools: List[bool], node_count: int) -> np.ndarray:
@@ -589,7 +601,7 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states: List[List[bool]]) -> np.ndarray:
+    def detect_attractor(self, initial_states: List[List[bool]]) -> tuple[np.ndarray, np.ndarray]:
         """
         Detects all atractor states in PBN
 
@@ -617,6 +629,7 @@ class PBN:
 
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
+
         return (np.array(ret_list), history)
 
     def segment_attractor(self, attractor_states, history):
@@ -656,6 +669,77 @@ class PBN:
             num_states = len(active_states)
 
         return attractors
+
+    def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
+        """
+        Plot the dependency graph of a Probabilistic Boolean Network (PBN).
+
+        This function creates a directed graph where each node represents a variable in the PBN,
+        and each edge represents a dependency between variables. An edge from node $i$ to node $j$
+        indicates that the value of $i$ influences the value of $j$.
+
+        :param filename: The filename to save the graph as a PNG image. If None, the graph is not saved.
+        :type filename: str, optional
+
+        :return: A graphviz.Digraph object representing the dependency graph.
+        :rtype: graphviz.Digraph
+        """
+
+        return bang.visualization.draw_dependencies(self, filename)
+
+    def trajectory_graph(
+        self,
+        index: int,
+        filename: str | None = None,
+        format: Literal["pdf", "png", "svg"] = "svg",
+        show_labels: bool = True,
+    ) -> graphviz.Digraph:
+        """
+        Plot the trajectory of a Probabilistic Boolean Network (PBN).
+
+        This function creates a directed graph where each node represents a state in the trajectory,
+        and each edge represents a transition between states.
+
+        :param index: The index of the trajectory to plot.
+        :type index: int
+
+        :param filename: The filename to save the graph. If None, the graph is not saved.
+        :type filename: str, optional
+
+        :param format: The format to save the graph in. Default is 'svg'.
+        :type format: Literal['pdf', 'png', 'svg']
+
+        :param show_labels: Whether to show labels on the nodes. Default is True. If set to False, the nodes are represented as points.
+        :type show_labels: bool
+
+        :return: A graphviz.Digraph object representing the trajectory graph.
+        :rtype: graphviz.Digraph
+        """
+
+        return bang.visualization.draw_trajectory_ndarray(
+            self.get_trajectories()[:, index, :], filename, format, show_labels
+        )
+
+    def block_graph(
+        self, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    ) -> graphviz.Digraph:
+        """
+        Plot the blocks of a Probabilistic Boolean Network (PBN).
+
+        This function creates a directed graph where each node represents a block in the PBN,
+        and each edge represents a transition between blocks.
+
+        :param filename: The filename to save the graph. If None, the graph is not saved.
+        :type filename: str, optional
+
+        :param format: The format to save the graph in. Default is 'svg'.
+        :type format: Literal['pdf', 'png', 'svg']
+
+        :return: A graphviz.Digraph object representing the block graph.
+        :rtype: graphviz.Digraph
+        """
+
+        return bang.visualization.draw_blocks(self, filename, format)
 
 
 def load_sbml(path: str) -> tuple:

@@ -157,7 +157,7 @@ class PBN_Node:
 
 
 # Returns topologically sorted blocks of the PBN
-def get_blocks(pbn):
+def get_blocks(pbn) -> list[list[int]]:
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
     # print(graph.blocks)
