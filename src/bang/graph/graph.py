@@ -98,9 +98,7 @@ class Graph_PBN:
                 for in_node in self.nodes[node_id].in_nodes:
                     node_ins.add(in_node)
                 ins[i] = ins[i].union(node_ins)
-        # print(ins)
 
-        # print(self.sccs)
         while sccs_to_sort:
             for i, scc in enumerate(sccs_to_sort):
                 if ins[i] - set(scc) - inf_pool == set():
@@ -109,8 +107,6 @@ class Graph_PBN:
                     sccs_to_sort.pop(i)
                     ins.pop(i)
                     break
-
-        # print(sorted_sccs)
 
         for scc in self.sccs:
             block = scc.copy()
@@ -160,5 +156,5 @@ class PBN_Node:
 def get_blocks(pbn) -> list[list[int]]:
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
-    # print(graph.blocks)
+
     return graph.blocks

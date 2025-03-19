@@ -215,7 +215,6 @@ class PBN:
         self.n_parallel = len(states)
         self.latest_state = np.array(converted_states).reshape(self.n_parallel, self.stateSize())
 
-        print(self.latest_state)
         if reset_history:
             self.history = np.array(converted_states).reshape(1, self.n_parallel, self.stateSize())
         else:
@@ -497,7 +496,7 @@ class PBN:
         nf = self.getNf()
         nv = self.getNv()
         F = self.get_integer_f()
-        print(F)
+
         varFInt = list(chain.from_iterable(self.getVarFInt()))
         cij = list(chain.from_iterable(self.getCij()))
 
@@ -637,7 +636,6 @@ class PBN:
         transition = dict()
 
         for trajectory in history:
-            print(trajectory)
             for i in range(len(trajectory) - 1):
                 if trajectory[i] in transition:
                     if transition[trajectory[i]] != trajectory[i + 1]:
