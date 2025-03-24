@@ -384,6 +384,7 @@ class PBN:
         gpu_powNum = cuda.to_device(pow_num)
 
         states = create_xoroshiro128p_states(N, seed=numba.uint64(datetime.datetime.now().timestamp()))
+       
         kernel_converge[block, blockSize]( # type: ignore
             gpu_stateHistory,
             gpu_threadNum,
@@ -440,11 +441,13 @@ class PBN:
         self.set_states(initial_states, reset_history=True)
         print("\n---------DETECT ATTRACTOR---------------")
         print("Initial states - ", initial_states)
+        print("n - ", self.n)
         print("F - ", self.F)
         print("varFInt - ", self.varFInt)
         print("nf - ", self.nf)
         print("nv - ", self.nv)
         print("n parallel - ", self.n_parallel)
+        print("npNode - ", self.npNode)
         history = self.get_last_state()
         
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
@@ -530,14 +533,24 @@ class PBN:
 
             new_F[-1].append(curr_F)
 
+        #Translation of old nodes into new nodes
+        translation = {node : idx for idx, node in enumerate(nodes)}
+
+        def translate(to_translate : List[int]):
+            return [translation[elem] for elem in to_translate]
+
+        #Assumes nodes are numbered from 0 to n-1!!!!!
         n = len(nodes)
-        nf = self.nf
-        nv = new_nv
+        nf = [self.nf[idx] for idx, i in enumerate(self.nf) if idx in nodes]
+        nv = [new_nv[idx] for idx, i in enumerate(new_nv) if idx in nodes]
         F = [sublist[0] for sublist in new_F]
-        varFInt = new_varF
-        cij = self.cij
+        F = [F[idx] for idx, i in enumerate(F) if idx in nodes]
+        print()
+        varFInt = [translate(new_varF[idx]) for idx, i in enumerate(new_varF) if idx in nodes]
+        cij = [self.cij for idx, i in enumerate(self.cij) if idx in nodes]
         perturbation = self.perturbation
-        npNode = self.npNode
+        npNode = [np for np in self.npNode if np in nodes]
+        npNode.append(n)
 
 
         return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
