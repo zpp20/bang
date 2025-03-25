@@ -66,7 +66,7 @@ def kernel_converge(
                     perturbation = True
                     indexState = node_index // 32
                     indexShift = indexState * 32
-                initialStateCopy[indexState] = initialStateCopy[indexState] ^ (
+                initialState[indexState] = initialStateCopy[indexState] ^ (
                     1 << (node_index - indexShift)
                 )
 
@@ -114,13 +114,13 @@ def kernel_converge(
                 )
                 indexShift += 1
 
-                for node_index in range(stateSize):
-                    initialStateCopy[node_index] = initialState[node_index]
+        for node_index in range(stateSize):
+            initialStateCopy[node_index] = initialState[node_index]
 
-                relative_index = stateSize * idx
-                gpu_stateHistory[
-                    (step + 1) * gpu_threadNum[0] + relative_index + node_index
-                ] = initialState[node_index]
+        relative_index = stateSize * idx
+        gpu_stateHistory[
+            (step + 1) * gpu_threadNum[0] + relative_index + node_index
+        ] = initialState[node_index]
 
     relative_index = stateSize * idx
 
