@@ -8,15 +8,13 @@ from enum import Enum
 from itertools import chain
 from typing import List
 
-from enum import Enum
-
 import numba
 import numpy as np
 import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core.cuda.simulation import kernel_converge_sync, kernel_converge_async
+from bang.core.cuda.simulation import kernel_converge_async, kernel_converge_sync
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
@@ -690,15 +688,15 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states: List[List[bool]]) -> np.ndarray:
+    def detect_attractor(self, initial_states: List[List[bool]]) -> tuple[np.ndarray, np.ndarray]:
         """
         Detects all atractor states in PBN
 
         :param initial_states: List of investigated states.
         :type initial_states: List[List[bool]]
 
-        :returns: List of states where attractors are coded as ints
-        :rtype: np.ndarray
+        :returns: Tuple containing list of attractor states and history of the simulation.
+        :rtype: tuple[np.ndarray, np.ndarray]
         """
 
         self.set_states(initial_states, reset_history=True)
