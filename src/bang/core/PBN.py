@@ -8,8 +8,6 @@ from enum import Enum
 from itertools import chain
 from typing import List, Literal
 
-from enum import Enum
-
 import numba
 import numpy as np
 import numpy.typing as npt
@@ -708,8 +706,8 @@ class PBN:
         :param initial_states: List of investigated states.
         :type initial_states: List[List[bool]]
 
-        :returns: List of states where attractors are coded as ints
-        :rtype: np.ndarray
+        :returns: Tuple containing list of attractor states and history of the simulation.
+        :rtype: tuple[np.ndarray, np.ndarray]
         """
 
         self.set_states(initial_states, reset_history=True)
