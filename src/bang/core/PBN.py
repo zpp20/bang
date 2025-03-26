@@ -213,22 +213,22 @@ class PBN:
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.n_parallel = len(states)
-        self.latest_state = np.array(converted_states).reshape(self.n_parallel, self.stateSize())
+        self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.stateSize()))
 
         print(self.latest_state)
         if reset_history:
-            self.history = np.array(converted_states).reshape(1, self.n_parallel, self.stateSize())
+            self.history = np.array(converted_states).reshape((1, self.n_parallel, self.stateSize()))
         else:
             if len(states) != self.history.shape[0]:
                 self.previous_simulations.append(self.history)
                 self.history = np.array(converted_states).reshape(
-                    1, self.n_parallel, self.stateSize()
+                    (1, self.n_parallel, self.stateSize())
                 )
             else:
                 self.history = np.concatenate(
                     [
                         self.history,
-                        np.array(converted_states).reshape(1, self.n_parallel, self.stateSize()),
+                        np.array(converted_states).reshape((1, self.n_parallel, self.stateSize())),
                     ],
                     axis=1,
                 )
