@@ -8,16 +8,16 @@ from enum import Enum
 from itertools import chain
 from typing import List, Literal
 
+import graphviz
 import numba
 import numpy as np
 import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-import graphviz
 import bang.graph
 import bang.visualization
-from bang.core.cuda.simulation import kernel_converge_sync, kernel_converge_async
+from bang.core.cuda.simulation import kernel_converge_async, kernel_converge_sync
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
@@ -228,7 +228,9 @@ class PBN:
         self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.stateSize()))
 
         if reset_history:
-            self.history = np.array(converted_states).reshape((1, self.n_parallel, self.stateSize()))
+            self.history = np.array(converted_states).reshape(
+                (1, self.n_parallel, self.stateSize())
+            )
         else:
             if len(states) != self.history.shape[1]:
                 self.previous_simulations.append(self.history.copy())
