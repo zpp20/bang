@@ -230,8 +230,9 @@ class PBN:
         if reset_history:
             self.history = np.array(converted_states).reshape((1, self.n_parallel, self.stateSize()))
         else:
-            if len(states) != self.history.shape[0]:
-                self.previous_simulations.append(self.history)
+            if len(states) != self.history.shape[1]:
+                self.previous_simulations.append(self.history.copy())
+
                 self.history = np.array(converted_states).reshape(
                     (1, self.n_parallel, self.stateSize())
                 )
@@ -241,7 +242,7 @@ class PBN:
                         self.history,
                         np.array(converted_states).reshape((1, self.n_parallel, self.stateSize())),
                     ],
-                    axis=1,
+                    axis=0,
                 )
 
     def extraFCount(self) -> int:
