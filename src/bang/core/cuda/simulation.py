@@ -283,8 +283,6 @@ def kernel_converge_async(
 
     for step in range(steps):
         perturbation = False
-        index_shift = 0
-        index_state = 0
 
         perturbation = perform_perturbation(
             gpu_npLength,
@@ -308,12 +306,10 @@ def kernel_converge_async(
             for i in range(nodeNum):
                 node_index = update_order[i]
 
-                if index_shift == 32:
-                    index_state += 1
-                    index_shift = 0
+                index_shift = node_index % 32
+                index_state = node_index // 32
 
                 rand = xoroshiro128p_uniform_float32(states, idx)
-                relative_index = 0
 
                 update_node(
                     node_index,
