@@ -4,6 +4,7 @@ Module containing the PBN class and helpers.
 
 import datetime
 import math
+from enum import Enum
 from itertools import chain
 from typing import List, Literal
 
@@ -16,9 +17,18 @@ from numba.cuda.random import create_xoroshiro128p_states
 
 import bang.graph
 import bang.visualization
-from bang.core.cuda.simulation import kernel_converge
+from bang.core.cuda.simulation import kernel_converge_async, kernel_converge_sync
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
+
+
+class updateType(Enum):
+    """
+    Enum representing the type of update.
+    """
+
+    ASYNCHRONOUS = 0
+    SYNCHRONOUS = 1
 
 
 class PBN:
@@ -61,6 +71,7 @@ class PBN:
         perturbation: float,
         npNode: List[int],
         n_parallel: int = 512,
+        update_type_int: int = 1,  ## TODO change to 0, synchronous shouldnt be default
     ):
         self.n = n
         self.nf = nf
@@ -69,8 +80,9 @@ class PBN:
         self.varFInt = varFInt
         self.cij = cij
         self.perturbation = perturbation
-        self.npNode = npNode
+        self.npNode = list(sorted(npNode))
         self.n_parallel = n_parallel
+        self.update_type = updateType(update_type_int)
         self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
         self.previous_simulations: List[np.ndarray] = []
@@ -213,23 +225,26 @@ class PBN:
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.n_parallel = len(states)
-        self.latest_state = np.array(converted_states).reshape(self.n_parallel, self.stateSize())
+        self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.stateSize()))
 
         if reset_history:
-            self.history = np.array(converted_states).reshape(1, self.n_parallel, self.stateSize())
+            self.history = np.array(converted_states).reshape(
+                (1, self.n_parallel, self.stateSize())
+            )
         else:
-            if len(states) != self.history.shape[0]:
-                self.previous_simulations.append(self.history)
+            if len(states) != self.history.shape[1]:
+                self.previous_simulations.append(self.history.copy())
+
                 self.history = np.array(converted_states).reshape(
-                    1, self.n_parallel, self.stateSize()
+                    (1, self.n_parallel, self.stateSize())
                 )
             else:
                 self.history = np.concatenate(
                     [
                         self.history,
-                        np.array(converted_states).reshape(1, self.n_parallel, self.stateSize()),
+                        np.array(converted_states).reshape((1, self.n_parallel, self.stateSize())),
                     ],
-                    axis=1,
+                    axis=0,
                 )
 
     def extraFCount(self) -> int:
@@ -444,6 +459,86 @@ class PBN:
 
         return new_varF, new_F
 
+    def pbn_data_to_np_arrays(self, n_steps: int):
+        nf = self.getNf()
+        nv = self.getNv()
+        F = self.get_integer_f()
+
+        varFInt = list(chain.from_iterable(self.getVarFInt()))
+        cij = list(chain.from_iterable(self.getCij()))
+
+        cumCij = np.cumsum(cij, dtype=np.float32)
+        cumNv = np.cumsum([0] + nv, dtype=np.int32)
+        cumNf = np.cumsum([0] + nf, dtype=np.int32)
+
+        perturbation = self.getPerturbation()
+        npNode = self.getNpNode()
+
+        stateSize = self.stateSize()
+
+        extraFCount = self.extraFCount()
+        extraFIndexCount = self.extraFIndexCount()
+        extraFIndex = self.extraFIndex()
+        cumExtraF = self.cumExtraF()
+        extraF = self.extraF()
+
+        N = self.n_parallel
+
+        initial_state = (
+            np.zeros(N * stateSize, dtype=np.int32)
+            if self.latest_state is None
+            else self.latest_state
+        )
+        initial_state = initial_state.reshape(N * stateSize)
+
+        cum_variable_count = np.array(cumNv, dtype=np.int32)
+        functions = np.array(F, dtype=np.int32)
+        function_variables = np.array(varFInt, dtype=np.int32)
+        state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32)
+        thread_num = np.array([N], dtype=np.int32)
+        steps = np.array([n_steps], dtype=np.int32)
+        state_size = np.array([stateSize], dtype=np.int32)
+        extra_functions = np.array(extraF, dtype=np.int32)
+        extra_functions_index = np.array(extraFIndex, dtype=np.int32)
+        cum_extra_functions = np.array(cumExtraF, dtype=np.int32)
+        extra_function_count = np.array([extraFCount], dtype=np.int32)
+        extra_function_index_count = np.array([extraFIndexCount], dtype=np.int32)
+        perturbation_blacklist = np.array(npNode, dtype=np.int32)
+        non_perturbed_count = np.array([len(npNode)], dtype=np.int32)
+        function_probabilities = np.array(cumCij, dtype=np.float32)
+        cum_function_count = np.array(cumNf, dtype=np.int32)
+        perturbation_rate = np.array([perturbation], dtype=np.float32)
+
+        pow_num = np.zeros((2, 32), dtype=np.int32)
+        pow_num[1][0] = 1
+        pow_num[0][0] = 0
+
+        for i in range(1, 32):
+            pow_num[0][i] = 0
+            pow_num[1][i] = pow_num[1][i - 1] * 2
+
+        return (
+            state_history,
+            thread_num,
+            pow_num,
+            cum_function_count,
+            function_probabilities,
+            perturbation_rate,
+            cum_variable_count,
+            functions,
+            function_variables,
+            initial_state,
+            steps,
+            state_size,
+            extra_functions,
+            extra_functions_index,
+            cum_extra_functions,
+            extra_function_count,
+            extra_function_index_count,
+            perturbation_blacklist,
+            non_perturbed_count,
+        )
+
     @staticmethod
     def _perturb_state_by_actions(
         actions: npt.NDArray[np.uint32], state: np.ndarray | None
@@ -492,108 +587,115 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        n = self.getN()
-        nf = self.getNf()
-        nv = self.getNv()
-        F = self.get_integer_f()
+        # Convert PBN data to numpy arrays
+        pbn_data = self.pbn_data_to_np_arrays(n_steps)
 
-        varFInt = list(chain.from_iterable(self.getVarFInt()))
-        cij = list(chain.from_iterable(self.getCij()))
+        (
+            state_history,
+            thread_num,
+            pow_num,
+            cum_function_count,
+            function_probabilities,
+            perturbation_rate,
+            cum_variable_count,
+            functions,
+            function_variables,
+            initial_state,
+            steps,
+            state_size,
+            extra_functions,
+            extra_functions_index,
+            cum_extra_functions,
+            extra_function_count,
+            extra_function_index_count,
+            perturbation_blacklist,
+            non_perturbed_count,
+        ) = pbn_data
 
-        cumCij = np.cumsum(cij, dtype=np.float32)
-        cumNv = np.cumsum([0] + nv, dtype=np.int32)
-        cumNf = np.cumsum([0] + nf, dtype=np.int32)
+        gpu_cumNv = cuda.to_device(cum_variable_count)
+        gpu_F = cuda.to_device(functions)
+        gpu_varF = cuda.to_device(function_variables)
+        gpu_initialState = cuda.to_device(initial_state)
+        gpu_stateHistory = cuda.to_device(state_history)
+        gpu_threadNum = cuda.to_device(thread_num)
+        gpu_steps = cuda.to_device(steps)
+        gpu_stateSize = cuda.to_device(state_size)
+        gpu_extraF = cuda.to_device(extra_functions)
+        gpu_extraFIndex = cuda.to_device(extra_functions_index)
+        gpu_cumExtraF = cuda.to_device(cum_extra_functions)
+        gpu_extraFCount = cuda.to_device(extra_function_count)
+        gpu_extraFIndexCount = cuda.to_device(extra_function_index_count)
+        gpu_npNode = cuda.to_device(perturbation_blacklist)
+        gpu_npLength = cuda.to_device(non_perturbed_count)
+        gpu_cumCij = cuda.to_device(function_probabilities)
+        gpu_cumNf = cuda.to_device(cum_function_count)
+        gpu_perturbation_rate = cuda.to_device(perturbation_rate)
+        gpu_powNum = cuda.to_device(pow_num)
 
-        perturbation = self.getPerturbation()
-        npNode = self.getNpNode()
-
-        stateSize = self.stateSize()
-
-        extraFCount = self.extraFCount()
-        extraFIndexCount = self.extraFIndexCount()
-        extraFIndex = self.extraFIndex()
-        cumExtraF = self.cumExtraF()
-        extraF = self.extraF()
+        states = create_xoroshiro128p_states(
+            self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
+        )
 
         block = self.n_parallel // 32
         if block == 0:
             block = 1
         blockSize = 32
 
-        N = self.n_parallel
-
-        initial_state = (
-            np.zeros(N * stateSize, dtype=np.int32)
-            if self.latest_state is None
-            else self.latest_state
-        )
-        initial_state = initial_state.reshape(N * stateSize)
-
-        gpu_cumNv = cuda.to_device(np.array(cumNv, dtype=np.int32))
-        gpu_F = cuda.to_device(np.array(F, dtype=np.int32))
-        gpu_varF = cuda.to_device(np.array(varFInt, dtype=np.int32))
-        gpu_initialState = cuda.to_device(initial_state)
-        gpu_stateHistory = cuda.to_device(np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32))
-        gpu_threadNum = cuda.to_device(np.array([N], dtype=np.int32))
-        gpu_mean = cuda.to_device(np.zeros((N, 2), dtype=np.float32))
-        gpu_steps = cuda.to_device(np.array([n_steps], dtype=np.int32))
-        gpu_stateSize = cuda.to_device(np.array([stateSize], dtype=np.int32))
-        gpu_extraF = cuda.to_device(np.array(extraF, dtype=np.int32))
-        gpu_extraFIndex = cuda.to_device(np.array(extraFIndex, dtype=np.int32))
-        gpu_cumExtraF = cuda.to_device(np.array(cumExtraF, dtype=np.int32))
-        gpu_extraFCount = cuda.to_device(np.array([extraFCount], dtype=np.int32))
-        gpu_extraFIndexCount = cuda.to_device(np.array([extraFIndexCount], dtype=np.int32))
-        gpu_npNode = cuda.to_device(np.array(npNode, dtype=np.int32))
-        gpu_npLength = cuda.to_device(np.array([len(npNode)], dtype=np.int32))
-        gpu_cumCij = cuda.to_device(np.array(cumCij, dtype=np.float32))
-        gpu_cumNf = cuda.to_device(np.array(cumNf, dtype=np.int32))
-        gpu_perturbation_rate = cuda.to_device(np.array([perturbation], dtype=np.float32))
-
-        pow_num = np.zeros((2, 32), dtype=np.int32)
-        pow_num[1][0] = 1
-        pow_num[0][0] = 0
-
-        for i in range(1, 32):
-            pow_num[0][i] = 0
-            pow_num[1][i] = pow_num[1][i - 1] * 2
-
-        gpu_powNum = cuda.to_device(pow_num)
-
-        states = create_xoroshiro128p_states(
-            N, seed=numba.uint64(datetime.datetime.now().timestamp())
-        )
-
-        kernel_converge[block, blockSize](  # type: ignore
-            gpu_stateHistory,
-            gpu_threadNum,
-            gpu_powNum,
-            gpu_cumNf,
-            gpu_cumCij,
-            states,
-            n,
-            gpu_perturbation_rate,
-            gpu_cumNv,
-            gpu_F,
-            gpu_varF,
-            gpu_initialState,
-            gpu_mean,
-            gpu_steps,
-            gpu_stateSize,
-            gpu_extraF,
-            gpu_extraFIndex,
-            gpu_cumExtraF,
-            gpu_extraFCount,
-            gpu_extraFIndexCount,
-            gpu_npLength,
-            gpu_npNode,
-        )
+        if self.update_type == updateType.ASYNCHRONOUS:
+            kernel_converge_async[block, blockSize](  # type: ignore
+                gpu_stateHistory,
+                gpu_threadNum,
+                gpu_powNum,
+                gpu_cumNf,
+                gpu_cumCij,
+                states,
+                self.getN(),
+                gpu_perturbation_rate,
+                gpu_cumNv,
+                gpu_F,
+                gpu_varF,
+                gpu_initialState,
+                gpu_steps,
+                gpu_stateSize,
+                gpu_extraF,
+                gpu_extraFIndex,
+                gpu_cumExtraF,
+                gpu_extraFCount,
+                gpu_extraFIndexCount,
+                gpu_npLength,
+                gpu_npNode,
+            )
+        elif self.update_type == updateType.SYNCHRONOUS:
+            kernel_converge_sync[block, blockSize](  # type: ignore
+                gpu_stateHistory,
+                gpu_threadNum,
+                gpu_powNum,
+                gpu_cumNf,
+                gpu_cumCij,
+                states,
+                self.getN(),
+                gpu_perturbation_rate,
+                gpu_cumNv,
+                gpu_F,
+                gpu_varF,
+                gpu_initialState,
+                gpu_steps,
+                gpu_stateSize,
+                gpu_extraF,
+                gpu_extraFIndex,
+                gpu_cumExtraF,
+                gpu_extraFCount,
+                gpu_extraFIndexCount,
+                gpu_npLength,
+                gpu_npNode,
+            )
 
         last_state = gpu_initialState.copy_to_host()
         run_history = gpu_stateHistory.copy_to_host()
 
-        self.latest_state = last_state.reshape((N, stateSize))
+        self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
-        run_history = run_history.reshape((n_steps + 1, N, stateSize))
+        run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
 
         if self.history is not None:
             self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
@@ -607,8 +709,8 @@ class PBN:
         :param initial_states: List of investigated states.
         :type initial_states: List[List[bool]]
 
-        :returns: List of states where attractors are coded as ints
-        :rtype: np.ndarray
+        :returns: Tuple containing list of attractor states and history of the simulation.
+        :rtype: tuple[np.ndarray, np.ndarray]
         """
 
         self.set_states(initial_states, reset_history=True)
