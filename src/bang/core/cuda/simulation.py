@@ -184,12 +184,10 @@ def kernel_converge_sync(
         # for every interval full of perturbable nodes
 
         perturbation = perform_perturbation(
-            gpu_initialState,
             gpu_npLength,
             gpu_npNode,
             gpu_perturbation_rate,
             states,
-            nodeNum,
             idx,
             initialStateCopy,
         )
@@ -289,12 +287,10 @@ def kernel_converge_async(
         index_state = 0
 
         perturbation = perform_perturbation(
-            gpu_initialState,
             gpu_npLength,
             gpu_npNode,
             gpu_perturbation_rate,
             states,
-            nodeNum,
             idx,
             initialState,
         )
