@@ -122,7 +122,7 @@ class Graph_PBN:
                 [True for node in self.nodes.values() if node.id in self.blocks[i][0] and any([j in block for j in node.out_nodes])]
                 )]
             block = sorted(list(set(block)))
-            self.blocks.append(block)
+            self.blocks.append((block, children))
 
 
 
