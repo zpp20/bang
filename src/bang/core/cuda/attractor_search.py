@@ -124,7 +124,7 @@ def get_all_nodes(blocks :list[tuple[list[int], list[int]]], i :int) -> list[int
 
 def divide_and_counquer(network : PBN):
     PBN_graph = graph.Graph_PBN(network)
-    PBN_graph.find_scc_and_blocks()
+    PBN_graph.find_scc_and_blocks(dag_scc=True)
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks 
     attractors :list[tuple[list[list[list[bool]]], list[int]]] = []
     max :int = 0
