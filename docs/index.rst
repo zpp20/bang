@@ -12,4 +12,6 @@ bang - BooleaAn Networks on Gpu
 
    pbn_funcs
 
-   simulation_funcs
+   :caption: Visualization:
+
+   visualization
