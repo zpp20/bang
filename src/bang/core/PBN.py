@@ -718,15 +718,6 @@ class PBN:
         """
         
         self.set_states(initial_states, reset_history=True)
-        print("\n---------DETECT ATTRACTOR---------------")
-        print("Initial states - ", initial_states)
-        print("n - ", self.n)
-        print("F - ", self.F)
-        print("varFInt - ", self.varFInt)
-        print("nf - ", self.nf)
-        print("nv - ", self.nv)
-        print("n parallel - ", self.n_parallel)
-        print("npNode - ", self.npNode)
         history = self.get_last_state()
         
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
@@ -736,7 +727,7 @@ class PBN:
         while n_unique_states != last_n_unique_states:
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
-            print("Last state: ", self.get_last_state())
+            # print("Last state: ", self.get_last_state())
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
             history = np.hstack((history, self.get_last_state()))
@@ -826,12 +817,12 @@ class PBN:
         F = [F[idx] for idx, i in enumerate(F) if idx in nodes]
         print()
         varFInt = [translate(new_varF[idx]) for idx, i in enumerate(new_varF) if idx in nodes]
-        cij = [self.cij for idx, i in enumerate(self.cij) if idx in nodes]
+        cij = self.cij
         perturbation = self.perturbation
         npNode = [np for np in self.npNode if np in nodes]
         npNode.append(n)
 
-        return (np.array(ret_list), history)
+        return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type_int=1)
 
     # def segment_attractor(self, attractor_states, history):
     #     active_states = attractor_states

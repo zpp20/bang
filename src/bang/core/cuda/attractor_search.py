@@ -49,10 +49,7 @@ def apply(function, function_nodes, state :list[bool], nodes) -> bool:
 def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], nodes :list[int]) -> list[list[list[bool]]]:
     reduced_pbn = network.select_nodes(nodes)
     reduced_pbn.n_parallel = len(initial_states)
-    print("initial states - ", initial_states)
-    print(" ------- ")
     attractor, history = reduced_pbn.detect_attractor(initial_states)
-    print("attractor - ", attractor)
     attractors = reduced_pbn.segment_attractor(attractor, history)
 
     len_nodes = len(nodes)
@@ -70,10 +67,6 @@ def find_attractors_realisation(network :PBN, initial_states :list[list[bool]], 
         states = unique_states
         prev_len = current_len
         current_len = len(states)
-
-    print("simple step ", list_bools)
-    
-    print("cpu ", [states])
 
     return list_bools
 
