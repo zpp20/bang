@@ -42,8 +42,8 @@ class Graph_PBN:
         self.sccs = []
         self.blocks = []
         self.block_children = []
-    
-# dfs numbering functions
+
+    # dfs numbering functions
     def dfs_aux(self, node):
         node.visited = True
         node.dfs_id = self.dfs_numbered
@@ -114,16 +114,21 @@ class Graph_PBN:
             # influencers are nodes that are not in the block and influence at least one node in the block
             if dag_scc:
                 children = [
-                    i for i in range(len(self.blocks)) if any(
-                    [True
-                    for node in self.nodes.values()
-                    if node.id in self.blocks[i][0] and any([j in block for j in node.out_nodes])
+                    i
+                    for i in range(len(self.blocks))
+                    if any(
+                        [
+                            True
+                            for node in self.nodes.values()
+                            if node.id in self.blocks[i][0]
+                            and any([j in block for j in node.out_nodes])
+                        ]
+                    )
                 ]
-                    )]
                 block = sorted(list(set(block)))
                 self.blocks.append((block, children))
 
-            else :
+            else:
                 influencers = [
                     node.id
                     for node in self.nodes.values()
@@ -132,7 +137,6 @@ class Graph_PBN:
                 block += influencers
                 block = sorted(list(set(block)))
                 self.blocks.append(block)
-
 
 
 class PBN_Node:
