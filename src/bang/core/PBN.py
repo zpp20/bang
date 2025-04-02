@@ -463,7 +463,6 @@ class PBN:
         nf = self.getNf()
         nv = self.getNv()
         F = self.get_integer_f()
-
         varFInt = list(chain.from_iterable(self.getVarFInt()))
         cij = list(chain.from_iterable(self.getCij()))
 
@@ -702,21 +701,25 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states: List[List[bool]]) -> tuple[np.ndarray, np.ndarray]:
+    def detect_attractor(self, initial_states):
         """
-        Detects all atractor states in PBN
+            Detects all atractor states in PBN
 
-        :param initial_states: List of investigated states.
-        :type initial_states: List[List[bool]]
+            Parameters
+            ----------
 
-        :returns: Tuple containing list of attractor states and history of the simulation.
-        :rtype: tuple[np.ndarray, np.ndarray]
+            initial_states : List[List[Bool]]
+                List of investigated states. 
+            Returns
+            -------
+            attractor_states : np.array(int)
+                List of states where attractors are coded as ints
+
         """
-
+        
         self.set_states(initial_states, reset_history=True)
-
         history = self.get_last_state()
-
+        
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
         n_unique_states = len({state_bytes})
         last_n_unique_states = 0
@@ -724,13 +727,13 @@ class PBN:
         while n_unique_states != last_n_unique_states:
             self.simple_steps(1)
             last_n_unique_states = n_unique_states
+            # print("Last state: ", self.get_last_state())
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
             n_unique_states = len(set(state_bytes))
             history = np.hstack((history, self.get_last_state()))
-
+            
         state_bytes_set = list(set(state_bytes))
         ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
-
         return (np.array(ret_list), history)
 
     def segment_attractor(self, attractor_states, history):
@@ -738,12 +741,13 @@ class PBN:
         transition = dict()
 
         for trajectory in history:
+            # print(trajectory)
             for i in range(len(trajectory) - 1):
                 if trajectory[i] in transition:
-                    if transition[trajectory[i]] != trajectory[i + 1]:
+                    if transition[trajectory[i]] != trajectory[i+1]:
                         raise ValueError("Two different states from the same state")
 
-                transition[trajectory[i]] = trajectory[i + 1]
+                transition[trajectory[i]] = trajectory[i+1]
 
         num_states = len(active_states)
 
@@ -751,16 +755,16 @@ class PBN:
 
         while num_states > 0:
             initial_state = active_states[0]
-
-            rm_idx = np.where(active_states == initial_state)[0]
+            
+            rm_idx = np.where(active_states==initial_state)[0]
             active_states = np.delete(active_states, rm_idx)
             attractor_states = [initial_state]
 
             curr_state = transition[initial_state]
             while curr_state != initial_state:
                 attractor_states.append(curr_state)
-
-                rm_idx = np.where(active_states == curr_state)[0]
+                
+                rm_idx = np.where(active_states==curr_state)[0]
                 active_states = np.delete(active_states, rm_idx)
 
                 curr_state = transition[curr_state]
@@ -769,6 +773,93 @@ class PBN:
             num_states = len(active_states)
 
         return attractors
+
+    def select_nodes(self, nodes : List[int]):
+        new_F = list()
+        new_varF = list()
+        new_nv = list()
+        for F_func, F_vars, n_vars in zip(self.F, self.varFInt, self.nv):
+            #assumes F contains truthtables for sorted vars
+            # print("F_vars ", F_vars)
+            new_nv.append(0)
+            new_varF.append(list())
+            new_F.append(list())
+            curr_num_vars = len(F_vars)
+            curr_F = F_func
+            curr_vars = F_vars
+            current_removed = 0
+            for i, var in enumerate(F_vars):
+                if var not in nodes:
+                    curr_i = i - current_removed
+                    var_state = 0
+                    # indeces = [j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state for j in range(2**(curr_num_vars - 1))]
+                    # print("indeces - ", indeces, " var_state ", var_state, " curr_i ", curr_i)
+                    curr_F = [curr_F[j + (2**curr_i) * (j // (2**curr_i)) + (curr_i + 1) * var_state] for j in range(2**(curr_num_vars - 1))]
+                    curr_num_vars -= 1
+                    current_removed += 1
+                else:
+                    new_varF[-1].append(var)
+                    new_nv[-1] += 1
+
+            new_F[-1].append(curr_F)
+
+        #Translation of old nodes into new nodes
+        translation = {node : idx for idx, node in enumerate(nodes)}
+
+        def translate(to_translate : List[int]):
+            return [translation[elem] for elem in to_translate]
+
+        #Assumes nodes are numbered from 0 to n-1!!!!!
+        n = len(nodes)
+        nf = [self.nf[idx] for idx, i in enumerate(self.nf) if idx in nodes]
+        nv = [new_nv[idx] for idx, i in enumerate(new_nv) if idx in nodes]
+        F = [sublist[0] for sublist in new_F]
+        F = [F[idx] for idx, i in enumerate(F) if idx in nodes]
+        print()
+        varFInt = [translate(new_varF[idx]) for idx, i in enumerate(new_varF) if idx in nodes]
+        cij = self.cij
+        perturbation = self.perturbation
+        npNode = [np for np in self.npNode if np in nodes]
+        npNode.append(n)
+
+        return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type_int=1)
+
+    # def segment_attractor(self, attractor_states, history):
+    #     active_states = attractor_states
+    #     transition = dict()
+
+    #     for trajectory in history:
+    #         for i in range(len(trajectory) - 1):
+    #             if trajectory[i] in transition:
+    #                 if transition[trajectory[i]] != trajectory[i + 1]:
+    #                     raise ValueError("Two different states from the same state")
+
+    #             transition[trajectory[i]] = trajectory[i + 1]
+
+    #     num_states = len(active_states)
+
+    #     attractors = []
+
+    #     while num_states > 0:
+    #         initial_state = active_states[0]
+
+    #         rm_idx = np.where(active_states == initial_state)[0]
+    #         active_states = np.delete(active_states, rm_idx)
+    #         attractor_states = [initial_state]
+
+    #         curr_state = transition[initial_state]
+    #         while curr_state != initial_state:
+    #             attractor_states.append(curr_state)
+
+    #             rm_idx = np.where(active_states == curr_state)[0]
+    #             active_states = np.delete(active_states, rm_idx)
+
+    #             curr_state = transition[curr_state]
+
+    #         attractors.append(attractor_states)
+    #         num_states = len(active_states)
+
+    #     return attractors
 
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """
@@ -841,6 +932,8 @@ class PBN:
 
         return bang.visualization.draw_blocks(self, filename, format)
 
+        return PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
+            
 
 def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)

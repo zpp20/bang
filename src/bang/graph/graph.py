@@ -41,8 +41,9 @@ class Graph_PBN:
 
         self.sccs = []
         self.blocks = []
-
-    # dfs numbering functions
+        self.block_children = []
+    
+# dfs numbering functions
     def dfs_aux(self, node):
         node.visited = True
         node.dfs_id = self.dfs_numbered
@@ -72,7 +73,7 @@ class Graph_PBN:
             if not self.nodes[in_node].visited:
                 self.scc_aux(self.nodes[in_node], root_dfs)
 
-    def find_scc_and_blocks(self):
+    def find_scc_and_blocks(self, dag_scc=False):
         self.dfs_numerate()  # assign dfs_id to each node
         for n in self.nodes.values():
             n.visited = False
@@ -111,14 +112,27 @@ class Graph_PBN:
         for scc in self.sccs:
             block = scc.copy()
             # influencers are nodes that are not in the block and influence at least one node in the block
-            influencers = [
-                node.id
-                for node in self.nodes.values()
-                if node.id not in block and any([i in block for i in node.out_nodes])
-            ]
-            block += influencers
-            block = sorted(list(set(block)))
-            self.blocks.append(block)
+            if dag_scc:
+                children = [
+                    i for i in range(len(self.blocks)) if any(
+                    [True
+                    for node in self.nodes.values()
+                    if node.id in self.blocks[i][0] and any([j in block for j in node.out_nodes])
+                ]
+                    )]
+                block = sorted(list(set(block)))
+                self.blocks.append((block, children))
+
+            else :
+                influencers = [
+                    node.id
+                    for node in self.nodes.values()
+                    if node.id not in block and any([i in block for i in node.out_nodes])
+                ]
+                block += influencers
+                block = sorted(list(set(block)))
+                self.blocks.append(block)
+
 
 
 class PBN_Node:
