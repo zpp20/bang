@@ -177,6 +177,24 @@ class PBN:
         """
         return self.history
 
+    def save_trajectories(self, filename: str):
+        """
+        Saves the execution history of the PBN to a CSV file.
+
+        :param filename: The name of the file to save the history.
+        :type filename: str
+        """
+        np.savetxt(filename, self.history, delimiter=",")
+
+    def save_last_state(self, filename: str):
+        """
+        Saves the last encountered state of the PBN's trajectories to a CSV file.
+
+        :param filename: The name of the file to save the last state.
+        :type filename: str
+        """
+        np.savetxt(filename, self.latest_state, delimiter=",")
+
     def get_blocks(self) -> list[list[int]]:
         """
         Returns the blocks of the PBN.
