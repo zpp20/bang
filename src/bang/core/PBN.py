@@ -184,7 +184,7 @@ class PBN:
         :param filename: The name of the file to save the history.
         :type filename: str
         """
-        np.savetxt(filename, self.history, delimiter=",")
+        np.save(filename, self.history)
 
     def save_last_state(self, filename: str):
         """
@@ -193,7 +193,7 @@ class PBN:
         :param filename: The name of the file to save the last state.
         :type filename: str
         """
-        np.savetxt(filename, self.latest_state, delimiter=",")
+        np.save(filename, self.latest_state)
 
     def get_blocks(self) -> list[list[int]]:
         """
