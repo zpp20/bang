@@ -243,3 +243,93 @@ def test_update_state_large_missing_pair(test_n_nodes, test_n_states):
     expected = [2**32 - 1 for _ in range(test_n_states - 1)] + [2**30 - 1]
 
     assert np.array_equal(initial_state, expected), initial_state
+
+
+def test_update_node_permutations():
+    # Test if a different order of updates gives the same result for a fixed point
+    # - this is important for asynchronous updates
+    pbn1 = PBN(
+        2,
+        [1, 1],
+        [2, 2],
+        [[True, True, True, False], [True, False, True, True]],
+        [[0, 1], [0, 1]],
+        [[1.0], [1.0]],
+        0.0,
+        [2],
+        n_parallel=1,
+        update_type_int=0,
+    )
+
+    prepared_data = pbn1.pbn_data_to_np_arrays(1)
+
+    (
+        _,
+        _,
+        pow_num,
+        cum_function_count,
+        function_probabilities,
+        _,
+        cum_variable_count,
+        functions,
+        function_variables,
+        initial_state,
+        _,
+        _,
+        extra_functions,
+        extra_functions_index,
+        cum_extra_functions,
+        _,
+        _,
+        _,
+        _,
+    ) = prepared_data
+
+    initial_state = [1]
+    initial_state_2 = [1]
+
+    initial_state_copy = initial_state.copy()
+    indexShift = 0
+    indexState = 0
+    perturbation = 0.0
+
+    for i in range(2):
+        update_node(
+            i,
+            indexShift,
+            indexState,
+            perturbation,
+            function_probabilities,
+            cum_function_count,
+            cum_variable_count,
+            functions,
+            extra_functions_index,
+            extra_functions,
+            cum_extra_functions,
+            function_variables,
+            pow_num,
+            initial_state_copy,
+            initial_state,
+        )
+
+    for i in range(2)[::-1]:
+        update_node(
+            i,
+            indexShift,
+            indexState,
+            perturbation,
+            function_probabilities,
+            cum_function_count,
+            cum_variable_count,
+            functions,
+            extra_functions_index,
+            extra_functions,
+            cum_extra_functions,
+            function_variables,
+            pow_num,
+            initial_state_copy,
+            initial_state_2,
+        )
+
+    assert np.array_equal(initial_state, [1]), initial_state
+    assert np.array_equal(initial_state_2, [1]), initial_state_2
