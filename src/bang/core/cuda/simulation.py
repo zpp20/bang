@@ -100,6 +100,7 @@ def update_initial_state(
             (step + 1) * gpu_threadNum[0] + relative_index + node_index
         ] = initialStateCopy[node_index]
 
+
 @cuda.jit(device=True)
 def perform_perturbation(
     gpu_npLength,
