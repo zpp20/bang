@@ -288,7 +288,6 @@ def test_update_node_permutations():
     initial_state = [1]
     initial_state_2 = [1]
 
-    initial_state_copy = initial_state.copy()
     indexShift = 0
     indexState = 0
     perturbation = 0.0
@@ -308,7 +307,7 @@ def test_update_node_permutations():
             cum_extra_functions,
             function_variables,
             pow_num,
-            initial_state_copy,
+            initial_state,
             initial_state,
         )
 
@@ -327,7 +326,7 @@ def test_update_node_permutations():
             cum_extra_functions,
             function_variables,
             pow_num,
-            initial_state_copy,
+            initial_state_2,
             initial_state_2,
         )
 
