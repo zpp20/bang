@@ -104,7 +104,7 @@ jobs:
           path: dist/
 
   test-pypi:
-    name: Release
+    name: Release to Test PyPI
     runs-on: ubuntu-latest
     needs: [build]
     if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/v') }}
@@ -139,16 +139,38 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
 
-      # - name: Generate release notes
-      #   run: |
-      #     python scripts/release_notes.py > ${{ github.workspace }}-RELEASE_NOTES.md
+  official-pypi:
+    name: Release to PyPI
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
+    environment:
+      name: pypi
+      url: https://pypi.org/project/bang-gpu/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      # - name: Publish GitHub release
-      #   uses: softprops/action-gh-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     body_path: ${{ github.workspace }}-RELEASE_NOTES.md
-      #     prerelease: ${{ contains(env.TAG, 'rc') }}
-      #     files: |
-      #       wheelhouse/*
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Prepare environment
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Download package distribution files
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://pypi.org/
