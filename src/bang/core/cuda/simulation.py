@@ -83,21 +83,22 @@ def update_node(
 def update_initial_state(
     gpu_threadNum,
     gpu_stateHistory,
+    gpu_initialState,
     stateSize,
     idx,
     step,
     initialState,
     initialStateCopy,
 ):
-    for node_index in range(stateSize):
-        initialStateCopy[node_index] = initialState[node_index]
-
     relative_index = stateSize * idx
 
-    gpu_stateHistory[
-        (step + 1) * gpu_threadNum[0] + relative_index + node_index
-    ] = initialStateCopy[node_index]
+    for node_index in range(stateSize):
+        initialStateCopy[node_index] = initialState[node_index]
+        gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
+        gpu_stateHistory[
+            (step + 1) * gpu_threadNum[0] + relative_index + node_index
+        ] = initialStateCopy[node_index]
 
 @cuda.jit(device=True)
 def perform_perturbation(
@@ -225,17 +226,13 @@ def kernel_converge_sync(
         update_initial_state(
             gpu_threadNum,
             gpu_stateHistory,
+            gpu_initialState,
             stateSize,
             idx,
             step,
             initialState,
             initialStateCopy,
         )
-
-    relative_index = stateSize * idx
-
-    for node_index in range(stateSize):
-        gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
 
 @cuda.jit
@@ -329,9 +326,13 @@ def kernel_converge_async(
                     initialState,
                 )
 
-        gpu_stateHistory[
-            (step + 1) * gpu_threadNum[0] + relative_index + node_index
-        ] = initialState[node_index]
-
-    for node_index in range(stateSize):
-        gpu_initialState[relative_index + node_index] = initialState[node_index]
+        update_initial_state(
+            gpu_threadNum,
+            gpu_stateHistory,
+            gpu_initialState,
+            stateSize,
+            idx,
+            step,
+            initialState,
+            initialState,
+        )
