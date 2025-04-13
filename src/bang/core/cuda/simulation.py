@@ -329,8 +329,9 @@ def kernel_converge_async(
                     initialState,
                 )
 
-    relative_index = stateSize * idx
+        gpu_stateHistory[
+            (step + 1) * gpu_threadNum[0] + relative_index + node_index
+        ] = initialState[node_index]
 
-    gpu_stateHistory[(step + 1) * gpu_threadNum[0] + relative_index + node_index] = initialState[
-        node_index
-    ]
+    for node_index in range(stateSize):
+        gpu_initialState[relative_index + node_index] = initialState[node_index]
