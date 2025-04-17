@@ -15,7 +15,8 @@ def block_thread(
     parent_semaphores :list[threading.Semaphore], 
     children :list[int],
     attractors :list[tuple[npt.NDArray[np.int32], list[int]]],
-    attractors_cum_index :list[npt.NDArray[np.int32]]
+    attractors_cum_index :list[npt.NDArray[np.int32]],
+    elementary_blocks :list[list[int]]
     ):
     
     for i in range(len(children)):
@@ -23,9 +24,8 @@ def block_thread(
     if len(children) != 0:
         corss_attractors_gpu(
             [attractors[i][0] for i in children],
-            [],
-            [],
-            []
+            [attractors_cum_index[i] for i in children],
+            [elementary_blocks[i] for i in children]
             )
     find_attractors_gpu()
     for sem in parent_semaphores:
