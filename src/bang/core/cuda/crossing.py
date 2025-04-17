@@ -34,7 +34,7 @@ def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
         result_size += tmp
         cum_result.append(tmp)
         if not increment_states(current, max_lens):
-            return cum_result[1:], result_size
+            return cum_result[1:], result_size, reduce(mul, max_lens)
     
 
 def corss_attractors_gpu(
@@ -46,8 +46,18 @@ def corss_attractors_gpu(
     attractors_index = [cuda.to_device(attractor_cum_index[i]) for i in range(len(attractor_cum_index))]
     blocks_sizes = cuda.to_device(attractor.shape[0] for attractor in attractor_list)
     select_order = cuda.to_device(get_select_order(nodes))
-    
-    pass
+    cum_result, result_size, threads = get_result(attractor_cum_index)
+    result = np.zeros((result_size, 1))
+    attractors = cuda.to_device(result)
+    cross_attractors[1024, (threads // 1024) + 1]( # type: ignore
+        attractors_global,
+        attractor_cum_index,
+        blocks_sizes,
+        select_order,
+        attractors,
+        cuda.to_device(cum_result)
+    )
+    return attractors
 
 def increment_states(current_states, max_vals) -> bool:
     current_states[0][0] += 1
@@ -73,7 +83,7 @@ def cross_attractors(
     ):
     """
     Crosses a set of n attractors
-    - attractors_global - a list global memory arrays each storing a list of all states in attractors in each block
+    - `attractors_global` - a list global memory arrays each storing a list of all states in attractors in each block
     - `attractors_cum_index` - a cummulative index going into the second coordinate of `attractors_global`,  stores indices of each attractor
     - `block_sizes` - number of states in attractors of each block
     - `select_order` - order by which nodes are to be selected from blocks
