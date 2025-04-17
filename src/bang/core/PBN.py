@@ -15,20 +15,14 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
+from bang.core.cpu.simulation import cpu_converge_async_one_random, cpu_converge_async_random_order, cpu_converge_sync
 import bang.graph
 import bang.visualization
-from bang.core.cuda.simulation import kernel_converge_async, kernel_converge_sync
+from bang.core.cuda.simulation import kernel_converge_async_one_random, kernel_converge_sync, kernel_converge_async_random_order
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
-
-class updateType(Enum):
-    """
-    Enum representing the type of update.
-    """
-
-    ASYNCHRONOUS = 0
-    SYNCHRONOUS = 1
+UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
 
 
 class PBN:
@@ -71,7 +65,7 @@ class PBN:
         perturbation: float,
         npNode: List[int],
         n_parallel: int = 512,
-        update_type_int: int = 1,  ## TODO change to 0, synchronous shouldnt be default
+        update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
     ):
         self.n = n
         self.nf = nf
@@ -82,7 +76,7 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = list(sorted(npNode))
         self.n_parallel = n_parallel
-        self.update_type = updateType(update_type_int)
+        self.update_type = update_type
         self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
         self.previous_simulations: List[np.ndarray] = []
@@ -658,8 +652,8 @@ class PBN:
             block = 1
         blockSize = 32
 
-        if self.update_type == updateType.ASYNCHRONOUS:
-            kernel_converge_async[block, blockSize](  # type: ignore
+        if self.update_type == "asynchronous_one_random":
+            kernel_converge_async_one_random[block, blockSize](  # type: ignore
                 gpu_stateHistory,
                 gpu_threadNum,
                 gpu_powNum,
@@ -682,7 +676,31 @@ class PBN:
                 gpu_npLength,
                 gpu_npNode,
             )
-        elif self.update_type == updateType.SYNCHRONOUS:
+        elif self.update_type == "asynchronous_random_order":
+            kernel_converge_async_random_order[block, blockSize](  # type: ignore
+                gpu_stateHistory,
+                gpu_threadNum,
+                gpu_powNum,
+                gpu_cumNf,
+                gpu_cumCij,
+                states,
+                self.getN(),
+                gpu_perturbation_rate,
+                gpu_cumNv,
+                gpu_F,
+                gpu_varF,
+                gpu_initialState,
+                gpu_steps,
+                gpu_stateSize,
+                gpu_extraF,
+                gpu_extraFIndex,
+                gpu_cumExtraF,
+                gpu_extraFCount,
+                gpu_extraFIndexCount,
+                gpu_npLength,
+                gpu_npNode,
+            )
+        elif self.update_type == "synchronous":
             kernel_converge_sync[block, blockSize](  # type: ignore
                 gpu_stateHistory,
                 gpu_threadNum,
@@ -713,6 +731,126 @@ class PBN:
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
         run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+
+        if self.history is not None:
+            self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
+        else:
+            self.history = run_history
+
+    def simple_steps_cpu(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+        """
+        Simulates the PBN for a given number of steps using CPU-based kernels.
+
+        :param n_steps: Number of steps to simulate.
+        :type n_steps: int
+        :param actions: Array of actions to be performed on the PBN. Defaults to None.
+        :type actions: npt.NDArray[np.uint], optional
+        :raises ValueError: If the initial state is not set before simulation.
+        """
+        if self.latest_state is None or self.history is None:
+            raise ValueError("Initial state must be set before simulation")
+
+        if actions is not None:
+            self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
+            self.history = np.concatenate([self.history, self.latest_state], axis=0)
+
+        # Convert PBN data to numpy arrays
+        pbn_data = self.pbn_data_to_np_arrays(n_steps)
+
+        (
+            state_history,
+            thread_num,
+            pow_num,
+            cum_function_count,
+            function_probabilities,
+            perturbation_rate,
+            cum_variable_count,
+            functions,
+            function_variables,
+            initial_state,
+            steps,
+            state_size,
+            extra_functions,
+            extra_functions_index,
+            cum_extra_functions,
+            extra_function_count,
+            extra_function_index_count,
+            perturbation_blacklist,
+            non_perturbed_count,
+        ) = pbn_data
+
+        # Select the appropriate CPU kernel based on the update type
+        if self.update_type == "asynchronous_random_order":
+            cpu_converge_async_random_order(
+                state_history,
+                thread_num,
+                pow_num,
+                cum_function_count,
+                function_probabilities,
+                self.getN(),
+                perturbation_rate,
+                cum_variable_count,
+                functions,
+                function_variables,
+                initial_state,
+                steps,
+                state_size,
+                extra_functions,
+                extra_functions_index,
+                cum_extra_functions,
+                non_perturbed_count,
+                perturbation_blacklist,
+            )
+        elif self.update_type == "synchronous":
+            cpu_converge_sync(
+                state_history,
+                thread_num,
+                pow_num,
+                cum_function_count,
+                function_probabilities,
+                self.getN(),
+                perturbation_rate,
+                cum_variable_count,
+                functions,
+                function_variables,
+                initial_state,
+                steps,
+                state_size,
+                extra_functions,
+                extra_functions_index,
+                cum_extra_functions,
+                non_perturbed_count,
+                perturbation_blacklist,
+            )
+        elif self.update_type == "asynchronous_one_random":
+            cpu_converge_async_one_random(
+                state_history,
+                thread_num,
+                pow_num,
+                cum_function_count,
+                function_probabilities,
+                self.getN(),
+                perturbation_rate,
+                cum_variable_count,
+                functions,
+                function_variables,
+                initial_state,
+                steps,
+                state_size,
+                extra_functions,
+                extra_functions_index,
+                cum_extra_functions,
+                non_perturbed_count,
+                perturbation_blacklist,
+            )
+        else:
+            raise ValueError(f"Unsupported update type: {self.update_type}")
+
+        # Reshape and update the state and history
+        last_state = initial_state.reshape((self.n_parallel, self.stateSize()))
+        run_history = state_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+
+        self.latest_state = last_state
 
         if self.history is not None:
             self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
@@ -843,7 +981,7 @@ class PBN:
         npNode.append(n)
 
         return PBN(
-            n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type_int=1
+            n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type="asynchronous_random_order"
         )
 
     # def segment_attractor(self, attractor_states, history):
