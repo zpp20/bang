@@ -1,6 +1,8 @@
 import numpy as np
 import numpy.typing as npt
 from numba import cuda
+from functools import reduce
+from operator import mul
 
 def get_select_order(nodes :list[list[int]]):
     result = []
@@ -8,6 +10,32 @@ def get_select_order(nodes :list[list[int]]):
         result.extend(zip(nodes[i], [i] * len(nodes[i])))
     return map(lambda x : x[0], sorted(result))
      
+def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
+    cum_result :list[int] = []
+    result_size :int = 0
+    max_lens :list[int] = []
+    current = []
+    for indices in attractor_cum_index:
+        max_lens.append(indices.size)
+        current.append(0)
+    
+    def increment_states(current_states, max_vals) -> bool:
+        current_states[0] += 1
+        cf :int
+        for i in range(len(max_vals) - 1):
+            cf = current_states[i] / max_vals
+            if cf != 0 and i == len(max_vals) - 1:
+                break
+            current_states[i] %= max_vals[i]
+            current_states[i + 1] += cf
+        return current_states[len(max_vals) - 1][0] == max_vals[len(max_vals) - 1]
+    while True:
+        tmp = reduce(mul, [attractor_cum_index[i][current[i]] - (attractor_cum_index[i][current[i] - 1] if current[i] > 0 else 0) for i in range(len(attractor_cum_index))])
+        result_size += tmp
+        cum_result.append(tmp)
+        if not increment_states(current, max_lens):
+            return cum_result[1:], result_size
+    
 
 def corss_attractors_gpu(
     attractor_list :list[npt.NDArray[np.int32]], 
