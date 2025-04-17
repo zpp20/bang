@@ -2,15 +2,22 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
+def get_select_order(nodes :list[list[int]]):
+    result = []
+    for i in range(len(nodes)):
+        result.extend(zip(nodes[i], [i] * len(nodes[i])))
+    return map(lambda x : x[0], sorted(result))
+     
+
 def corss_attractors_gpu(
     attractor_list :list[npt.NDArray[np.int32]], 
-    nodes :list[list[int]], 
     attractor_cum_index :list[npt.NDArray[np.int32]], 
-    blocks_indices :list[int]
+    nodes :list[list[int]]
     ):
     attractors_global = [cuda.to_device(attractor) for attractor in attractor_list]
-    attractors_len = cuda.to_device([attractor.shape[0] for attractor in attractor_list])
-    attractors_index = cuda.to_device(np.array(attractor_cum_index))
+    attractors_index = [cuda.to_device(attractor_cum_index[i]) for i in range(len(attractor_cum_index))]
+    blocks_sizes = cuda.to_device(attractor.shape[0] for attractor in attractor_list)
+    select_order = cuda.to_device(get_select_order(nodes))
     
     pass
 
@@ -34,13 +41,13 @@ def cross_attractors(
     block_sizes, 
     select_order,
     result,
-    result_start
+    result_start    
     ):
     """
     Crosses a set of n attractors
     - attractors_global - a list global memory arrays each storing a list of all states in attractors in each block
     - `attractors_cum_index` - a cummulative index going into the second coordinate of `attractors_global`,  stores indices of each attractor
-    - `block_sizes` - number of nodes in each relevant block
+    - `block_sizes` - number of states in attractors of each block
     - `select_order` - order by which nodes are to be selected from blocks
     - `result` - output array
     - `result_start` - where each thread should start writing 
@@ -53,8 +60,8 @@ def cross_attractors(
     write_index :int = result_start
     
     for i in range(block_sizes.size):
-        atttractors[i] = attractors_cum_index[(tmp % block_sizes[i])]
-        lengths[i] = attractors_cum_index[(tmp % block_sizes[i]) + 1] - attractors_cum_index[(tmp % block_sizes[i])]
+        atttractors[i] = attractors_cum_index[i][(tmp % block_sizes[i])]
+        lengths[i] = attractors_cum_index[i][(tmp % block_sizes[i]) + 1] - attractors_cum_index[i][(tmp % block_sizes[i])]
         tmp /= block_sizes[i]
         
     while True:
