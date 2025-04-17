@@ -42,8 +42,8 @@ class Graph_PBN:
         self.sccs = []
         self.blocks = []
         self.block_children = []
-    
-# dfs numbering functions
+
+    # dfs numbering functions
     def dfs_aux(self, node):
         node.visited = True
         node.dfs_id = self.dfs_numbered
@@ -73,7 +73,7 @@ class Graph_PBN:
             if not self.nodes[in_node].visited:
                 self.scc_aux(self.nodes[in_node], root_dfs)
 
-    def find_scc_and_blocks(self):
+    def find_scc_and_blocks(self, dag_scc=False):
         self.dfs_numerate()  # assign dfs_id to each node
         for n in self.nodes.values():
             n.visited = False
@@ -93,8 +93,6 @@ class Graph_PBN:
         ins = [set() for i in range(len(sccs_to_sort))]
         inf_pool = set()
 
-
-
         for i, scc in enumerate(sccs_to_sort):
             for node_id in scc:
                 node_ins = set()
@@ -102,8 +100,6 @@ class Graph_PBN:
                     node_ins.add(in_node)
                 ins[i] = ins[i].union(node_ins)
 
-
-        
         while sccs_to_sort:
             for i, scc in enumerate(sccs_to_sort):
                 if ins[i] - set(scc) - inf_pool == set():
@@ -112,17 +108,35 @@ class Graph_PBN:
                     sccs_to_sort.pop(i)
                     ins.pop(i)
                     break
-               
-
 
         for scc in self.sccs:
             block = scc.copy()
             # influencers are nodes that are not in the block and influence at least one node in the block
-            children = [i for i in range(len(self.blocks)) if any(
-                [True for node in self.nodes.values() if node.id in self.blocks[i][0] and any([j in block for j in node.out_nodes])]
-                )]
-            block = sorted(list(set(block)))
-            self.blocks.append((block, children))
+            if dag_scc:
+                children = [
+                    i
+                    for i in range(len(self.blocks))
+                    if any(
+                        [
+                            True
+                            for node in self.nodes.values()
+                            if node.id in self.blocks[i][0]
+                            and any([j in block for j in node.out_nodes])
+                        ]
+                    )
+                ]
+                block = sorted(list(set(block)))
+                self.blocks.append((block, children))
+
+            else:
+                influencers = [
+                    node.id
+                    for node in self.nodes.values()
+                    if node.id not in block and any([i in block for i in node.out_nodes])
+                ]
+                block += influencers
+                block = sorted(list(set(block)))
+                self.blocks.append(block)
 
 
 
@@ -168,8 +182,8 @@ class PBN_Node:
 
 
 # Returns topologically sorted blocks of the PBN
-def get_blocks(pbn):
+def get_blocks(pbn) -> list[list[int]]:
     graph = Graph_PBN(pbn)
     graph.find_scc_and_blocks()
-    # print(graph.blocks)
+
     return graph.blocks

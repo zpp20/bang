@@ -6,7 +6,7 @@ nv = [1, 3, 1]
 # f_1(x_3) = -x_1, f_2(x_1, x_2, x_3) = x_2 \and (x_1 \or x_3), f_3(x_1) = x_3
 F = [[False, True], [False, False, False, True, False, False, True, True], [True, False]]
 varFInt = [[0], [0, 1, 2], [2]]
-cij = [[1], [1], [1]]
+cij = [[1.0], [1.0], [1.0]]
 perturbation = 0.001
 npNode = [2]
 
