@@ -1052,7 +1052,7 @@ def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
 
 
-def load_from_file(path: str, format: str = "sbml") -> PBN:
+def load_from_file(path: str, format: str = "sbml", n_parallel=512) -> PBN:
     """
     Loads a PBN from files of format .pbn or .sbml.
 
@@ -1066,9 +1066,9 @@ def load_from_file(path: str, format: str = "sbml") -> PBN:
     """
     match format:
         case "sbml":
-            return PBN(*load_sbml(path))
+            return PBN(*load_sbml(path), n_parallel=n_parallel)
         case "assa":
-            return PBN(*load_assa(path))
+            return PBN(*load_assa(path), n_parallel=n_parallel)
         case _:
             raise ValueError("Invalid format")
 
