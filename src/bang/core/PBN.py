@@ -7,12 +7,13 @@ import math
 from enum import Enum
 from itertools import chain
 from typing import List, Literal
+import random
 
 import graphviz
 import numba
 import numpy as np
 import numpy.typing as npt
-from numba import cuda
+from numba import (cuda, njit)
 from numba.cuda.random import create_xoroshiro128p_states
 
 import bang.graph
@@ -883,6 +884,98 @@ class PBN:
 
     #     return attractors
 
+    def _count_states(self, history: np.array(int)):
+        arr = history.copy()
+
+        flat = arr.flatten()
+        uniques, inverse = np.unique(flat, return_inverse=True)
+        dense_arr = inverse.reshape(arr.shape)
+
+        results = []
+        for row in dense_arr:
+            counts = np.bincount(row)
+            count_dict = {uniques[i] : count for i, count in enumerate(counts) if count > 0}
+            results.append(count_dict)
+
+        return results
+
+    def _merge_attractors(self, attractors):
+        sets = [set(arr) for arr in attractors]
+        merged = []
+
+        while sets:
+            current, *rest = sets
+            current = set(current)
+
+            changed = True
+            while changed:
+                changed = False
+                remaining = []
+                for s in rest:
+                    if current & s:  # If there is any overlap
+                        current |= s
+                        changed = True
+                    else:
+                        remaining.append(s)
+                rest = remaining
+
+            merged.append(np.array(list(current)))
+            sets = rest
+
+        return merged
+
+    def detect_attractors_monte_carlo(self, num_steps : int, step_length : int, repetitions : int):
+        """
+        Detect attractors of a BN by monte carlo approach of running multiple trajectories while checking for repeat states in history.
+
+        :param n_trajectories: Number of trajectories to be run simulataneously
+        :type n_trajectories : int
+        
+        :param trajectories_len: Length of trajectories 
+        :type trajectories_len: int
+
+
+        """
+        assert self.n_parallel <= self.n, "Warning! There are more concurrent trajectories than possible states"
+
+        max_val = 2**self.n
+
+        samples = random.sample(range(max_val), self.n_parallel)
+
+        def int_to_bool_list(integer, int_size):
+            return [(integer >> i) & 1 == 1 for i in range(int_size)]
+
+        samples = [int_to_bool_list(sample, self.n) for sample in samples]
+
+        self.set_states(states=samples, reset_history=True)
+
+        for s in range(num_steps):
+            self.simple_steps(n_steps=step_length)
+
+        trajectories = self.get_trajectories()
+        trajectories = np.squeeze(trajectories).T
+        print(trajectories.shape)
+
+        trajectories_state_count = self._count_states(trajectories)
+        print(trajectories_state_count)
+        detected_attractors = []
+
+        for i, trajectory in enumerate(trajectories_state_count):
+            max_value = max(trajectory,key=trajectory.get)
+            print(trajectories[i])
+            if trajectory[max_value] > repetitions:
+                indices = np.where(trajectories[i] == max_value)[0]
+                print(indices)
+                first_index = indices[0]
+                attractor_trajectory = trajectories[i][first_index:]
+                attractor_states = np.unique(attractor_trajectory)
+                detected_attractors.append(attractor_states)
+        
+        attractors = self._merge_attractors(detected_attractors)
+
+        return attractors
+
+
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """
         Plot the dependency graph of a Probabilistic Boolean Network (PBN).
@@ -978,3 +1071,5 @@ def load_from_file(path: str, format: str = "sbml") -> PBN:
             return PBN(*load_assa(path))
         case _:
             raise ValueError("Invalid format")
+
+
