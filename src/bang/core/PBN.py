@@ -936,7 +936,7 @@ class PBN:
 
 
         """
-        assert self.n_parallel <= self.n, "Warning! There are more concurrent trajectories than possible states"
+        assert self.n_parallel < 2**self.n, "Warning! There are more concurrent trajectories than possible states"
 
         max_val = 2**self.n
 
@@ -954,18 +954,14 @@ class PBN:
 
         trajectories = self.get_trajectories()
         trajectories = np.squeeze(trajectories).T
-        print(trajectories.shape)
 
         trajectories_state_count = self._count_states(trajectories)
-        print(trajectories_state_count)
         detected_attractors = []
 
         for i, trajectory in enumerate(trajectories_state_count):
             max_value = max(trajectory,key=trajectory.get)
-            print(trajectories[i])
             if trajectory[max_value] > repetitions:
                 indices = np.where(trajectories[i] == max_value)[0]
-                print(indices)
                 first_index = indices[0]
                 attractor_trajectory = trajectories[i][first_index:]
                 attractor_states = np.unique(attractor_trajectory)
