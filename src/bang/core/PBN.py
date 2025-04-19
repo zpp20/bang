@@ -719,7 +719,7 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states):
+    def detect_attractor(self, initial_states, numpy_states = False):
         """
         Detects all atractor states in PBN
 
@@ -734,8 +734,14 @@ class PBN:
             List of states where attractors are coded as ints
 
         """
-
-        self.set_states(initial_states, reset_history=True)
+        if not numpy_states:
+            self.set_states(initial_states, reset_history=True)
+        else:
+            self.n_parallel = len(initial_states)
+            self.latest_state = initial_states
+            self.history = np.array(initial_states).reshape(
+                (1, self.n_parallel, self.stateSize())
+            )
         history = self.get_last_state()
 
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
