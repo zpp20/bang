@@ -7,6 +7,7 @@ import threading
 from bang.core.cuda.crossing import corss_attractors_gpu
 from functools import reduce
 from operator import add
+import numba.cuda
 
 def states(Block: list[int], state_size) -> np.ndarray:
     states = np.zeros((2 ** len(Block), state_size))
@@ -29,17 +30,18 @@ def block_thread(
     elementary_blocks :list[list[int]]
     ):
     initial_states = []
+    thread_stream = numba.cuda.stream()
     for i in range(len(blocks[id][0])):
         sempaphore.acquire()
     if len(blocks[id][0]) != 0:
         initial_states = corss_attractors_gpu(
-            [attractors[i] for i in blocks[id][0]],
-            [attractors_cum_index[i] for i in blocks[id][0]],
+            [attractors[i] for i in blocks[id][0]] + [states(blocks[id][0], pbn.n)],
+            [attractors_cum_index[i] for i in blocks[id][0]] + [np.zeros((1,), dtype=np.int32)],
             [elementary_blocks[i] for i in blocks[id][0]]
             )
     else:
         initial_states = states(elementary_blocks[id], pbn.n)
-    attractors[id] = pbn.detect_attractor(initial_states)
+    attractors[id] = pbn.detect_attractor(initial_states, True, thread_stream)[0]
     for sem in parent_semaphores:
         sem.release()
     pass

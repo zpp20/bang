@@ -35,7 +35,8 @@ def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
 def corss_attractors_gpu(
     attractor_list :list[npt.NDArray[np.int32]], 
     attractor_cum_index :list[npt.NDArray[np.int32]], 
-    nodes :list[list[int]]
+    nodes :list[list[int]],
+    stream = cuda.default_stream()
     ):
     attractors_global = [cuda.to_device(attractor) for attractor in attractor_list]
     attractors_index = [cuda.to_device(attractor_cum_index[i]) for i in range(len(attractor_cum_index))]
@@ -44,7 +45,7 @@ def corss_attractors_gpu(
     cum_result, result_size, threads = get_result(attractor_cum_index)
     result = np.zeros((result_size, 1))
     attractors = cuda.to_device(result)
-    cross_attractors[1024, (threads // 1024) + 1]( # type: ignore
+    cross_attractors[1024, (threads // 1024) + 1, stream]( # type: ignore
         attractors_global,
         attractor_cum_index,
         blocks_sizes,
@@ -52,7 +53,7 @@ def corss_attractors_gpu(
         attractors,
         cuda.to_device(cum_result)
     )
-    return attractors
+    return attractors, cum_result
 
 
 # Only to be called with the number of threads equal to the number of combinations of attractors to be crossed

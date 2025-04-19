@@ -8,6 +8,8 @@ from enum import Enum
 from itertools import chain
 from typing import List, Literal
 
+import numba.cuda
+
 import graphviz
 import numba
 import numpy as np
@@ -587,7 +589,7 @@ class PBN:
 
         return copystate
 
-    def simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+    def simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None, stream = numba.cuda.default_stream()):
         """
         Simulates the PBN for a given number of steps.
 
@@ -659,7 +661,7 @@ class PBN:
         blockSize = 32
 
         if self.update_type == updateType.ASYNCHRONOUS:
-            kernel_converge_async[block, blockSize](  # type: ignore
+            kernel_converge_async[block, blockSize, stream](  # type: ignore
                 gpu_stateHistory,
                 gpu_threadNum,
                 gpu_powNum,
@@ -719,7 +721,7 @@ class PBN:
         else:
             self.history = run_history
 
-    def detect_attractor(self, initial_states, numpy_states = False):
+    def detect_attractor(self, initial_states, numpy_states = False, stream = numba.cuda.default_stream()):
         """
         Detects all atractor states in PBN
 
@@ -749,7 +751,7 @@ class PBN:
         last_n_unique_states = 0
 
         while n_unique_states != last_n_unique_states:
-            self.simple_steps(1)
+            self.simple_steps(1, stream = stream)
             last_n_unique_states = n_unique_states
             # print("Last state: ", self.get_last_state())
             state_bytes = tuple(state.tobytes() for state in self.get_last_state())
