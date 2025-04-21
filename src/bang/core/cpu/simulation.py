@@ -1,6 +1,8 @@
 import random
 import numpy as np
 
+from bang.core.cuda.simulation import MAX_STATE_SIZE
+
 def update_node(
     node_index,
     index_shift,
@@ -114,8 +116,8 @@ def cpu_converge_sync(
     steps = steps[0]
 
     for idx in range(thread_num):
-        initial_state_copy = np.zeros(10, dtype=np.int32)
-        current_state = np.zeros(4, dtype=np.int32)
+        initial_state_copy = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
         relative_index = idx * state_size
 
         # Initialize state
@@ -193,7 +195,7 @@ def cpu_converge_async_one_random(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(4, dtype=np.int32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
         relative_index = idx * state_size
 
         # Initialize state
@@ -271,8 +273,8 @@ def cpu_converge_async_random_order(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(4, dtype=np.int32)
-        update_order = np.zeros(shape=(400,), dtype=np.int32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
+        update_order = np.zeros(shape=(MAX_STATE_SIZE * 32,), dtype=np.int32)
         relative_index = idx * state_size
 
         # Initialize state
