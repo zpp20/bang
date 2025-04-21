@@ -108,6 +108,7 @@ def cpu_converge_sync(
     np_length,
     np_node,
 ):
+    np.seterr(over='ignore')
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
@@ -186,6 +187,7 @@ def cpu_converge_async_one_random(
     np_length,
     np_node,
 ):
+    np.seterr(over='ignore')
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
@@ -263,6 +265,7 @@ def cpu_converge_async_random_order(
     np_length,
     np_node,
 ):
+    np.seterr(over='ignore')
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
