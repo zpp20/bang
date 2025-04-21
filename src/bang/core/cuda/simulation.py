@@ -197,11 +197,8 @@ def kernel_converge_sync(
             for node_index in range(nodeNum):
                 rand = xoroshiro128p_uniform_float32(states, idx)
 
-                index_shift = 0
-
-                if index_shift == 32:
-                    index_state += 1
-                    index_shift = 0
+                index_shift = node_index % 32
+                index_state = node_index // 32
 
                 update_node(
                     node_index,
@@ -220,8 +217,6 @@ def kernel_converge_sync(
                     initialStateCopy,
                     initialState,
                 )
-
-                index_shift += 1
 
         update_initial_state(
             gpu_threadNum,
