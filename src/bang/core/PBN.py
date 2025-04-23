@@ -983,7 +983,7 @@ class PBN:
         npNode.append(n)
 
         return PBN(
-            n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type="asynchronous_random_order"
+            n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type="synchronous"
         )
 
     # def segment_attractor(self, attractor_states, history):
