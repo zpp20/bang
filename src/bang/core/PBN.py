@@ -4,7 +4,6 @@ Module containing the PBN class and helpers.
 
 import datetime
 import math
-from enum import Enum
 from itertools import chain
 from typing import List, Literal
 import random
@@ -78,8 +77,8 @@ class PBN:
         self.npNode = list(sorted(npNode))
         self.n_parallel = n_parallel
         self.update_type = update_type
-        self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.int32)
-        self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.int32)
+        self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.uint32)
+        self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
 
     def __str__(self):
@@ -216,7 +215,7 @@ class PBN:
         if len(bools) != node_count:
             raise ValueError("Number of bools must be equal to number of nodes")
 
-        integer_state = np.zeros((state_size), dtype=np.int32)
+        integer_state = np.zeros((state_size), dtype=np.uint32)
 
         for i in range(state_size)[::-1]:
             for bit in range((len(bools) - 32 * i) % 32):
@@ -480,8 +479,8 @@ class PBN:
         cij = list(chain.from_iterable(self.getCij()))
 
         cumCij = np.cumsum(cij, dtype=np.float32)
-        cumNv = np.cumsum([0] + nv, dtype=np.int32)
-        cumNf = np.cumsum([0] + nf, dtype=np.int32)
+        cumNv = np.cumsum([0] + nv, dtype=np.uint32)
+        cumNf = np.cumsum([0] + nf, dtype=np.uint32)
 
         perturbation = self.getPerturbation()
         npNode = self.getNpNode()
@@ -497,31 +496,31 @@ class PBN:
         N = self.n_parallel
 
         initial_state = (
-            np.zeros(N * stateSize, dtype=np.int32)
+            np.zeros(N * stateSize, dtype=np.uint32)
             if self.latest_state is None
             else self.latest_state
         )
         initial_state = initial_state.reshape(N * stateSize)
 
-        cum_variable_count = np.array(cumNv, dtype=np.int32)
-        functions = np.array(F, dtype=np.int32)
-        function_variables = np.array(varFInt, dtype=np.int32)
-        state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.int32)
-        thread_num = np.array([N], dtype=np.int32)
-        steps = np.array([n_steps], dtype=np.int32)
-        state_size = np.array([stateSize], dtype=np.int32)
-        extra_functions = np.array(extraF, dtype=np.int32)
-        extra_functions_index = np.array(extraFIndex, dtype=np.int32)
-        cum_extra_functions = np.array(cumExtraF, dtype=np.int32)
-        extra_function_count = np.array([extraFCount], dtype=np.int32)
-        extra_function_index_count = np.array([extraFIndexCount], dtype=np.int32)
-        perturbation_blacklist = np.array(npNode, dtype=np.int32)
-        non_perturbed_count = np.array([len(npNode)], dtype=np.int32)
+        cum_variable_count = np.array(cumNv, dtype=np.uint32)
+        functions = np.array(F, dtype=np.uint32)
+        function_variables = np.array(varFInt, dtype=np.uint32)
+        state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
+        thread_num = np.array([N], dtype=np.uint32)
+        steps = np.array([n_steps], dtype=np.uint32)
+        state_size = np.array([stateSize], dtype=np.uint32)
+        extra_functions = np.array(extraF, dtype=np.uint32)
+        extra_functions_index = np.array(extraFIndex, dtype=np.uint32)
+        cum_extra_functions = np.array(cumExtraF, dtype=np.uint32)
+        extra_function_count = np.array([extraFCount], dtype=np.uint32)
+        extra_function_index_count = np.array([extraFIndexCount], dtype=np.uint32)
+        perturbation_blacklist = np.array(npNode, dtype=np.uint32)
+        non_perturbed_count = np.array([len(npNode)], dtype=np.uint32)
         function_probabilities = np.array(cumCij, dtype=np.float32)
-        cum_function_count = np.array(cumNf, dtype=np.int32)
+        cum_function_count = np.array(cumNf, dtype=np.uint32)
         perturbation_rate = np.array([perturbation], dtype=np.float32)
 
-        pow_num = np.zeros((2, 32), dtype=np.int32)
+        pow_num = np.zeros((2, 32), dtype=np.uint32)
         pow_num[1][0] = 1
         pow_num[0][0] = 0
 
@@ -725,6 +724,8 @@ class PBN:
                 gpu_npLength,
                 gpu_npNode,
             )
+
+        cuda.synchronize()
 
         last_state = gpu_initialState.copy_to_host()
         run_history = gpu_stateHistory.copy_to_host()

@@ -4,6 +4,9 @@ import numba as nb
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
+# Maximum state size of 16 means we can hold 32 * 16 = 512 (size of int32 * MAX_STATE_SIZE)
+MAX_STATE_SIZE = 16
+MAX_UPDATE_ORDER_SIZE = 512
 
 @nb.jit
 def initialize_state(
@@ -158,8 +161,8 @@ def kernel_converge_sync(
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(4,), dtype=nb.int32)
+    initialStateCopy = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
 
     relative_index = idx * stateSize
 
@@ -197,11 +200,8 @@ def kernel_converge_sync(
             for node_index in range(nodeNum):
                 rand = xoroshiro128p_uniform_float32(states, idx)
 
-                index_shift = 0
-
-                if index_shift == 32:
-                    index_state += 1
-                    index_shift = 0
+                index_shift = node_index % 32
+                index_state = node_index // 32
 
                 update_node(
                     node_index,
@@ -220,8 +220,6 @@ def kernel_converge_sync(
                     initialStateCopy,
                     initialState,
                 )
-
-                index_shift += 1
 
         update_initial_state(
             gpu_threadNum,
@@ -265,7 +263,7 @@ def kernel_converge_async_one_random(
     stateSize = gpu_stateSize[0]
 
     # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(4,), dtype=nb.int32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
 
     relative_index = idx * stateSize
 
@@ -291,7 +289,7 @@ def kernel_converge_async_one_random(
 
         if not perturbation:
             rand = xoroshiro128p_uniform_float32(states, idx)
-            node_index = int(rand * (nodeNum + 1))
+            node_index = int(rand * nodeNum)
 
             index_shift = node_index % 32
             index_state = node_index // 32
@@ -355,8 +353,8 @@ def kernel_converge_async_random_order(
     stateSize = gpu_stateSize[0]
 
     # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(4,), dtype=nb.int32)
-    update_order = cuda.local.array(shape=(400,), dtype=nb.int32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
+    update_order = cuda.local.array(shape=(MAX_UPDATE_ORDER_SIZE,), dtype=nb.int32)
 
     relative_index = idx * stateSize
 
