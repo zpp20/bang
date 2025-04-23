@@ -49,6 +49,7 @@ def update_node(
         shift_num = shift_num % 32
 
     element_f = element_f >> shift_num
+
     initial_state[index_state] ^= (-(element_f & 1) ^ initial_state_copy[index_state]) & (
         1 << (node_index - index_state * 32)
     )
@@ -116,8 +117,8 @@ def cpu_converge_sync(
     steps = steps[0]
 
     for idx in range(thread_num):
-        initial_state_copy = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
+        initial_state_copy = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
@@ -195,7 +196,7 @@ def cpu_converge_async_one_random(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
@@ -273,8 +274,8 @@ def cpu_converge_async_random_order(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.int32)
-        update_order = np.zeros(shape=(MAX_STATE_SIZE * 32,), dtype=np.int32)
+        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
+        update_order = np.zeros(shape=(MAX_STATE_SIZE * 32,), dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
