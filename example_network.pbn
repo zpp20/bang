@@ -10,7 +10,7 @@ n=3
 
 //specify perturbation rate
 
-perturbation=0.7
+perturbation=0.2
 
 //We list the names of all nodes one by one below.
 
