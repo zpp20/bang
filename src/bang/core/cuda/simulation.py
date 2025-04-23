@@ -92,15 +92,15 @@ def update_initial_state( gpu_threadNum,
     initialState,
     initialStateCopy,
 ):
-    relative_index = stateSize * idx
+    # relative_index = stateSize * idx
 
     for node_index in range(stateSize):
         initialStateCopy[node_index] = initialState[node_index]
-        gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
+        # gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
-        gpu_stateHistory[
-            (step + 1) * gpu_threadNum[0] + relative_index + node_index
-        ] = initialStateCopy[node_index]
+        # gpu_stateHistory[
+        #     (step + 1) * gpu_threadNum[0] + relative_index + node_index
+        # ] = initialStateCopy[node_index]
 
 
 @cuda.jit(device=True)
@@ -231,6 +231,12 @@ def kernel_converge_sync(
             initialState,
             initialStateCopy,
         )
+
+    relative_index = stateSize * idx
+
+    for node_index in range(stateSize):
+        initialStateCopy[node_index] = initialState[node_index]
+        gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
 
 @cuda.jit
