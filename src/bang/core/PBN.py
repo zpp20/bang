@@ -712,6 +712,11 @@ class PBN:
 
         blockSize = 32
 
+        time_start = cuda.event()
+        time_stop = cuda.event()
+
+        time_start.record()
+
         if self.update_type == "asynchronous_one_random":
             kernel_converge_async_one_random[block, blockSize](  # type: ignore
                 self.gpu_stateHistory,
@@ -790,7 +795,14 @@ class PBN:
         else:
             raise ValueError(f"Unsupported update type: {self.update_type}")
 
+        time_stop.record()
+        time_stop.synchronize()
+
         cuda.synchronize()
+
+        elapsed = time_start.elapsed_time(time_stop)
+
+        print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
         last_state = self.gpu_initialState.copy_to_host()
         run_history = self.gpu_stateHistory.copy_to_host()
