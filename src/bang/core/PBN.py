@@ -651,6 +651,11 @@ class PBN:
             block = 1
         blockSize = 32
 
+        time_start = cuda.event()
+        time_stop = cuda.event()
+
+        time_start.record()
+
         if self.update_type == "asynchronous_one_random":
             kernel_converge_async_one_random[block, blockSize](  # type: ignore
                 gpu_stateHistory,
@@ -724,7 +729,14 @@ class PBN:
                 gpu_npNode,
             )
 
+        time_stop.record()
+        time_stop.synchronize()
+
         cuda.synchronize()
+
+        elapsed = time_start.elapsed_time(time_stop)
+
+        print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
         last_state = gpu_initialState.copy_to_host()
         run_history = gpu_stateHistory.copy_to_host()
