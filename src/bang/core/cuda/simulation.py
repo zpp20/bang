@@ -159,6 +159,7 @@ def kernel_converge_sync(
 ):
     idx = cuda.grid(1)
 
+    # 12000 * 4 = 48000 bytes, which should be close to the shared memory limit
     shared = cuda.shared.array(shape=(12000,), dtype=nb.int32)
 
     shared_start = 0
@@ -197,11 +198,12 @@ def kernel_converge_sync(
     shared_end += len(gpu_cumCij)
 
     shared_cumCij = shared[shared_start:shared_end]
-    shared_start = shared_end
-    shared_end += len(gpu_powNum)
 
-    shared_powNum = shared[shared_start:shared_end]
+    # 2D array declaration
+    shared_powNum = cuda.shared.array((2, 32), dtype=nb.int32)
+    shared_powNum = gpu_powNum[:,:]
 
+    # Only the first thread in a block initializes memory
     if cuda.threadIdx.x == 0:
         shared_cumNv[:] = gpu_cumNv[:]
         shared_cumNf[:] = gpu_cumNf[:]
