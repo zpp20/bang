@@ -83,7 +83,8 @@ def update_node(
 
 
 @nb.jit
-def update_initial_state( gpu_threadNum,
+def update_initial_state(
+    gpu_threadNum,
     gpu_stateHistory,
     gpu_initialState,
     stateSize,
@@ -91,16 +92,18 @@ def update_initial_state( gpu_threadNum,
     step,
     initialState,
     initialStateCopy,
+    sampling_interval,
 ):
     relative_index = stateSize * idx
 
-    for node_index in range(stateSize):
-        initialStateCopy[node_index] = initialState[node_index]
-        gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
+    for state_index in range(stateSize):
+        initialStateCopy[state_index] = initialState[state_index]
+        gpu_initialState[relative_index + state_index] = initialStateCopy[state_index]
 
-        gpu_stateHistory[
-            (step + 1) * gpu_threadNum[0] + relative_index + node_index
-        ] = initialStateCopy[node_index]
+        if step % sampling_interval == 0:
+            gpu_stateHistory[
+                (step // sampling_interval + 1) * gpu_threadNum[0] + relative_index + state_index
+            ] = initialStateCopy[state_index]
 
 
 @cuda.jit(device=True)
@@ -155,6 +158,7 @@ def kernel_converge_sync(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    sampling_interval,
 ):
     idx = cuda.grid(1)
 
@@ -230,6 +234,7 @@ def kernel_converge_sync(
             step,
             initialState,
             initialStateCopy,
+            sampling_interval,
         )
 
 
@@ -256,6 +261,7 @@ def kernel_converge_async_one_random(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    sampling_interval,
 ):
     idx = cuda.grid(1)
 
@@ -321,6 +327,7 @@ def kernel_converge_async_one_random(
             step,
             initialState,
             initialState,
+            sampling_interval,
         )
 
 @cuda.jit
@@ -346,6 +353,7 @@ def kernel_converge_async_random_order(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    sampling_interval,
 ):
     idx = cuda.grid(1)
 
@@ -423,4 +431,5 @@ def kernel_converge_async_random_order(
             step,
             initialState,
             initialState,
+            sampling_interval,
         )
