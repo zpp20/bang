@@ -205,16 +205,36 @@ def kernel_converge_sync(
 
     # Only the first thread in a block initializes memory
     if cuda.threadIdx.x == 0:
-        shared_cumNv[:] = gpu_cumNv[:]
-        shared_cumNf[:] = gpu_cumNf[:]
-        shared_F[:] = gpu_F[:]
-        shared_varF[:] = gpu_varF[:]
-        shared_extraF[:] = gpu_extraF[:]
-        shared_extraFIndex[:] = gpu_extraFIndex[:]
-        shared_cumExtraF[:] = gpu_cumExtraF[:]
-        shared_npNode[:] = gpu_npNode[:]
-        shared_cumCij[:] = gpu_cumCij[:]
-        shared_powNum[:] = gpu_powNum[:]
+        for i in range(len(gpu_cumNv)):
+            shared_cumNv[i] = gpu_cumNv[i]
+
+        for i in range(len(gpu_cumNf)):
+            shared_cumNf[i] = gpu_cumNf[i]
+
+        for i in range(len(gpu_F)):
+            shared_F[i] = gpu_F[i]
+
+        for i in range(len(gpu_varF)):
+            shared_varF[i] = gpu_varF[i]
+
+        for i in range(len(gpu_extraF)):
+            shared_extraF[i] = gpu_extraF[i]
+
+        for i in range(len(gpu_extraFIndex)):
+            shared_extraFIndex[i] = gpu_extraFIndex[i]
+
+        for i in range(len(gpu_cumExtraF)):
+            shared_cumExtraF[i] = gpu_cumExtraF[i]
+
+        for i in range(len(gpu_npNode)):
+            shared_npNode[i] = gpu_npNode[i]
+
+        for i in range(len(gpu_cumCij)):
+            shared_cumCij[i] = gpu_cumCij[i]
+
+        for i in range(2):
+            for j in range(32):
+                shared_powNum[i][j] = gpu_powNum[i][j]
 
     cuda.syncthreads()
 
