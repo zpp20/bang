@@ -51,7 +51,7 @@ class PBN:
     :type latest_state: np.ndarray
     :param previous_simulations: List of previous simulations.
     :type previous_simulations: List[np.ndarray]
-    :param sampling_interval: The interval at which to sample the PBN's state. That is, every `sampling_interval` steps the state is saved to history. Higher intervals may significantly speed up the simulation.
+    :param sampling_interval: The interval at which to sample the PBN's state. That is, every `sampling_interval` steps the state is saved to history. Higher intervals may significantly speed up the simulation. If set to 0, history is not saved.
     :type sampling_interval: int
     """
 
@@ -750,7 +750,7 @@ class PBN:
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
-        run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+        run_history = run_history.reshape((n_steps // self.sampling_interval + 1, self.n_parallel, self.stateSize()))
 
         if self.history is not None:
             self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
@@ -775,7 +775,7 @@ class PBN:
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
         # Convert PBN data to numpy arrays
-        pbn_data = self.pbn_data_to_np_arrays(n_steps)
+        pbn_data = self.pbn_data_to_np_arrays(n_steps, self.sampling_interval)
 
         (
             state_history,
@@ -868,7 +868,7 @@ class PBN:
 
         # Reshape and update the state and history
         last_state = initial_state.reshape((self.n_parallel, self.stateSize()))
-        run_history = state_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+        run_history = state_history.reshape((n_steps // self.sampling_interval + 1, self.n_parallel, self.stateSize()))
 
         self.latest_state = last_state
 
