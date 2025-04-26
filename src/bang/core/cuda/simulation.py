@@ -2,6 +2,7 @@
 
 import numba as nb
 from numba import cuda
+from numba.core.target_extension import GPU
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
 # Maximum state size of 16 means we can hold 32 * 16 = 512 (size of int32 * MAX_STATE_SIZE)
@@ -105,9 +106,9 @@ def update_initial_state( gpu_threadNum,
 
 @cuda.jit(device=True)
 def perform_perturbation(
-    gpu_npLength,
+    npLength,
     gpu_npNode,
-    gpu_perturbation_rate,
+    perturbation_rate,
     states,
     idx,
     initialStateCopy,
@@ -119,10 +120,10 @@ def perform_perturbation(
     # here, we iterate over intervals of nodes that can be perturbed
     # since npNodee is array of non-perturbable nodes, we iterate over intervals of nodes
     # not containing them;
-    for t in range(gpu_npLength[0]):
+    for t in range(npLength):
         # for every perturbable node in the interval
         for node_index in range(start, gpu_npNode[t]):
-            if xoroshiro128p_uniform_float32(states, idx) < gpu_perturbation_rate[0]:
+            if xoroshiro128p_uniform_float32(states, idx) < perturbation_rate:
                 perturbation = True
                 indexState = node_index // 32
                 initialStateCopy[indexState] ^= 1 << (node_index % 32)
@@ -158,6 +159,63 @@ def kernel_converge_sync(
 ):
     idx = cuda.grid(1)
 
+    shared = cuda.shared.array(shape=(12000,), dtype=nb.int32)
+
+    shared_start = 0
+    shared_end = len(gpu_cumNv)
+
+    shared_cumNv = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_cumNf)
+
+    shared_cumNf = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_F)
+
+    shared_F = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_varF)
+
+    shared_varF = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_extraF)
+
+    shared_extraF = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_extraFIndex)
+
+    shared_extraFIndex = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_cumExtraF)
+
+    shared_cumExtraF = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_npNode)
+
+    shared_npNode = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_cumCij)
+
+    shared_cumCij = shared[shared_start:shared_end]
+    shared_start = shared_end
+    shared_end += len(gpu_powNum)
+
+    shared_powNum = shared[shared_start:shared_end]
+
+    if cuda.threadIdx.x == 0:
+        shared_cumNv[:] = gpu_cumNv[:]
+        shared_cumNf[:] = gpu_cumNf[:]
+        shared_F[:] = gpu_F[:]
+        shared_varF[:] = gpu_varF[:]
+        shared_extraF[:] = gpu_extraF[:]
+        shared_extraFIndex[:] = gpu_extraFIndex[:]
+        shared_cumExtraF[:] = gpu_cumExtraF[:]
+        shared_npNode[:] = gpu_npNode[:]
+        shared_cumCij[:] = gpu_cumCij[:]
+        shared_powNum[:] = gpu_powNum[:]
+
+    cuda.syncthreads()
+
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
@@ -165,6 +223,9 @@ def kernel_converge_sync(
     initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
 
     relative_index = idx * stateSize
+
+    npLength = gpu_npLength[0]
+    perturbation_rate = gpu_perturbation_rate[0]
 
     initialize_state(
         gpu_initialState,
@@ -174,8 +235,6 @@ def kernel_converge_sync(
         initialStateCopy,
         initialState,
     )
-
-    steps = gpu_steps[0]
 
     for step in range(steps):
         perturbation = False
@@ -188,9 +247,9 @@ def kernel_converge_sync(
         # for every interval full of perturbable nodes
 
         perturbation = perform_perturbation(
-            gpu_npLength,
-            gpu_npNode,
-            gpu_perturbation_rate,
+            npLength,
+            shared_npNode,
+            perturbation_rate,
             states,
             idx,
             initialStateCopy,
@@ -208,15 +267,15 @@ def kernel_converge_sync(
                     index_shift,
                     index_state,
                     rand,
-                    gpu_cumCij,
-                    gpu_cumNf,
-                    gpu_cumNv,
-                    gpu_F,
-                    gpu_extraFIndex,
-                    gpu_extraF,
-                    gpu_cumExtraF,
-                    gpu_varF,
-                    gpu_powNum,
+                    shared_cumCij,
+                    shared_cumNf,
+                    shared_cumNv,
+                    shared_F,
+                    shared_extraFIndex,
+                    shared_extraF,
+                    shared_cumExtraF,
+                    shared_varF,
+                    shared_powNum,
                     initialStateCopy,
                     initialState,
                 )
