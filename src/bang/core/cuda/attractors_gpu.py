@@ -33,13 +33,12 @@ def block_thread(
     thread_stream = numba.cuda.stream()
     
     for i in range(len(blocks[id][1])):
-        print((id,i))
         semaphores[id].acquire()
         
     if len(blocks[id][1]) != 0:
         initial_states = corss_attractors_gpu(
             [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n)],
-            [attractors_cum_index[i] for i in blocks[id][1]] + [np.zeros((1,), dtype=np.int32)],
+            [attractors_cum_index[i] for i in blocks[id][1]] + [np.array([0, 2 ** len(blocks[id][0])], dtype=np.int32)],
             [elementary_blocks[i] for i in blocks[id][1]]
             )
     else:

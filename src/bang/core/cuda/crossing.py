@@ -8,12 +8,12 @@ def increment_states(current_states, max_vals) -> bool:
     current_states[0] += 1
     cf :int
     for i in range(len(max_vals) - 1):
-        cf = current_states[i] / max_vals
-        if cf != 0 and i == len(max_vals) - 1:
+        cf = current_states[i] // max_vals[i]
+        if cf == 0 and i == len(max_vals) - 1:
             break
         current_states[i] %= max_vals[i]
         current_states[i + 1] += cf
-    return current_states[len(max_vals) - 1][0] == max_vals[len(max_vals) - 1]
+    return current_states[-1] != max_vals[-1]
      
 def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
     cum_result :list[int] = []
@@ -21,29 +21,29 @@ def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
     max_lens :list[int] = []
     current = []
     for indices in attractor_cum_index:
-        max_lens.append(indices.size)
+        max_lens.append(indices.size - 1)
         current.append(0)
-    
     while True:
-        tmp = reduce(mul, [attractor_cum_index[i][current[i]] - (attractor_cum_index[i][current[i] - 1] if current[i] > 0 else 0) for i in range(len(attractor_cum_index))])
+        tmp = reduce(mul, [attractor_cum_index[i][current[i] + 1] - attractor_cum_index[i][current[i]] for i in range(len(attractor_cum_index))])
         result_size += tmp
-        cum_result.append(tmp)
+        cum_result.append(result_size)
         if not increment_states(current, max_lens):
-            return cum_result[1:], result_size, reduce(mul, max_lens)
+            return [np.int32(0)] + cum_result, result_size, reduce(mul, max_lens)
     
 
 def corss_attractors_gpu(
     attractor_list :list[npt.NDArray[np.int32]], 
     attractor_cum_index :list[npt.NDArray[np.int32]], 
     nodes :list[list[int]],
-    stream = cuda.default_stream()
+    stream = cuda.default_stream(),
+    int_size = 1
     ):
     attractors_global = [cuda.to_device(attractor) for attractor in attractor_list]
     attractors_index = [cuda.to_device(attractor_cum_index[i]) for i in range(len(attractor_cum_index))]
     blocks_sizes = cuda.to_device(attractor.shape[0] for attractor in attractor_list)
     nodes_global = cuda.to_device(sorted(sum(nodes, [])))
     cum_result, result_size, threads = get_result(attractor_cum_index)
-    result = np.zeros((result_size, 1))
+    result = np.zeros((result_size, int_size))
     attractors = cuda.to_device(result)
     cross_attractors[1024, (threads // 1024) + 1, stream]( # type: ignore
         attractors_global,
@@ -53,7 +53,7 @@ def corss_attractors_gpu(
         attractors,
         cuda.to_device(cum_result)
     )
-    return attractors, cum_result
+    return attractors.copy_to_host(), cum_result
 
 
 # Only to be called with the number of threads equal to the number of combinations of attractors to be crossed
