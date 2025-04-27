@@ -2,7 +2,6 @@
 
 import numba as nb
 from numba import cuda
-from numba.core.target_extension import GPU
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
 # Maximum state size of 16 means we can hold 32 * 16 = 512 (size of int32 * MAX_STATE_SIZE)
@@ -204,38 +203,38 @@ def kernel_converge_sync(
     shared_powNum = gpu_powNum[:,:]
 
     # Only the first thread in a block initializes memory
-    for i in range(cuda.threadIdx.x, len(gpu_cumNv), cuda.blockDim.x):
-        shared_cumNv[i] = gpu_cumNv[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_cumNv), cuda.blockDim.x):
+    #     shared_cumNv[i] = gpu_cumNv[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_cumNf), cuda.blockDim.x):
-        shared_cumNf[i] = gpu_cumNf[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_cumNf), cuda.blockDim.x):
+    #     shared_cumNf[i] = gpu_cumNf[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_F), cuda.blockDim.x):
-        shared_F[i] = gpu_F[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_F), cuda.blockDim.x):
+    #     shared_F[i] = gpu_F[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_varF), cuda.blockDim.x):
-        shared_varF[i] = gpu_varF[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_varF), cuda.blockDim.x):
+    #     shared_varF[i] = gpu_varF[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_extraF), cuda.blockDim.x):
-        shared_extraF[i] = gpu_extraF[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_extraF), cuda.blockDim.x):
+    #     shared_extraF[i] = gpu_extraF[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_extraFIndex), cuda.blockDim.x):
-        shared_extraFIndex[i] = gpu_extraFIndex[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_extraFIndex), cuda.blockDim.x):
+    #     shared_extraFIndex[i] = gpu_extraFIndex[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_cumExtraF), cuda.blockDim.x):
-        shared_cumExtraF[i] = gpu_cumExtraF[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_cumExtraF), cuda.blockDim.x):
+    #     shared_cumExtraF[i] = gpu_cumExtraF[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_npNode), cuda.blockDim.x):
-        shared_npNode[i] = gpu_npNode[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_npNode), cuda.blockDim.x):
+    #     shared_npNode[i] = gpu_npNode[i]
 
-    for i in range(cuda.threadIdx.x, len(gpu_cumCij), cuda.blockDim.x):
-        shared_cumCij[i] = gpu_cumCij[i]
+    # for i in range(cuda.threadIdx.x, len(gpu_cumCij), cuda.blockDim.x):
+    #     shared_cumCij[i] = gpu_cumCij[i]
 
 
-    if cuda.threadIdx.x == 0:
-        for i in range(2):
-            for j in range(32):
-                shared_powNum[i][j] = gpu_powNum[i][j]
+    # if cuda.threadIdx.x == 0:
+    #     for i in range(2):
+    #         for j in range(32):
+    #             shared_powNum[i][j] = gpu_powNum[i][j]
 
     cuda.syncthreads()
 
