@@ -43,7 +43,18 @@ def block_thread(
             )
     else:
         initial_states = states(elementary_blocks[id], pbn.n)
-    attractors[id] = pbn.detect_attractor(initial_states, True, thread_stream)[0]
+        
+    attractors_tmp = pbn.segment_attractor(*pbn.detect_attractor(initial_states, True, thread_stream))
+
+    attractors_cum_index[id] = np.zeros((len(attractors_tmp,)), dtype=np.int32)    
+    for i in range(len(attractors_tmp)):
+        attractors_cum_index[id][i] = attractors_cum_index[id][i - 1] + len(attractors_tmp[i]) if i > 0 else 0
+    
+    attractors[id] = np.zeros((attractors_cum_index[id][-1] + len(attractors_tmp[-1])), dtype=np.int32)
+    
+    for i in range(len(attractors_tmp)):
+        attractors[id][attractors_cum_index[id][i]:attractors_cum_index[id][i] + len(attractors_tmp[i])] = attractors_tmp[i]
+    
     for sem in [semaphores[j] for j in range(len(blocks)) if id in blocks[j][1]]:
         sem.release()
     pass
@@ -80,7 +91,5 @@ def divide_and_counquer_gpu(network : PBN):
     
     for thread in threads:
         thread.join()
-        
-    print(attractors)
         
     return attractors[len(blocks) - 1], attractors_cum_index[len(blocks) - 1]
