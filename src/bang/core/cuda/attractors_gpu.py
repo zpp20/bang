@@ -33,6 +33,7 @@ def block_thread(
     thread_stream = numba.cuda.stream()
     
     for i in range(len(blocks[id][1])):
+        print((id,i))
         semaphores[id].acquire()
         
     if len(blocks[id][1]) != 0:
@@ -46,11 +47,12 @@ def block_thread(
         
     attractors_tmp = pbn.segment_attractor(*pbn.detect_attractor(initial_states, True, thread_stream))
 
-    attractors_cum_index[id] = np.zeros((len(attractors_tmp,)), dtype=np.int32)    
+    attractors_cum_index[id] = np.zeros((len(attractors_tmp) + 1,), dtype=np.int32)    
     for i in range(len(attractors_tmp)):
         attractors_cum_index[id][i] = attractors_cum_index[id][i - 1] + len(attractors_tmp[i]) if i > 0 else 0
     
-    attractors[id] = np.zeros((attractors_cum_index[id][-1] + len(attractors_tmp[-1])), dtype=np.int32)
+    attractors[id] = np.zeros((attractors_cum_index[id][-2] + len(attractors_tmp[-1])), dtype=np.int32)
+    attractors_cum_index[id][-1] = attractors[id].size
     
     for i in range(len(attractors_tmp)):
         attractors[id][attractors_cum_index[id][i]:attractors_cum_index[id][i] + len(attractors_tmp[i])] = attractors_tmp[i]
@@ -70,7 +72,7 @@ def divide_and_counquer_gpu(network : PBN):
     PBN_graph.find_scc_and_blocks(True)
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks
     elementery_blocks = get_elementary_blocks(blocks)
-    semaphores = [threading.Semaphore(len(children)) for block, children in blocks]
+    semaphores = [threading.Semaphore(0) for block, children in blocks]
     attractors :list[npt.NDArray[np.int32]] = [np.zeros((2, 2), dtype=np.int32) for block in blocks]
     attractors_cum_index :list[npt.NDArray[np.int32]] = [np.zeros((2, 2), dtype=np.int32) for block in blocks]
     threads :list[threading.Thread] = []
