@@ -739,8 +739,6 @@ class PBN:
         time_stop.record()
         time_stop.synchronize()
 
-        cuda.synchronize()
-
         elapsed = time_start.elapsed_time(time_stop)
 
         print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
