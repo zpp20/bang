@@ -10,46 +10,48 @@ from operator import add
 import numba.cuda
 
 def states(Block: list[int], state_size) -> np.ndarray:
-    states = np.zeros((2 ** len(Block), state_size))
+    states = np.zeros((2 ** len(Block), (state_size // 32) + 1), dtype=np.int32)
     bool_states = [[]]
     for node in Block:
-        bool_states = [state + [True] for state in bool_states] + [state + [False] for state in bool_states]
+        bool_states = [state + [False] for state in bool_states] + [state + [True] for state in bool_states]
     for i in range(len(bool_states)):
-        for j in Block:
-            states[i][j // 32] &= states[i][j // 32] | (bool_states[i][j] << (j % 32))
+        for j in range(len(Block)):
+            states[i][Block[j] // 32] |= (bool_states[i][j] << (Block[j] % 32))
     return states
 
 def block_thread(
     id :int,
     pbn : PBN,
-    sempaphore :threading.Semaphore, 
-    parent_semaphores :list[threading.Semaphore], 
+    semaphores :list[threading.Semaphore], 
     blocks :list[tuple[list[int], list[int]]] ,
     attractors :list[npt.NDArray[np.int32]],
     attractors_cum_index :list[npt.NDArray[np.int32]],
     elementary_blocks :list[list[int]]
     ):
+    
     initial_states = []
     thread_stream = numba.cuda.stream()
-    for i in range(len(blocks[id][0])):
-        sempaphore.acquire()
-    if len(blocks[id][0]) != 0:
+    
+    for i in range(len(blocks[id][1])):
+        semaphores[id].acquire()
+        
+    if len(blocks[id][1]) != 0:
         initial_states = corss_attractors_gpu(
-            [attractors[i] for i in blocks[id][0]] + [states(blocks[id][0], pbn.n)],
-            [attractors_cum_index[i] for i in blocks[id][0]] + [np.zeros((1,), dtype=np.int32)],
-            [elementary_blocks[i] for i in blocks[id][0]]
+            [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n)],
+            [attractors_cum_index[i] for i in blocks[id][1]] + [np.zeros((1,), dtype=np.int32)],
+            [elementary_blocks[i] for i in blocks[id][1]]
             )
     else:
         initial_states = states(elementary_blocks[id], pbn.n)
     attractors[id] = pbn.detect_attractor(initial_states, True, thread_stream)[0]
-    for sem in parent_semaphores:
+    for sem in [semaphores[j] for j in range(len(blocks)) if id in blocks[j][1]]:
         sem.release()
     pass
 
 def get_elementary_blocks(blocks :list[tuple[list[int], list[int]]]) -> list[list[int]]:
     result :list[list[int]] = [] 
     for i in range(len(blocks)):
-        result.append(blocks[i][0] + reduce(add, [result[j] for j in blocks[i][1]]))
+        result.append(blocks[i][0] + reduce(add, [[]] + [result[j] for j in blocks[i][1]]))
     return result
 
 def divide_and_counquer_gpu(network : PBN):
@@ -63,18 +65,22 @@ def divide_and_counquer_gpu(network : PBN):
     threads :list[threading.Thread] = []
     
     for i in range(len(blocks)):
-        children, block = blocks[i]
+        block, children = blocks[i]
         threads.append(threading.Thread(target=block_thread, args=(
             i,
             network,
-            semaphores[i], 
-            [semaphores[j] for j in children], 
+            semaphores, 
             blocks,
             attractors,
             attractors_cum_index,
             elementery_blocks
             )))
-    map(lambda t : t.start(), threads)
-    map(lambda t : t.join(), threads)
+    for thread in threads:
+        thread.start()
+    
+    for thread in threads:
+        thread.join()
         
-    return attractors[network.n - 1], attractors_cum_index[network.n - 1]
+    print(attractors)
+        
+    return attractors[len(blocks) - 1], attractors_cum_index[len(blocks) - 1]
