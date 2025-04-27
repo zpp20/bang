@@ -201,7 +201,7 @@ def kernel_converge_sync(
 
     # 2D array declaration
     shared_powNum = cuda.shared.array((2, 32), dtype=nb.int32)
-    shared_powNum = gpu_powNum[:,:]
+    # shared_powNum = gpu_powNum[:,:]
 
     # Only the first thread in a block initializes memory
     for i in range(cuda.threadIdx.x, len(gpu_cumNv), cuda.blockDim.x):
