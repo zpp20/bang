@@ -656,7 +656,7 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        # Convert PBN data to numpy arrays
+        self.gpu_initialState[:] = self.latest_state
 
         states = create_xoroshiro128p_states(
             self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
@@ -720,7 +720,7 @@ class PBN:
                 self.gpu_extraFIndexCount,
                 self.gpu_npLength,
                 self.gpu_npNode,
-                self.self.save_history,
+                self.save_history,
             )
         elif self.update_type == "synchronous":
             kernel_converge_sync[block, blockSize](  # type: ignore
