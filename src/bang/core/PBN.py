@@ -663,8 +663,8 @@ class PBN:
             block = 1
         blockSize = 32
 
-        time_start = cuda.event()
-        time_stop = cuda.event()
+        time_start = cuda.event(timing=True)
+        time_stop = cuda.event(timing=True)
 
         time_start.record()
 
@@ -763,6 +763,10 @@ class PBN:
                 self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
             else:
                 self.history = run_history
+
+        device = cuda.get_current_device()
+        # Clear memory and errors
+        device.reset()
 
     def simple_steps_cpu(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
         """
