@@ -768,10 +768,6 @@ class PBN:
             else:
                 self.history = run_history
 
-        device = cuda.get_current_device()
-        # Clear memory and errors
-        device.reset()
-
     def simple_steps_cpu(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
         """
         Simulates the PBN for a given number of steps using CPU-based kernels.
