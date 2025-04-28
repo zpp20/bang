@@ -10,14 +10,13 @@ MAX_UPDATE_ORDER_SIZE = 512
 
 @nb.jit
 def initialize_state(
-    gpu_initialState, gpu_stateHistory, state_size, relative_index, initialStateCopy, initialState
+    gpu_initialState, state_size, relative_index, initialStateCopy, initialState
 ):
     # get initial state of the trajectory this thread will simulate
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(state_size):
         initialStateCopy[node_index] = gpu_initialState[relative_index + node_index]
         initialState[node_index] = initialStateCopy[node_index]
-        gpu_stateHistory[relative_index + node_index] = initialState[node_index]
 
 
 @nb.jit
@@ -171,7 +170,6 @@ def kernel_converge_sync(
 
     initialize_state(
         gpu_initialState,
-        gpu_stateHistory,
         stateSize,
         relative_index,
         initialStateCopy,
@@ -276,7 +274,6 @@ def kernel_converge_async_one_random(
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(stateSize):
         initialState[node_index] = gpu_initialState[relative_index + node_index]
-        gpu_stateHistory[relative_index + node_index] = initialState[node_index]
 
     steps = gpu_steps[0]
 
@@ -369,7 +366,6 @@ def kernel_converge_async_random_order(
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(stateSize):
         initialState[node_index] = gpu_initialState[relative_index + node_index]
-        gpu_stateHistory[relative_index + node_index] = initialState[node_index]
 
     steps = gpu_steps[0]
 

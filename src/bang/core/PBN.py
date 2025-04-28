@@ -51,7 +51,7 @@ class PBN:
     :type latest_state: np.ndarray
     :param previous_simulations: List of previous simulations.
     :type previous_simulations: List[np.ndarray]
-    :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order" and "synchronous"
+    :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order", "synchronous"
     :type update_type: str
     :param save_history: Whether to save the history of the PBN.
     :type save_history: bool
@@ -509,6 +509,8 @@ class PBN:
 
         if save_history:
             state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
+            state_history[:N * stateSize] = initial_state[:]
+
         else:
             state_history = np.zeros(0, dtype=np.uint32)
 
@@ -754,12 +756,13 @@ class PBN:
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
-        run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+        if self.save_history:
+            run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
 
-        if self.history is not None:
-            self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
-        else:
-            self.history = run_history
+            if self.history is not None:
+                self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
+            else:
+                self.history = run_history
 
     def simple_steps_cpu(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
         """
