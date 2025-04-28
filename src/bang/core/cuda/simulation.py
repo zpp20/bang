@@ -91,6 +91,7 @@ def update_initial_state( gpu_threadNum,
     step,
     initialState,
     initialStateCopy,
+    save_history,
 ):
     relative_index = stateSize * idx
 
@@ -98,9 +99,10 @@ def update_initial_state( gpu_threadNum,
         initialStateCopy[node_index] = initialState[node_index]
         gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
-        gpu_stateHistory[
-            (step + 1) * gpu_threadNum[0] + relative_index + node_index
-        ] = initialStateCopy[node_index]
+        if save_history:
+            gpu_stateHistory[
+                (step + 1) * gpu_threadNum[0] + relative_index + node_index
+            ] = initialStateCopy[node_index]
 
 
 @cuda.jit(device=True)
@@ -155,6 +157,7 @@ def kernel_converge_sync(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    save_history,
 ):
     idx = cuda.grid(1)
 
@@ -230,6 +233,7 @@ def kernel_converge_sync(
             step,
             initialState,
             initialStateCopy,
+            save_history,
         )
 
 
@@ -256,6 +260,7 @@ def kernel_converge_async_one_random(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    save_history,
 ):
     idx = cuda.grid(1)
 
@@ -321,6 +326,7 @@ def kernel_converge_async_one_random(
             step,
             initialState,
             initialState,
+            save_history,
         )
 
 @cuda.jit
@@ -346,6 +352,7 @@ def kernel_converge_async_random_order(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    save_history,
 ):
     idx = cuda.grid(1)
 
@@ -423,4 +430,5 @@ def kernel_converge_async_random_order(
             step,
             initialState,
             initialState,
+            save_history,
         )
