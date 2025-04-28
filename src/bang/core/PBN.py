@@ -22,6 +22,7 @@ from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
 UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
+MAX_N_STEPS = 100000
 
 
 class PBN:
@@ -85,6 +86,52 @@ class PBN:
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
+        self._allocate_arrays()
+
+    def _allocate_arrays(self):
+        pbn_data = self.pbn_data_to_np_arrays(MAX_N_STEPS, self.save_history)
+
+        (
+            state_history,
+            thread_num,
+            pow_num,
+            cum_function_count,
+            function_probabilities,
+            perturbation_rate,
+            cum_variable_count,
+            functions,
+            function_variables,
+            initial_state,
+            steps,
+            state_size,
+            extra_functions,
+            extra_functions_index,
+            cum_extra_functions,
+            extra_function_count,
+            extra_function_index_count,
+            perturbation_blacklist,
+            non_perturbed_count,
+        ) = pbn_data
+
+        self.gpu_cumNv = cuda.to_device(cum_variable_count)
+        self.gpu_F = cuda.to_device(functions)
+        self.gpu_varF = cuda.to_device(function_variables)
+        self.gpu_initialState = cuda.to_device(initial_state)
+        self.gpu_stateHistory = cuda.to_device(state_history)
+        self.gpu_threadNum = cuda.to_device(thread_num)
+        self.gpu_steps = cuda.to_device(steps)
+        self.gpu_stateSize = cuda.to_device(state_size)
+        self.gpu_extraF = cuda.to_device(extra_functions)
+        self.gpu_extraFIndex = cuda.to_device(extra_functions_index)
+        self.gpu_cumExtraF = cuda.to_device(cum_extra_functions)
+        self.gpu_extraFCount = cuda.to_device(extra_function_count)
+        self.gpu_extraFIndexCount = cuda.to_device(extra_function_index_count)
+        self.gpu_npNode = cuda.to_device(perturbation_blacklist)
+        self.gpu_npLength = cuda.to_device(non_perturbed_count)
+        self.gpu_cumCij = cuda.to_device(function_probabilities)
+        self.gpu_cumNf = cuda.to_device(cum_function_count)
+        self.gpu_perturbation_rate = cuda.to_device(perturbation_rate)
+        self.gpu_powNum = cuda.to_device(pow_num)
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
@@ -610,49 +657,6 @@ class PBN:
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
         # Convert PBN data to numpy arrays
-        pbn_data = self.pbn_data_to_np_arrays(n_steps, self.save_history)
-
-        (
-            state_history,
-            thread_num,
-            pow_num,
-            cum_function_count,
-            function_probabilities,
-            perturbation_rate,
-            cum_variable_count,
-            functions,
-            function_variables,
-            initial_state,
-            steps,
-            state_size,
-            extra_functions,
-            extra_functions_index,
-            cum_extra_functions,
-            extra_function_count,
-            extra_function_index_count,
-            perturbation_blacklist,
-            non_perturbed_count,
-        ) = pbn_data
-
-        gpu_cumNv = cuda.to_device(cum_variable_count)
-        gpu_F = cuda.to_device(functions)
-        gpu_varF = cuda.to_device(function_variables)
-        gpu_initialState = cuda.to_device(initial_state)
-        gpu_stateHistory = cuda.to_device(state_history)
-        gpu_threadNum = cuda.to_device(thread_num)
-        gpu_steps = cuda.to_device(steps)
-        gpu_stateSize = cuda.to_device(state_size)
-        gpu_extraF = cuda.to_device(extra_functions)
-        gpu_extraFIndex = cuda.to_device(extra_functions_index)
-        gpu_cumExtraF = cuda.to_device(cum_extra_functions)
-        gpu_extraFCount = cuda.to_device(extra_function_count)
-        gpu_extraFIndexCount = cuda.to_device(extra_function_index_count)
-        gpu_npNode = cuda.to_device(perturbation_blacklist)
-        gpu_npLength = cuda.to_device(non_perturbed_count)
-        gpu_cumCij = cuda.to_device(function_probabilities)
-        gpu_cumNf = cuda.to_device(cum_function_count)
-        gpu_perturbation_rate = cuda.to_device(perturbation_rate)
-        gpu_powNum = cuda.to_device(pow_num)
 
         states = create_xoroshiro128p_states(
             self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
@@ -664,83 +668,83 @@ class PBN:
         blockSize = 32
 
         time_start = cuda.event(timing=True)
-        time_stop = cuda.event(timing=True)
+        time_stop = cuda.event()
 
         time_start.record()
 
         if self.update_type == "asynchronous_one_random":
             kernel_converge_async_one_random[block, blockSize](  # type: ignore
-                gpu_stateHistory,
-                gpu_threadNum,
-                gpu_powNum,
-                gpu_cumNf,
-                gpu_cumCij,
+                self.gpu_stateHistory,
+                self.gpu_threadNum,
+                self.gpu_powNum,
+                self.gpu_cumNf,
+                self.gpu_cumCij,
                 states,
                 self.getN(),
-                gpu_perturbation_rate,
-                gpu_cumNv,
-                gpu_F,
-                gpu_varF,
-                gpu_initialState,
-                gpu_steps,
-                gpu_stateSize,
-                gpu_extraF,
-                gpu_extraFIndex,
-                gpu_cumExtraF,
-                gpu_extraFCount,
-                gpu_extraFIndexCount,
-                gpu_npLength,
-                gpu_npNode,
+                self.gpu_perturbation_rate,
+                self.gpu_cumNv,
+                self.gpu_F,
+                self.gpu_varF,
+                self.gpu_initialState,
+                self.gpu_steps,
+                self.gpu_stateSize,
+                self.gpu_extraF,
+                self.gpu_extraFIndex,
+                self.gpu_cumExtraF,
+                self.gpu_extraFCount,
+                self.gpu_extraFIndexCount,
+                self.gpu_npLength,
+                self.gpu_npNode,
                 self.save_history,
             )
         elif self.update_type == "asynchronous_random_order":
             kernel_converge_async_random_order[block, blockSize](  # type: ignore
-                gpu_stateHistory,
-                gpu_threadNum,
-                gpu_powNum,
-                gpu_cumNf,
-                gpu_cumCij,
+                self.gpu_stateHistory,
+                self.gpu_threadNum,
+                self.gpu_powNum,
+                self.gpu_cumNf,
+                self.gpu_cumCij,
                 states,
                 self.getN(),
-                gpu_perturbation_rate,
-                gpu_cumNv,
-                gpu_F,
-                gpu_varF,
-                gpu_initialState,
-                gpu_steps,
-                gpu_stateSize,
-                gpu_extraF,
-                gpu_extraFIndex,
-                gpu_cumExtraF,
-                gpu_extraFCount,
-                gpu_extraFIndexCount,
-                gpu_npLength,
-                gpu_npNode,
-                self.save_history,
+                self.gpu_perturbation_rate,
+                self.gpu_cumNv,
+                self.gpu_F,
+                self.gpu_varF,
+                self.gpu_initialState,
+                self.gpu_steps,
+                self.gpu_stateSize,
+                self.gpu_extraF,
+                self.gpu_extraFIndex,
+                self.gpu_cumExtraF,
+                self.gpu_extraFCount,
+                self.gpu_extraFIndexCount,
+                self.gpu_npLength,
+                self.gpu_npNode,
+                self.self.save_history,
             )
         elif self.update_type == "synchronous":
             kernel_converge_sync[block, blockSize](  # type: ignore
-                gpu_stateHistory,
-                gpu_threadNum,
-                gpu_powNum,
-                gpu_cumNf,
-                gpu_cumCij,
+                self.gpu_stateHistory,
+                self.gpu_threadNum,
+                self.gpu_powNum,
+                self.gpu_cumNf,
+                self.gpu_cumCij,
                 states,
                 self.getN(),
-                gpu_perturbation_rate,
-                gpu_cumNv,
-                gpu_F,
-                gpu_varF,
-                gpu_initialState,
-                gpu_steps,
-                gpu_stateSize,
-                gpu_extraF,
-                gpu_extraFIndex,
-                gpu_cumExtraF,
-                gpu_extraFCount,
-                gpu_extraFIndexCount,
-                gpu_npLength,
-                gpu_npNode,
+                self.gpu_perturbation_rate,
+                self.gpu_cumNv,
+                self.gpu_F,
+                self.gpu_varF,
+                self.gpu_initialState,
+                self.gpu_steps,
+                self.gpu_stateSize,
+                self.gpu_extraF,
+                self.gpu_extraFIndex,
+                self.gpu_cumExtraF,
+                self.gpu_extraFCount,
+                self.gpu_extraFIndexCount,
+                self.gpu_npLength,
+                self.gpu_npNode,
                 self.save_history,
             )
 
@@ -751,13 +755,13 @@ class PBN:
 
         print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
-        last_state = gpu_initialState.copy_to_host()
-        run_history = gpu_stateHistory.copy_to_host()
+        last_state = self.gpu_initialState.copy_to_host()
+        run_history = self.gpu_stateHistory.copy_to_host()
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
         if self.save_history:
-            run_history = run_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+            run_history = run_history.reshape((-1, self.n_parallel, self.stateSize()))[:n_steps+1, :, :]
 
             if self.history is not None:
                 self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
