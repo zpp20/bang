@@ -51,6 +51,10 @@ class PBN:
     :type latest_state: np.ndarray
     :param previous_simulations: List of previous simulations.
     :type previous_simulations: List[np.ndarray]
+    :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order" and "synchronous"
+    :type update_type: str
+    :param save_history: Whether to save the history of the PBN.
+    :type save_history: bool
     """
 
     def __init__(
@@ -65,6 +69,7 @@ class PBN:
         npNode: List[int],
         n_parallel: int = 512,
         update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
+        save_history: bool = True
     ):
         self.n = n
         self.nf = nf
@@ -79,6 +84,7 @@ class PBN:
         self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.uint32)
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
+        self.save_history = save_history
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
@@ -470,7 +476,7 @@ class PBN:
 
         return new_varF, new_F
 
-    def pbn_data_to_np_arrays(self, n_steps: int):
+    def pbn_data_to_np_arrays(self, n_steps: int, save_history: bool = True):
         nf = self.getNf()
         nv = self.getNv()
         F = self.get_integer_f()
@@ -501,10 +507,14 @@ class PBN:
         )
         initial_state = initial_state.reshape(N * stateSize)
 
+        if save_history:
+            state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
+        else:
+            state_history = np.zeros(0, dtype=np.uint32)
+
         cum_variable_count = np.array(cumNv, dtype=np.uint32)
         functions = np.array(F, dtype=np.uint32)
         function_variables = np.array(varFInt, dtype=np.uint32)
-        state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
         thread_num = np.array([N], dtype=np.uint32)
         steps = np.array([n_steps], dtype=np.uint32)
         state_size = np.array([stateSize], dtype=np.uint32)
@@ -598,7 +608,7 @@ class PBN:
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
         # Convert PBN data to numpy arrays
-        pbn_data = self.pbn_data_to_np_arrays(n_steps)
+        pbn_data = self.pbn_data_to_np_arrays(n_steps, self.save_history)
 
         (
             state_history,
@@ -679,6 +689,7 @@ class PBN:
                 gpu_extraFIndexCount,
                 gpu_npLength,
                 gpu_npNode,
+                self.save_history,
             )
         elif self.update_type == "asynchronous_random_order":
             kernel_converge_async_random_order[block, blockSize](  # type: ignore
@@ -703,6 +714,7 @@ class PBN:
                 gpu_extraFIndexCount,
                 gpu_npLength,
                 gpu_npNode,
+                self.save_history,
             )
         elif self.update_type == "synchronous":
             kernel_converge_sync[block, blockSize](  # type: ignore
@@ -727,6 +739,7 @@ class PBN:
                 gpu_extraFIndexCount,
                 gpu_npLength,
                 gpu_npNode,
+                self.save_history,
             )
 
         time_stop.record()
