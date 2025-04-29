@@ -8,10 +8,9 @@ from numba.cuda.random import xoroshiro128p_uniform_float32
 MAX_STATE_SIZE = 16
 MAX_UPDATE_ORDER_SIZE = 512
 
+
 @nb.jit
-def initialize_state(
-    gpu_initialState, state_size, relative_index, initialStateCopy, initialState
-):
+def initialize_state(gpu_initialState, state_size, relative_index, initialStateCopy, initialState):
     # get initial state of the trajectory this thread will simulate
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(state_size):
@@ -82,7 +81,8 @@ def update_node(
 
 
 @nb.jit
-def update_initial_state( gpu_threadNum,
+def update_initial_state(
+    gpu_threadNum,
     gpu_stateHistory,
     gpu_initialState,
     stateSize,
@@ -325,6 +325,7 @@ def kernel_converge_async_one_random(
             initialState,
             save_history,
         )
+
 
 @cuda.jit
 def kernel_converge_async_random_order(

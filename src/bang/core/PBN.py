@@ -14,10 +14,18 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core.cpu.simulation import cpu_converge_async_one_random, cpu_converge_async_random_order, cpu_converge_sync
 import bang.graph
 import bang.visualization
-from bang.core.cuda.simulation import kernel_converge_async_one_random, kernel_converge_sync, kernel_converge_async_random_order
+from bang.core.cpu.simulation import (
+    cpu_converge_async_one_random,
+    cpu_converge_async_random_order,
+    cpu_converge_sync,
+)
+from bang.core.cuda.simulation import (
+    kernel_converge_async_one_random,
+    kernel_converge_async_random_order,
+    kernel_converge_sync,
+)
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
@@ -70,7 +78,7 @@ class PBN:
         npNode: List[int],
         n_parallel: int = 512,
         update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
-        save_history: bool = True
+        save_history: bool = True,
     ):
         self.n = n
         self.nf = nf
@@ -94,7 +102,7 @@ class PBN:
 
         (
             state_history,
-            thread_num, # can vary between simple_steps executions
+            thread_num,  # can vary between simple_steps executions
             pow_num,
             cum_function_count,
             function_probabilities,
@@ -102,8 +110,8 @@ class PBN:
             cum_variable_count,
             functions,
             function_variables,
-            initial_state, # usually varies between simple_steps executions
-            steps, # can vary between simple_steps executions
+            initial_state,  # usually varies between simple_steps executions
+            steps,  # can vary between simple_steps executions
             state_size,
             extra_functions,
             extra_functions_index,
@@ -559,7 +567,7 @@ class PBN:
 
         if save_history:
             state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
-            state_history[:N * stateSize] = initial_state.copy()[:]
+            state_history[: N * stateSize] = initial_state.copy()[:]
 
         else:
             state_history = np.zeros(0, dtype=np.uint32)
@@ -657,10 +665,10 @@ class PBN:
                 # batch simple_step executions to avoid allocating too much memory for history
                 for _ in range(n_steps // MAX_N_STEPS):
                     self._execute_simple_steps(MAX_N_STEPS, actions)
-            
+
                 if n_steps % MAX_N_STEPS != 0:
                     self._execute_simple_steps(n_steps % MAX_N_STEPS, actions)
-            else: 
+            else:
                 self._execute_simple_steps(n_steps, actions)
         else:
             print("WARNING! CUDA is not available, falling back to CPU simulation")
@@ -683,7 +691,9 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        self.gpu_initialState.copy_to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
+        self.gpu_initialState.copy_to_device(
+            self.latest_state.reshape(self.n_parallel * self.stateSize())
+        )
         self.gpu_steps.copy_to_device(np.array([n_steps], dtype=np.uint32))
 
         states = create_xoroshiro128p_states(
@@ -783,7 +793,9 @@ class PBN:
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
         if self.save_history:
-            run_history = run_history.reshape((-1, self.n_parallel, self.stateSize()))[:n_steps+1, :, :]
+            run_history = run_history.reshape((-1, self.n_parallel, self.stateSize()))[
+                : n_steps + 1, :, :
+            ]
 
             if self.history is not None:
                 self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
@@ -1034,7 +1046,16 @@ class PBN:
         npNode.append(n)
 
         return PBN(
-            n, nf, nv, F, varFInt, cij, perturbation, npNode, self.n_parallel, update_type="synchronous"
+            n,
+            nf,
+            nv,
+            F,
+            varFInt,
+            cij,
+            perturbation,
+            npNode,
+            self.n_parallel,
+            update_type="synchronous",
         )
 
     # def segment_attractor(self, attractor_states, history):
