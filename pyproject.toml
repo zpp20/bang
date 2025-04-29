@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # See https://setuptools.pypa.io/en/latest/userguide/quickstart.html for more project configuration options.
 name = "bang-gpu"
 readme = "README.md"
-version = "0.1.0-alpha.29"
+version = "0.1.0-alpha.30"
 
 authors = [
     { name = "Mikołaj Czarnecki", email = "mc448206@students.mimuw.edu.pl" },
