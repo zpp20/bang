@@ -86,6 +86,7 @@ class PBN:
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
+
         self._allocate_arrays()
 
     def _allocate_arrays(self):
@@ -93,7 +94,7 @@ class PBN:
 
         (
             state_history,
-            thread_num,
+            thread_num, # can vary between simple_steps executions
             pow_num,
             cum_function_count,
             function_probabilities,
@@ -101,8 +102,8 @@ class PBN:
             cum_variable_count,
             functions,
             function_variables,
-            initial_state,
-            steps,
+            initial_state, # usually varies between simple_steps executions
+            steps, # can vary between simple_steps executions
             state_size,
             extra_functions,
             extra_functions_index,
@@ -310,6 +311,8 @@ class PBN:
                     ],
                     axis=0,
                 )
+
+        self._allocate_arrays()
 
     def extraFCount(self) -> int:
         """
@@ -649,6 +652,29 @@ class PBN:
         :type actions: npt.NDArray[np.uint], optional
         :raises ValueError: If the initial state is not set before simulation.
         """
+        if cuda.is_available():
+            if self.save_history:
+                # batch simple_step executions to avoid allocating too much memory for history
+                for _ in range(n_steps // MAX_N_STEPS):
+                    self._execute_simple_steps(MAX_N_STEPS, actions)
+            
+                self._execute_simple_steps(n_steps % MAX_N_STEPS, actions)
+            else: 
+                self._execute_simple_steps(n_steps, actions)
+        else:
+            print("WARNING! CUDA is not available, falling back to CPU simulation")
+            self.simple_steps_cpu(n_steps, actions)
+
+    def _execute_simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+        """
+        Simulates the PBN for a given number of steps.
+
+        :param n_steps: Number of steps to simulate.
+        :type n_steps: int
+        :param actions: Array of actions to be performed on the PBN. Defaults to None.
+        :type actions: npt.NDArray[np.uint], optional
+        :raises ValueError: If the initial state is not set before simulation.
+        """
         if self.latest_state is None or self.history is None:
             raise ValueError("Initial state must be set before simulation")
 
@@ -656,7 +682,8 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        new_gpuInitialState = cuda.to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
+        self.gpu_initialState.copy_to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
+        self.gpu_steps.copy_to_device(np.array([n_steps], dtype=np.uint32))
 
         states = create_xoroshiro128p_states(
             self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
@@ -687,7 +714,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                new_gpuInitialState,
+                self.gpu_initialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -712,7 +739,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                new_gpuInitialState,
+                self.gpu_initialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -737,7 +764,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                new_gpuInitialState,
+                self.gpu_initialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -759,7 +786,7 @@ class PBN:
 
         print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
-        last_state = new_gpuInitialState.copy_to_host()
+        last_state = self.gpu_initialState.copy_to_host()
         run_history = self.gpu_stateHistory.copy_to_host()
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
