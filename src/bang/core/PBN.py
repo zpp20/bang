@@ -658,7 +658,8 @@ class PBN:
                 for _ in range(n_steps // MAX_N_STEPS):
                     self._execute_simple_steps(MAX_N_STEPS, actions)
             
-                self._execute_simple_steps(n_steps % MAX_N_STEPS, actions)
+                if n_steps % MAX_N_STEPS != 0:
+                    self._execute_simple_steps(n_steps % MAX_N_STEPS, actions)
             else: 
                 self._execute_simple_steps(n_steps, actions)
         else:
