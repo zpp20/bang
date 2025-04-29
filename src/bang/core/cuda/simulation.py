@@ -4,7 +4,7 @@ import numba as nb
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
-# Maximum state size of 16 means we can hold 32 * 16 = 512 (size of int32 * MAX_STATE_SIZE)
+# Maximum state size of 16 means we can hold 32 * 16 = 512 nodes (size of int32 * MAX_STATE_SIZE)
 MAX_STATE_SIZE = 16
 MAX_UPDATE_ORDER_SIZE = 512
 
