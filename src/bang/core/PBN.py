@@ -556,7 +556,7 @@ class PBN:
 
         if save_history:
             state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
-            state_history[:N * stateSize] = initial_state[:]
+            state_history[:N * stateSize] = initial_state.copy()[:]
 
         else:
             state_history = np.zeros(0, dtype=np.uint32)
@@ -914,7 +914,7 @@ class PBN:
             history = np.hstack((history, self.get_last_state()))
 
         state_bytes_set = list(set(state_bytes))
-        ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
+        ret_list = [np.frombuffer(state, dtype=np.uint32)[0] for state in state_bytes_set]
         return (np.array(ret_list), history)
 
     def segment_attractor(self, attractor_states, history):
