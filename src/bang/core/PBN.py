@@ -656,7 +656,7 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        self.gpu_initialState = cuda.to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
+        new_gpuInitialState = cuda.to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
 
         states = create_xoroshiro128p_states(
             self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
@@ -687,7 +687,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                self.gpu_initialState,
+                new_gpuInitialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -712,7 +712,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                self.gpu_initialState,
+                new_gpuInitialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -737,7 +737,7 @@ class PBN:
                 self.gpu_cumNv,
                 self.gpu_F,
                 self.gpu_varF,
-                self.gpu_initialState,
+                new_gpuInitialState,
                 self.gpu_steps,
                 self.gpu_stateSize,
                 self.gpu_extraF,
@@ -759,8 +759,8 @@ class PBN:
 
         print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
-        last_state = self.gpu_initialState.copy_to_host().copy()
-        run_history = self.gpu_stateHistory.copy_to_host().copy()
+        last_state = new_gpuInitialState.copy_to_host()
+        run_history = self.gpu_stateHistory.copy_to_host()
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
