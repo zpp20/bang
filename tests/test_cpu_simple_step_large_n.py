@@ -1,6 +1,7 @@
-from bang import PBN
-import pytest
 import numpy as np
+import pytest
+
+from bang import PBN
 
 large_testdata = [
     (32, 1),
@@ -9,6 +10,7 @@ large_testdata = [
     (256, 8),
     (512, 16),
 ]
+
 
 @pytest.mark.parametrize("test_n_nodes, test_n_states", large_testdata)
 def test_simple_step_large_nodeset(test_n_nodes, test_n_states):
