@@ -663,12 +663,14 @@ class PBN:
         )
 
         block = self.n_parallel // 32
+
         if block == 0:
             block = 1
+
         blockSize = 32
 
         time_start = cuda.event(timing=True)
-        time_stop = cuda.event()
+        time_stop = cuda.event(timing=True)
 
         time_start.record()
 
@@ -747,6 +749,8 @@ class PBN:
                 self.gpu_npNode,
                 self.save_history,
             )
+        else:
+            raise ValueError(f"Unsupported update type: {self.update_type}")
 
         time_stop.record()
         time_stop.synchronize()
@@ -755,8 +759,8 @@ class PBN:
 
         print(f"Elapsed kernel execution time: {elapsed:.3f} ms")
 
-        last_state = self.gpu_initialState.copy_to_host()
-        run_history = self.gpu_stateHistory.copy_to_host()
+        last_state = self.gpu_initialState.copy_to_host().copy()
+        run_history = self.gpu_stateHistory.copy_to_host().copy()
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
