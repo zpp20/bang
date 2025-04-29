@@ -663,8 +663,10 @@ class PBN:
         )
 
         block = self.n_parallel // 32
+
         if block == 0:
             block = 1
+
         blockSize = 32
 
         if self.update_type == "asynchronous_one_random":
@@ -742,11 +744,13 @@ class PBN:
                 self.gpu_npNode,
                 self.save_history,
             )
+        else:
+            raise ValueError(f"Unsupported update type: {self.update_type}")
 
         cuda.synchronize()
 
-        last_state = self.gpu_initialState.copy_to_host()
-        run_history = self.gpu_stateHistory.copy_to_host()
+        last_state = self.gpu_initialState.copy_to_host().copy()
+        run_history = self.gpu_stateHistory.copy_to_host().copy()
 
         self.latest_state = last_state.reshape((self.n_parallel, self.stateSize()))
 
