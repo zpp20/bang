@@ -95,9 +95,10 @@ class PBN:
         self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
 
-        self._allocate_arrays()
+        if cuda.is_available():
+            self._preallocate_arrays()
 
-    def _allocate_arrays(self):
+    def _preallocate_arrays(self):
         pbn_data = self.pbn_data_to_np_arrays(MAX_N_STEPS, self.save_history)
 
         (
@@ -320,7 +321,8 @@ class PBN:
                     axis=0,
                 )
 
-        self._allocate_arrays()
+        if cuda.is_available():
+            self._preallocate_arrays()
 
     def extraFCount(self) -> int:
         """
