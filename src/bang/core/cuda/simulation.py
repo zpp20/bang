@@ -4,7 +4,7 @@ import numba as nb
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
-# Maximum state size of 16 means we can hold 32 * 16 = 512 nodes (size of int32 * MAX_STATE_SIZE)
+# Maximum state size of 16 means we can hold 32 * 16 = 512 nodes (size of uint32 * MAX_STATE_SIZE)
 MAX_STATE_SIZE = 16
 MAX_UPDATE_ORDER_SIZE = 512
 
@@ -163,8 +163,8 @@ def kernel_converge_sync(
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    initialStateCopy = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
+    initialStateCopy = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
 
     relative_index = idx * stateSize
 
@@ -265,8 +265,8 @@ def kernel_converge_async_one_random(
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
+    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
 
     relative_index = idx * stateSize
 
@@ -356,9 +356,9 @@ def kernel_converge_async_random_order(
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.int32)
-    update_order = cuda.local.array(shape=(MAX_UPDATE_ORDER_SIZE,), dtype=nb.int32)
+    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
+    update_order = cuda.local.array(shape=(MAX_UPDATE_ORDER_SIZE,), dtype=nb.uint32)
 
     relative_index = idx * stateSize
 
