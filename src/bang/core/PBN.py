@@ -656,7 +656,7 @@ class PBN:
             self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
             self.history = np.concatenate([self.history, self.latest_state], axis=0)
 
-        self.gpu_initialState.copy_to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
+        self.gpu_initialState = cuda.to_device(self.latest_state.reshape(self.n_parallel * self.stateSize()))
 
         states = create_xoroshiro128p_states(
             self.n_parallel, seed=numba.uint64(datetime.datetime.now().timestamp())
