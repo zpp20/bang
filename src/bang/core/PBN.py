@@ -712,8 +712,8 @@ class PBN:
 
         blockSize = 32
 
-        time_start = cuda.event()
-        time_stop = cuda.event()
+        time_start = cuda.event(timing=True)
+        time_stop = cuda.event(timing=True)
 
         time_start.record()
 
