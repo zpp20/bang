@@ -53,11 +53,12 @@ def corss_attractors_gpu(
     stream = cuda.default_stream(),
     int_size = 1
     ):
-    print("attr_list {}".format(attractor_list))
     attractors_global = cuda.to_device(np.concatenate(attractor_list), stream=stream)
+    print(np.concatenate(attractor_list))
+    print(list(accumulate(attractor_cum_index, lambda x,y : np.concatenate((x,np.array(list(map(lambda z : z+ x[-1], y)))))))[-1])
     attractors_index = cuda.to_device(np.array(list(accumulate(attractor_cum_index, 
                                                                lambda x,y : np.concatenate((x,np.array(list(map(lambda z : z+ x[-1], y)))))
-                                                               ))), stream=stream)
+                                                               ))[-1]), stream=stream)
     blocks_sizes = cuda.to_device(np.array([attractor.shape[0] for attractor in attractor_list], dtype=np.int32), stream=stream)
     nodes_global = cuda.to_device(np.array(sorted(sum(nodes, [])), dtype=np.int32), stream=stream)
     cum_result, result_size, threads = get_result(attractor_cum_index)
@@ -66,7 +67,7 @@ def corss_attractors_gpu(
     indices = cuda.to_device(np.empty((2, 1024 * (threads // 1024) + 1, blocks_sizes.size), dtype=np.int32)) #type: ignore
     cross_attractors[1024, (threads // 1024) + 1, stream]( # type: ignore
         attractors_global,
-        attractor_cum_index,
+        attractors_index,
         blocks_sizes,
         nodes_global,
         attractors,
