@@ -6,7 +6,7 @@ import graphviz
 import numpy as np
 
 from bang.core import PBN
-from bang.graph.graph import get_blocks
+from bang.core.attractors.blocks.graph import get_blocks
 
 
 def generate_contrasting_colors(n: int) -> list[str]:
