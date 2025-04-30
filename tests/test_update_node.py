@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
-from bang.core.cuda.simulation import update_node
-from bang.core.PBN import PBN
+from bang.core.simulation.common import update_node
+from bang.core.pbn.array_management import convert_pbn_to_ndarrays
+from bang.core import PBN
 
 
 def test_update_state_simple():
@@ -18,7 +19,7 @@ def test_update_state_simple():
         n_parallel=1,
     )
 
-    prepared_data = pbn1.pbn_data_to_np_arrays(1)
+    prepared_data = convert_pbn_to_ndarrays(pbn1, 1)
 
     (
         _,
@@ -107,7 +108,7 @@ def test_update_state_large(test_n_nodes, test_n_states):
         n_parallel=1,
     )
 
-    prepared_data = pbn1.pbn_data_to_np_arrays(1)
+    prepared_data = convert_pbn_to_ndarrays(pbn1, 1)
 
     (
         _,
@@ -194,7 +195,7 @@ def test_update_state_large_missing_pair(test_n_nodes, test_n_states):
         n_parallel=1,
     )
 
-    prepared_data = pbn1.pbn_data_to_np_arrays(1)
+    prepared_data = convert_pbn_to_ndarrays(pbn1, 1)
 
     (
         _,
@@ -261,7 +262,7 @@ def test_update_node_permutations():
         update_type="asynchronous_random_order",
     )
 
-    prepared_data = pbn1.pbn_data_to_np_arrays(1)
+    prepared_data = convert_pbn_to_ndarrays(pbn1, 1)
 
     (
         _,
