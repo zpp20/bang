@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from bang.core.PBN import PBN
+from bang.core import PBN
 
 
 def test_fixpoint_async_step():
@@ -19,7 +19,7 @@ def test_fixpoint_async_step():
     )
     pbn1.set_states([[True, False], [False, False]])
 
-    pbn1.simple_steps_cpu(101)
+    pbn1.simple_steps(101, device="cpu")
 
     assert np.array_equal([[1], [3]], pbn1.latest_state), pbn1.latest_state
 
@@ -39,7 +39,7 @@ def test_fixpoint_sync_step():
     )
     pbn1.set_states([[True, False], [True, False]])
 
-    pbn1.simple_steps_cpu(21)
+    pbn1.simple_steps(21, device="cpu")
 
     assert np.array_equal([[1], [1]], pbn1.latest_state), pbn1.latest_state
 
@@ -72,13 +72,13 @@ def test_independent_pair_sync_step():
         update_type="synchronous",
     )
 
-    pbn2.simple_steps_cpu(1)
+    pbn2.simple_steps(1, device="cpu")
     assert np.array_equal([[15]], pbn2.latest_state)
 
-    pbn2.simple_steps_cpu(1)
+    pbn2.simple_steps(1, device="cpu")
     assert np.array_equal([[10]], pbn2.latest_state)
 
-    pbn2.simple_steps_cpu(1)
+    pbn2.simple_steps(1, device="cpu")
     assert np.array_equal([[15]], pbn2.latest_state)
 
 
@@ -98,7 +98,7 @@ def test_large_n_parallel_sync(n_parallel):
     )
     pbn1.set_states([[False, False] for _ in range(n_parallel)])
 
-    pbn1.simple_steps_cpu(21)
+    pbn1.simple_steps(21, device="cpu")
 
     assert np.array_equal([[3] for _ in range(n_parallel)], pbn1.latest_state), pbn1.latest_state
 
@@ -119,6 +119,6 @@ def test_large_n_parallel_async(n_parallel):
     )
     pbn1.set_states([[False, False] for _ in range(n_parallel)])
 
-    pbn1.simple_steps_cpu(21)
+    pbn1.simple_steps(21, device="cpu")
 
     assert np.array_equal([[3] for _ in range(n_parallel)], pbn1.latest_state), pbn1.latest_state
