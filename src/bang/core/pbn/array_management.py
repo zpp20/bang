@@ -1,15 +1,13 @@
 import numpy as np
-import typing
 from numba import cuda
 
 from itertools import chain
 
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
+from bang.core import PBN
 
 
-def convert_pbn_to_ndarrays(pbn: PBN, n_steps: int, save_history: bool = True):
+def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True):
     nf = pbn.getNf()
     nv = pbn.getNv()
     F = pbn.get_integer_f()
@@ -96,7 +94,7 @@ def convert_pbn_to_ndarrays(pbn: PBN, n_steps: int, save_history: bool = True):
 
 class GpuMemoryContainer:
 
-    def __init__(self, pbn: PBN, n_steps: int, save_history: bool = True):
+    def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True):
         pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, save_history)
 
         (

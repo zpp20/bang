@@ -1,9 +1,6 @@
-import typing
+from bang.core import PBN
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
-
-def select_nodes(pbn: PBN, nodes: list[int]):
+def select_nodes(pbn: "PBN", nodes: list[int]):
     new_F = list()
     new_varF = list()
     new_nv = list()
