@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.typing as npt
-import typing
 
 import datetime
 
@@ -22,11 +21,10 @@ from bang.core.simulation.cuda import (
 
 from bang.core.pbn.array_management import convert_pbn_to_ndarrays
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
+from bang.core import PBN
 
 
-def invoke_cuda_simulation(pbn: PBN, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None):
     if pbn.latest_state is None or pbn.history is None:
         raise ValueError("Initial state must be set before simulation")
 

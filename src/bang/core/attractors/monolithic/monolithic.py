@@ -1,13 +1,11 @@
 import numpy as np
-import typing
 
 from bang.core.attractors.monolithic.segmentation import segment_attractors
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
+from bang.core import PBN
 
 
-def monolithic_detect_attractor(pbn: PBN, initial_states):
+def monolithic_detect_attractor(pbn: "PBN", initial_states):
     """
     Detects all atractor states in PBN
 

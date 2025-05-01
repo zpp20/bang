@@ -1,7 +1,4 @@
-import typing
-
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
+from bang.core import PBN
 
 class PBN_Node:
     """Representation of a node in the PBN graph.
@@ -15,7 +12,7 @@ class PBN_Node:
     functions: list A list of functions that update the value of the node.
     """
 
-    def __init__(self, id, pbn: PBN, current_value, name=str(id)):
+    def __init__(self, id, pbn: "PBN", current_value, name=str(id)):
         self.id = id
         self.name = name
         self.current_value = current_value
@@ -45,7 +42,7 @@ class Graph_PBN:
 
     """
 
-    def __init__(self, pbn: PBN):
+    def __init__(self, pbn: "PBN"):
         self.pbn = pbn
         self.nodes = {i: PBN_Node(i, pbn, 0) for i in range(pbn.n)}
         self.dfs_numbered = 0

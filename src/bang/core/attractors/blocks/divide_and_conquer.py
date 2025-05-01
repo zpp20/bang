@@ -1,12 +1,10 @@
 from itertools import product
-import typing
 
 from bang.core.attractors.blocks.block_attractors import find_block_attractors
 from bang.core.attractors.blocks.crossing import cross_attractors
 import bang.core.attractors.blocks.graph as graph
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
+from bang.core import PBN
 
 
 def get_all_nodes(blocks: list[tuple[list[int], list[int]]], i: int) -> list[int]:
@@ -20,7 +18,7 @@ def get_all_nodes(blocks: list[tuple[list[int], list[int]]], i: int) -> list[int
     return []
 
 
-def divide_and_conquer(network: PBN):
+def divide_and_conquer(network: "PBN"):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks(dag_scc=True)
     blocks: list[tuple[list[int], list[int]]] = PBN_graph.blocks

@@ -1,9 +1,6 @@
-import typing
+from bang.core import PBN
 
-if typing.TYPE_CHECKING:
-    from bang.core import PBN
-
-def reduce_F(self: PBN, states: list[list[int]]) -> tuple:
+def reduce_F(self: "PBN", states: list[list[int]]) -> tuple:
     # """
     # Reduces truth tables of PBN by removing states that do not change.
 
