@@ -30,7 +30,7 @@ from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 
 UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
-MAX_N_STEPS = 100000
+DEFAULT_STEPS_BATCH_SIZE = 100000
 
 
 class PBN:
@@ -64,6 +64,8 @@ class PBN:
     :type update_type: str
     :param save_history: Whether to save the history of the PBN.
     :type save_history: bool
+    :param steps_batch_size: The size of the batch of the maximum number of steps executed in a single kernel invocation.
+    :type steps_batch_size: int
     """
 
     def __init__(
@@ -77,8 +79,9 @@ class PBN:
         perturbation: float,
         npNode: List[int],
         n_parallel: int = 512,
-        update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
+        update_type: UpdateType = "asynchronous_one_random",
         save_history: bool = True,
+        steps_batch_size = DEFAULT_STEPS_BATCH_SIZE,
     ):
         self.n = n
         self.nf = nf
@@ -94,12 +97,13 @@ class PBN:
         self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
+        self.steps_batch_size = steps_batch_size
 
         if cuda.is_available():
             self._preallocate_arrays()
 
     def _preallocate_arrays(self):
-        pbn_data = self.pbn_data_to_np_arrays(MAX_N_STEPS, self.save_history)
+        pbn_data = self.pbn_data_to_np_arrays(DEFAULT_STEPS_BATCH_SIZE, self.save_history)
 
         (
             state_history,
@@ -665,11 +669,11 @@ class PBN:
         if cuda.is_available():
             if self.save_history:
                 # batch simple_step executions to avoid allocating too much memory for history
-                for _ in range(n_steps // MAX_N_STEPS):
-                    self._execute_simple_steps(MAX_N_STEPS, actions)
+                for _ in range(n_steps // self.steps_batch_size):
+                    self._execute_simple_steps(self.steps_batch_size, actions)
 
-                if n_steps % MAX_N_STEPS != 0:
-                    self._execute_simple_steps(n_steps % MAX_N_STEPS, actions)
+                if n_steps % self.steps_batch_size != 0:
+                    self._execute_simple_steps(n_steps % self.steps_batch_size, actions)
             else:
                 self._execute_simple_steps(n_steps, actions)
         else:
