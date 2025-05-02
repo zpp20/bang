@@ -12,7 +12,7 @@ npNode = [2]
 
 pbn = bang.PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
 
-active, reduced_F = pbn.reduce_F([[0, 1, 0], [0, 1, 1]])
+active, reduced_F = pbn.reduce_truthtables([[0, 1, 0], [0, 1, 1]])
 
 print(active)
 print(reduced_F)
