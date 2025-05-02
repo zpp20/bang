@@ -1,7 +1,11 @@
-from bang.core import PBN
+import typing
+
 from bang.core.attractors.blocks.crossing import cross_attractors
 from bang.core.attractors.blocks.node_selection import select_nodes
 from bang.core.attractors.monolithic.segmentation import segment_attractors
+
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
 
 
 def apply(function, function_nodes, state: list[bool], nodes) -> bool:

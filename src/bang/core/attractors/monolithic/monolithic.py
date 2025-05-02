@@ -1,6 +1,10 @@
+import typing
+
 import numpy as np
 
-from bang.core import PBN
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+
 from bang.core.attractors.monolithic.segmentation import segment_attractors
 
 

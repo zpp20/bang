@@ -1,9 +1,11 @@
+import typing
 from typing import Literal
 
 import graphviz
 import numpy as np
 
-from bang.core import PBN
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
 
 
 def draw_dependencies(

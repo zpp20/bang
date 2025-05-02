@@ -1,7 +1,11 @@
+import typing
 from itertools import product
 
 import bang.core.attractors.blocks.graph as graph
-from bang.core import PBN
+
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+
 from bang.core.attractors.blocks.block_attractors import find_block_attractors
 from bang.core.attractors.blocks.crossing import cross_attractors
 
