@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from bang.core.simulation.common import update_node
-from bang.core.pbn.array_management import convert_pbn_to_ndarrays
 from bang.core import PBN
+from bang.core.pbn.array_management import convert_pbn_to_ndarrays
+from bang.core.simulation.common import update_node
 
 
 def test_update_state_simple():

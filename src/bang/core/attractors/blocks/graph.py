@@ -1,5 +1,6 @@
 from bang.core import PBN
 
+
 class PBN_Node:
     """Representation of a node in the PBN graph.
 
@@ -29,6 +30,7 @@ class PBN_Node:
         self.dfs_tree_size: int | None = None
         self.scc_id: int | None = None
         self.visited: bool = False
+
 
 class Graph_PBN:
 
@@ -169,8 +171,6 @@ class Graph_PBN:
                 block += influencers
                 block = sorted(list(set(block)))
                 self.blocks.append(block)
-
-
 
 
 # Returns topologically sorted blocks of the PBN

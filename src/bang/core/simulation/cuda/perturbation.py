@@ -1,6 +1,7 @@
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
+
 @cuda.jit(device=True)
 def perform_perturbation(
     gpu_npLength,

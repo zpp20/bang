@@ -1,5 +1,6 @@
 from itertools import product
 
+
 def cross_states(
     state1: list[bool], nodes1: list[int], state2: list[bool], nodes2: list[int]
 ) -> list[bool]:
@@ -38,4 +39,3 @@ def cross_attractors(
         for x, y in product(attractor1, attractor2)
         if len(cross_states(x, nodes1, y, nodes2)) != 0
     ], result_nodes
-

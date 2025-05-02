@@ -1,9 +1,9 @@
-import numpy as np
 import random
 
 from bang.core.simulation.common import update_node
 from bang.core.simulation.cpu.perturbation import perform_perturbation
 from bang.core.simulation.cpu.state_management import update_initial_state
+
 
 def cpu_converge_async_one_random(
     state_history,

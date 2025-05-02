@@ -1,5 +1,6 @@
 from bang.core import PBN
 
+
 def select_nodes(pbn: "PBN", nodes: list[int]):
     new_F = list()
     new_varF = list()

@@ -10,17 +10,15 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
-from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 import bang.graph
 import bang.visualization
-
-from bang.parsing.assa import load_assa
-from bang.parsing.sbml import parseSBMLDocument
-
-from bang.core.pbn.truthtable_reduction import reduce_F
+from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
+from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
-from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
+from bang.core.pbn.truthtable_reduction import reduce_F
+from bang.parsing.assa import load_assa
+from bang.parsing.sbml import parseSBMLDocument
 
 UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
 DEFAULT_STEPS_BATCH_SIZE = 100000
@@ -458,7 +456,6 @@ class PBN:
 
         return reduce_F(self, states)
 
-
     @staticmethod
     def _perturb_state_by_actions(
         actions: npt.NDArray[np.uint32], state: np.ndarray | None
@@ -490,7 +487,12 @@ class PBN:
 
         return copystate
 
-    def simple_steps(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None, device: Literal["cuda", "cpu"] = "cuda"):
+    def simple_steps(
+        self,
+        n_steps: int,
+        actions: npt.NDArray[np.uint] | None = None,
+        device: Literal["cuda", "cpu"] = "cuda",
+    ):
         """
         Simulates the PBN for a given number of steps.
 
@@ -513,7 +515,7 @@ class PBN:
         elif device == "cuda" and not cuda.is_available():
             print("WARNING! CUDA is not available, falling back to CPU simulation")
             invoke_cpu_simulation(self, n_steps, actions)
-        else: 
+        else:
             invoke_cpu_simulation(self, n_steps, actions)
 
     def monolithic_detect_attractors(self, initial_states):
@@ -544,7 +546,6 @@ class PBN:
         """
 
         return divide_and_conquer(self)
-
 
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """

@@ -1,4 +1,5 @@
-import  numpy as np
+import numpy as np
+
 
 def segment_attractors(attractor_states, history):
     active_states = attractor_states

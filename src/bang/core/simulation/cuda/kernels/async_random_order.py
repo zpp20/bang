@@ -1,12 +1,17 @@
 # type: ignore
 
-from numba import cuda
 import numba as nb
+from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
-from bang.core.simulation.common import MAX_STATE_SIZE, MAX_UPDATE_ORDER_SIZE, update_node
-from bang.core.simulation.cuda.state_management import update_initial_state
+from bang.core.simulation.common import (
+    MAX_STATE_SIZE,
+    MAX_UPDATE_ORDER_SIZE,
+    update_node,
+)
 from bang.core.simulation.cuda.perturbation import perform_perturbation
+from bang.core.simulation.cuda.state_management import update_initial_state
+
 
 @cuda.jit
 def kernel_converge_async_random_order(

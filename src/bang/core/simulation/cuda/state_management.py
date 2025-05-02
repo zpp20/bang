@@ -1,5 +1,6 @@
 import numba as nb
 
+
 @nb.jit
 def initialize_state(gpu_initialState, state_size, relative_index, initialStateCopy, initialState):
     # get initial state of the trajectory this thread will simulate
