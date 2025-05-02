@@ -1,8 +1,7 @@
-import numpy as np
-from numba import cuda
-
 from itertools import chain
 
+import numpy as np
+from numba import cuda
 
 from bang.core import PBN
 
@@ -32,9 +31,7 @@ def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True)
     N = pbn.n_parallel
 
     initial_state = (
-        np.zeros(N * stateSize, dtype=np.uint32)
-        if pbn.latest_state is None
-        else pbn.latest_state
+        np.zeros(N * stateSize, dtype=np.uint32) if pbn.latest_state is None else pbn.latest_state
     )
     initial_state = initial_state.reshape(N * stateSize)
 
@@ -92,8 +89,8 @@ def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True)
         non_perturbed_count,
     )
 
-class GpuMemoryContainer:
 
+class GpuMemoryContainer:
     def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True):
         pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, save_history)
 
@@ -138,4 +135,3 @@ class GpuMemoryContainer:
         self.gpu_cumNf = cuda.to_device(cum_function_count)
         self.gpu_perturbation_rate = cuda.to_device(perturbation_rate)
         self.gpu_powNum = cuda.to_device(pow_num)
-        

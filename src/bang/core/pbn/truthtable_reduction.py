@@ -1,5 +1,6 @@
 from bang.core import PBN
 
+
 def reduce_F(self: "PBN", states: list[list[int]]) -> tuple:
     # """
     # Reduces truth tables of PBN by removing states that do not change.
@@ -18,7 +19,7 @@ def reduce_F(self: "PBN", states: list[list[int]]) -> tuple:
             if initial_state[var] != state[var]:
                 constant_vars.remove(var)
 
-    new_F = list() 
+    new_F = list()
     new_varF = list()
 
     for F_func, F_vars in zip(self.F, self.varFInt):

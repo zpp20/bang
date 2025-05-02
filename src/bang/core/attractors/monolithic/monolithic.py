@@ -1,8 +1,7 @@
 import numpy as np
 
-from bang.core.attractors.monolithic.segmentation import segment_attractors
-
 from bang.core import PBN
+from bang.core.attractors.monolithic.segmentation import segment_attractors
 
 
 def monolithic_detect_attractor(pbn: "PBN", initial_states):

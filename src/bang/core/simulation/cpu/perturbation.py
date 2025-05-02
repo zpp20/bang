@@ -1,5 +1,6 @@
 import random
 
+
 def perform_perturbation(
     np_length,
     np_node,

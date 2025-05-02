@@ -1,27 +1,23 @@
-import numpy as np
-import numpy.typing as npt
-
 import datetime
 
 import numba
+import numpy as np
+import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
+from bang.core import PBN
+from bang.core.pbn.array_management import convert_pbn_to_ndarrays
 from bang.core.simulation.cpu import (
     cpu_converge_async_one_random,
     cpu_converge_async_random_order,
     cpu_converge_sync,
 )
-
 from bang.core.simulation.cuda import (
     kernel_converge_async_one_random,
     kernel_converge_async_random_order,
     kernel_converge_sync,
 )
-
-from bang.core.pbn.array_management import convert_pbn_to_ndarrays
-
-from bang.core import PBN
 
 
 def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None):
@@ -148,6 +144,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.history = np.concatenate([pbn.history, run_history[1:, :, :]], axis=0)
         else:
             pbn.history = run_history
+
 
 def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
     """

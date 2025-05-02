@@ -4,6 +4,7 @@ import numba as nb
 MAX_STATE_SIZE = 16
 MAX_UPDATE_ORDER_SIZE = 512
 
+
 @nb.jit
 def update_node(
     node_index,
