@@ -1,4 +1,5 @@
 import datetime
+import typing
 
 import numba
 import numpy as np
@@ -6,7 +7,9 @@ import numpy.typing as npt
 from numba import cuda
 from numba.cuda.random import create_xoroshiro128p_states
 
-from bang.core import PBN
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+
 from bang.core.pbn.array_management import convert_pbn_to_ndarrays
 from bang.core.simulation.cpu import (
     cpu_converge_async_one_random,

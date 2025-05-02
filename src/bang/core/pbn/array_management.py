@@ -1,9 +1,11 @@
+import typing
 from itertools import chain
 
 import numpy as np
 from numba import cuda
 
-from bang.core import PBN
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
 
 
 def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True):

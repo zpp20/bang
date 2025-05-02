@@ -11,15 +11,14 @@ import numpy.typing as npt
 from numba import cuda
 
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
+from bang.core.attractors.blocks.graph import get_blocks
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
 from bang.core.pbn.truthtable_reduction import reduce_F
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
-from bang.visualization import draw_dependencies, draw_trajectory_ndarray, draw_blocks
-from bang.core.attractors.blocks.graph import get_blocks
-
+from bang.visualization import draw_blocks, draw_dependencies, draw_trajectory_ndarray
 
 UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
 DEFAULT_STEPS_BATCH_SIZE = 100000

@@ -1,11 +1,14 @@
 import colorsys
 import random
+import typing
 from typing import Literal
 
 import graphviz
 import numpy as np
 
-from bang.core import PBN
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+
 from bang.core.attractors.blocks.graph import get_blocks
 
 

@@ -1,4 +1,7 @@
-from bang.core import PBN
+import typing
+
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
 
 
 def reduce_F(self: "PBN", states: list[list[int]]) -> tuple:
