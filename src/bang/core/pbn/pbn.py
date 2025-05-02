@@ -10,8 +10,6 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
-import bang.graph
-import bang.visualization
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 from bang.core.pbn.array_management import GpuMemoryContainer
@@ -19,6 +17,9 @@ from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simula
 from bang.core.pbn.truthtable_reduction import reduce_F
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
+from bang.visualization import draw_dependencies, draw_trajectory_ndarray, draw_blocks
+from bang.core.attractors.blocks.graph import get_blocks
+
 
 UpdateType = Literal["asynchronous_random_order", "asynchronous_one_random", "synchronous"]
 DEFAULT_STEPS_BATCH_SIZE = 100000
@@ -212,7 +213,7 @@ class PBN:
         :returns: The blocks of the PBN.
         :rtype: list[list[int]]
         """
-        return bang.graph.get_blocks(self)
+        return get_blocks(self)
 
     @staticmethod
     def _bools_to_state_array(bools: List[bool], node_count: int) -> np.ndarray:
@@ -562,7 +563,7 @@ class PBN:
         :rtype: graphviz.Digraph
         """
 
-        return bang.visualization.draw_dependencies(self, filename)
+        return draw_dependencies(self, filename)
 
     def trajectory_graph(
         self,
@@ -593,7 +594,7 @@ class PBN:
         :rtype: graphviz.Digraph
         """
 
-        return bang.visualization.draw_trajectory_ndarray(
+        return draw_trajectory_ndarray(
             self.get_trajectories()[:, index, :], filename, format, show_labels
         )
 
@@ -616,7 +617,7 @@ class PBN:
         :rtype: graphviz.Digraph
         """
 
-        return bang.visualization.draw_blocks(self, filename, format)
+        return draw_blocks(self, filename, format)
 
 
 def load_sbml(path: str) -> tuple:
