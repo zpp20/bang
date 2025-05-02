@@ -39,11 +39,11 @@ def block_thread(
         initial_states = corss_attractors_gpu(
             [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n)],
             [attractors_cum_index[i] for i in blocks[id][1]] + [np.array([0, 2 ** len(blocks[id][0])], dtype=np.int32)],
-            [elementary_blocks[i] for i in blocks[id][1]]
-            )
+            [list(zip(elementary_blocks[i], [i] * len(elementary_blocks[i]))) for i in blocks[id][1]] + [list(zip(blocks[id][0], len(blocks[id][0]) * [id]))]
+            )[0]
     else:
         initial_states = states(elementary_blocks[id], pbn.n)
-        
+    
     attractors_tmp = [pbn.detect_attractor(initial_states, True, thread_stream)[0]]# pbn.segment_attractor(*pbn.detect_attractor(initial_states, True, thread_stream))
 
     attractors_cum_index[id] = np.zeros((len(attractors_tmp) + 1,), dtype=np.int32)    

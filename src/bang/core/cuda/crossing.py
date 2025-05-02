@@ -4,7 +4,7 @@ import numpy.typing as npt
 from numba import cuda
 from functools import reduce
 from itertools import accumulate
-from operator import mul
+from operator import mul, add
      
 def increment_states(current_states, max_vals) -> bool:
     current_states[0] += 1
@@ -43,37 +43,36 @@ def get_result(attractor_cum_index :list[npt.NDArray[np.int32]]):
         result_size += tmp
         cum_result.append(result_size)
         if not increment_states(current, max_lens):
-            return [np.int32(0)] + cum_result, result_size, reduce(mul, max_lens)
+            return [np.int32(0)] + cum_result, result_size, list(accumulate(max_lens, add)), reduce(mul, max_lens)
     
 
 def corss_attractors_gpu(
     attractor_list :list[npt.NDArray[np.int32]], 
     attractor_cum_index :list[npt.NDArray[np.int32]], 
-    nodes :list[list[int]],
+    nodes :list[list[tuple[int, int]]],
     stream = cuda.default_stream(),
     int_size = 1
     ):
-    attractors_global = cuda.to_device(np.concatenate(attractor_list), stream=stream)
-    print(np.concatenate(attractor_list))
-    print(list(accumulate(attractor_cum_index, lambda x,y : np.concatenate((x,np.array(list(map(lambda z : z+ x[-1], y)))))))[-1])
+    attractors_global = cuda.to_device(np.concatenate(attractor_list, dtype=np.int32), stream=stream)
     attractors_index = cuda.to_device(np.array(list(accumulate(attractor_cum_index, 
-                                                               lambda x,y : np.concatenate((x,np.array(list(map(lambda z : z+ x[-1], y)))))
-                                                               ))[-1]), stream=stream)
+                                                               lambda x,y : np.concatenate((x,np.array(list(map(lambda z : z+ x[-1], y[1:])), dtype = np.int32)))
+                                                               ))[-1], dtype=np.int32), stream=stream)
     blocks_sizes = cuda.to_device(np.array([attractor.shape[0] for attractor in attractor_list], dtype=np.int32), stream=stream)
     nodes_global = cuda.to_device(np.array(sorted(sum(nodes, [])), dtype=np.int32), stream=stream)
-    cum_result, result_size, threads = get_result(attractor_cum_index)
+    cum_result, result_size, block_attractor_size, threads = get_result(attractor_cum_index)
     result = np.zeros((result_size, int_size), dtype=np.int32)
     attractors = cuda.to_device(result, stream=stream)
-    indices = cuda.to_device(np.empty((2, 1024 * (threads // 1024) + 1, blocks_sizes.size), dtype=np.int32)) #type: ignore
+    indices = cuda.to_device(np.empty((3, 1024 * ((threads // 1024) + 1), blocks_sizes.size), dtype=np.int32)) #type: ignore
     cross_attractors[1024, (threads // 1024) + 1, stream]( # type: ignore
         attractors_global,
         attractors_index,
         blocks_sizes,
         nodes_global,
         attractors,
-        cuda.to_device(cum_result, stream=stream),
+        cuda.to_device(np.array(cum_result, dtype=np.int32), stream=stream),
         indices,
-        threads
+        threads,
+        cuda.to_device(np.array([0] + block_attractor_size, dtype=np.int32), stream=stream)
     )
     return attractors.copy_to_host(), cum_result
 
@@ -88,7 +87,8 @@ def cross_attractors(
     result,
     result_start,
     indices,
-    threads
+    threads,
+    max_lens
     ):
     """
     Crosses a set of n attractors
@@ -107,17 +107,18 @@ def cross_attractors(
         return
     
     for i in range(block_sizes.size):
-        indices[0][comb_id][i] = attractors_cum_index[i][(tmp % block_sizes[i]) + 1] - attractors_cum_index[i][(tmp % block_sizes[i])]
-        tmp /= block_sizes[i]
-        indices[1][comb_id][i] = 0
+        indices[0][comb_id][i] = attractors_cum_index[max_lens[i] + (tmp % block_sizes[i]) + 1] - attractors_cum_index[max_lens[i] + (tmp % block_sizes[i])]
+        indices[1][comb_id][i] = attractors_cum_index[max_lens[i] + (tmp % block_sizes[i])]
+        indices[2][comb_id][i] = 0
+        tmp //= block_sizes[i]
         
     while True:
         to_read = 0
         for i in range(nodes.shape[0]):
             # reads the bit pointed to by current states and stores it as 1 or 2
-            read = (1 << (nodes[i][1] % 32)) & (attractors_global[nodes[i][0]][indices[1][comb_id][nodes[i][0]]][nodes[i][1] // 32])
-            result[write_index][nodes[i][1] // 32] += read
+            read = (1 << (nodes[i][0] % 32)) & (attractors_global[indices[1][comb_id][nodes[i][1]] + indices[2][comb_id][nodes[i][1]]][nodes[i][0] // 32])
+            result[write_index][nodes[i][0] // 32] += read
             to_read = (to_read + 1) % 32
         write_index += 1
-        if not increment_states2(indices[1][comb_id], indices[0][comb_id]):
+        if not increment_states2(indices[2][comb_id], indices[0][comb_id]):
             break
