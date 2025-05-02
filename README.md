@@ -113,6 +113,14 @@ pbn.trajectory_graph(1)
 
 ## Development
 
+### Setup
+
+The easiest way to set up all the necessary development dependencies is to use `pip` with the `dev` extras:
+
+```bash
+pip install -e ".[dev]"
+```
+
 ### Code quality
 
 BANG uses `black` for code formatting and `isort` for import sorting. It also uses `ruff`  To ensure code quality, you can run the following commands:
