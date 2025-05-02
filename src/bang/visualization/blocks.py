@@ -37,7 +37,7 @@ def create_color_string(
 
 
 def draw_blocks(
-    pbn: PBN, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    pbn: "PBN", filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
 ) -> graphviz.Digraph:
     """
     Plot the blocks of a Probabilistic Boolean Network (PBN).

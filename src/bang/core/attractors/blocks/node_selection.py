@@ -3,6 +3,7 @@ import typing
 if typing.TYPE_CHECKING:
     from bang.core import PBN
 
+
 def select_nodes(pbn: "PBN", nodes: list[int]):
     # Avoid circular dependencies
     from bang.core import PBN

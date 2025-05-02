@@ -9,7 +9,7 @@ if typing.TYPE_CHECKING:
 
 
 def draw_dependencies(
-    pbn: PBN, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    pbn: "PBN", filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
 ) -> graphviz.Digraph:
     """
     Plot the dependency graph of a Probabilistic Boolean Network (PBN).
