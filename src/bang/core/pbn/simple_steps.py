@@ -149,7 +149,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.history = run_history
 
 
-def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None):
     """
     Simulates the PBN for a given number of steps using CPU-based kernels.
 
@@ -159,15 +159,15 @@ def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | No
     :type actions: npt.NDArray[np.uint], optional
     :raises ValueError: If the initial state is not set before simulation.
     """
-    if self.latest_state is None or self.history is None:
+    if pbn.latest_state is None or pbn.history is None:
         raise ValueError("Initial state must be set before simulation")
 
     if actions is not None:
-        self.latest_state = self._perturb_state_by_actions(actions, self.latest_state)
-        self.history = np.concatenate([self.history, self.latest_state], axis=0)
+        pbn.latest_state = pbn._perturb_state_by_actions(actions, pbn.latest_state)
+        pbn.history = np.concatenate([pbn.history, pbn.latest_state], axis=0)
 
     # Convert PBN data to numpy arrays
-    pbn_data = convert_pbn_to_ndarrays(self, n_steps)
+    pbn_data = convert_pbn_to_ndarrays(pbn, n_steps)
 
     (
         state_history,
@@ -191,14 +191,15 @@ def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | No
         non_perturbed_count,
     ) = pbn_data
 
-    if self.update_type == "asynchronous_random_order":
+    # Select the appropriate CPU kernel based on the update type
+    if pbn.update_type == "asynchronous_random_order":
         cpu_converge_async_random_order(
             state_history,
             thread_num,
             pow_num,
             cum_function_count,
             function_probabilities,
-            self.getN(),
+            pbn.getN(),
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -211,16 +212,16 @@ def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | No
             cum_extra_functions,
             non_perturbed_count,
             perturbation_blacklist,
-            self.save_history,
+            pbn.save_history,
         )
-    elif self.update_type == "synchronous":
+    elif pbn.update_type == "synchronous":
         cpu_converge_sync(
             state_history,
             thread_num,
             pow_num,
             cum_function_count,
             function_probabilities,
-            self.getN(),
+            pbn.getN(),
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -233,16 +234,16 @@ def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | No
             cum_extra_functions,
             non_perturbed_count,
             perturbation_blacklist,
-            self.save_history,
+            pbn.save_history,
         )
-    elif self.update_type == "asynchronous_one_random":
+    elif pbn.update_type == "asynchronous_one_random":
         cpu_converge_async_one_random(
             state_history,
             thread_num,
             pow_num,
             cum_function_count,
             function_probabilities,
-            self.getN(),
+            pbn.getN(),
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -255,18 +256,18 @@ def invoke_cpu_simulation(self, n_steps: int, actions: npt.NDArray[np.uint] | No
             cum_extra_functions,
             non_perturbed_count,
             perturbation_blacklist,
-            self.save_history,
+            pbn.save_history,
         )
     else:
-        raise ValueError(f"Unsupported update type: {self.update_type}")
+        raise ValueError(f"Unsupported update type: {pbn.update_type}")
 
     # Reshape and update the state and history
-    last_state = initial_state.reshape((self.n_parallel, self.stateSize()))
-    run_history = state_history.reshape((n_steps + 1, self.n_parallel, self.stateSize()))
+    last_state = initial_state.reshape((pbn.n_parallel, pbn.stateSize()))
+    run_history = state_history.reshape((n_steps + 1, pbn.n_parallel, pbn.stateSize()))
 
-    self.latest_state = last_state
+    pbn.latest_state = last_state
 
-    if self.history is not None:
-        self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
+    if pbn.history is not None:
+        pbn.history = np.concatenate([pbn.history, run_history[1:, :, :]], axis=0)
     else:
-        self.history = run_history
+        pbn.history = run_history
