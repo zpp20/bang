@@ -95,7 +95,9 @@ class PBN:
             self._create_memory_container()
 
     def _create_memory_container(self):
-        self.gpu_memory_container = GpuMemoryContainer(self, DEFAULT_STEPS_BATCH_SIZE, self.save_history)
+        self.gpu_memory_container = GpuMemoryContainer(
+            self, DEFAULT_STEPS_BATCH_SIZE, self.save_history
+        )
 
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"

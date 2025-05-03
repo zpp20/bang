@@ -167,7 +167,7 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
         pbn.history = np.concatenate([pbn.history, pbn.latest_state], axis=0)
 
     # Convert PBN data to numpy arrays
-    pbn_data = convert_pbn_to_ndarrays(pbn, n_steps)
+    pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, pbn.save_history)
 
     (
         state_history,
@@ -263,11 +263,14 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
 
     # Reshape and update the state and history
     last_state = initial_state.reshape((pbn.n_parallel, pbn.stateSize()))
-    run_history = state_history.reshape((n_steps + 1, pbn.n_parallel, pbn.stateSize()))
-
     pbn.latest_state = last_state
 
-    if pbn.history is not None:
-        pbn.history = np.concatenate([pbn.history, run_history[1:, :, :]], axis=0)
-    else:
-        pbn.history = run_history
+    if pbn.save_history:
+        run_history = state_history.reshape((-1, pbn.n_parallel, pbn.stateSize()))[
+            : n_steps + 1, :, :
+        ]
+
+        if pbn.history is not None:
+            pbn.history = np.concatenate([pbn.history, run_history[1:, :, :]], axis=0)
+        else:
+            pbn.history = run_history
