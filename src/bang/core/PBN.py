@@ -81,7 +81,7 @@ class PBN:
         n_parallel: int = 512,
         update_type: UpdateType = "asynchronous_one_random",
         save_history: bool = True,
-        steps_batch_size = DEFAULT_STEPS_BATCH_SIZE,
+        steps_batch_size=DEFAULT_STEPS_BATCH_SIZE,
     ):
         self.n = n
         self.nf = nf
@@ -574,7 +574,6 @@ class PBN:
         if save_history:
             state_history = np.zeros(N * stateSize * (n_steps + 1), dtype=np.uint32)
             state_history[: N * stateSize] = initial_state.copy()[:]
-
         else:
             state_history = np.zeros(0, dtype=np.uint32)
 
@@ -871,6 +870,7 @@ class PBN:
                 cum_extra_functions,
                 non_perturbed_count,
                 perturbation_blacklist,
+                self.save_history,
             )
         elif self.update_type == "synchronous":
             cpu_converge_sync(
@@ -892,6 +892,7 @@ class PBN:
                 cum_extra_functions,
                 non_perturbed_count,
                 perturbation_blacklist,
+                self.save_history,
             )
         elif self.update_type == "asynchronous_one_random":
             cpu_converge_async_one_random(
@@ -913,6 +914,7 @@ class PBN:
                 cum_extra_functions,
                 non_perturbed_count,
                 perturbation_blacklist,
+                self.save_history,
             )
         else:
             raise ValueError(f"Unsupported update type: {self.update_type}")
@@ -923,10 +925,15 @@ class PBN:
 
         self.latest_state = last_state
 
-        if self.history is not None:
-            self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
-        else:
-            self.history = run_history
+        if self.save_history:
+            run_history = run_history.reshape((-1, self.n_parallel, self.stateSize()))[
+                : n_steps + 1, :, :
+            ]
+
+            if self.history is not None:
+                self.history = np.concatenate([self.history, run_history[1:, :, :]], axis=0)
+            else:
+                self.history = run_history
 
     def detect_attractor(self, initial_states):
         """

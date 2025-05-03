@@ -86,13 +86,17 @@ def update_initial_state(
     step,
     current_state,
     initial_state_copy,
+    save_history,
 ):
     relative_index = state_size * idx
-    for node_index in range(state_size):
-        initial_state_copy[node_index] = current_state[node_index]
-        initial_state[relative_index + node_index] = initial_state_copy[node_index]
-        state_history[(step + 1) * thread_num + relative_index + node_index] = initial_state_copy[
-            node_index
+
+    initial_state_copy[:] = current_state[:]
+    initial_state[relative_index : relative_index + state_size] = initial_state_copy[:]
+
+    if save_history:
+        history_start_index = (step + 1) * thread_num + relative_index
+        state_history[history_start_index : history_start_index + state_size] = initial_state_copy[
+            :
         ]
 
 
@@ -115,6 +119,7 @@ def cpu_converge_sync(
     cum_extra_f,
     np_length,
     np_node,
+    save_history,
 ):
     np.seterr(over="ignore")
     state_size = state_size[0]
@@ -122,15 +127,16 @@ def cpu_converge_sync(
     steps = steps[0]
 
     for idx in range(thread_num):
-        initial_state_copy = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
+        initial_state_copy = np.zeros(state_size, dtype=np.uint32)
+        current_state = np.zeros(state_size, dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
-        for node_index in range(state_size):
-            initial_state_copy[node_index] = initial_state[relative_index + node_index]
-            current_state[node_index] = initial_state_copy[node_index]
-            state_history[relative_index + node_index] = current_state[node_index]
+        initial_state_copy[:] = initial_state[relative_index : relative_index + state_size]
+        current_state[:] = initial_state[relative_index : relative_index + state_size]
+
+        if save_history:
+            state_history[relative_index : relative_index + state_size] = current_state[:]
 
         for step in range(steps):
             perturbation = perform_perturbation(
@@ -173,6 +179,7 @@ def cpu_converge_sync(
                 step,
                 current_state,
                 initial_state_copy,
+                save_history,
             )
 
 
@@ -195,6 +202,7 @@ def cpu_converge_async_one_random(
     cum_extra_f,
     np_length,
     np_node,
+    save_history,
 ):
     np.seterr(over="ignore")
     state_size = state_size[0]
@@ -202,13 +210,14 @@ def cpu_converge_async_one_random(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
+        current_state = np.zeros(state_size, dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
-        for node_index in range(state_size):
-            current_state[node_index] = initial_state[relative_index + node_index]
-            state_history[relative_index + node_index] = current_state[node_index]
+        current_state[:] = initial_state[relative_index : relative_index + state_size]
+
+        if save_history:
+            state_history[relative_index : relative_index + state_size] = current_state[:]
 
         for step in range(steps):
             perturbation = perform_perturbation(
@@ -251,6 +260,7 @@ def cpu_converge_async_one_random(
                 step,
                 current_state,
                 current_state,
+                save_history,
             )
 
 
@@ -273,6 +283,7 @@ def cpu_converge_async_random_order(
     cum_extra_f,
     np_length,
     np_node,
+    save_history,
 ):
     np.seterr(over="ignore")
     state_size = state_size[0]
@@ -280,14 +291,15 @@ def cpu_converge_async_random_order(
     steps = steps[0]
 
     for idx in range(thread_num):
-        current_state = np.zeros(MAX_STATE_SIZE, dtype=np.uint32)
+        current_state = np.zeros(state_size, dtype=np.uint32)
         update_order = np.zeros(shape=(MAX_STATE_SIZE * 32,), dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
-        for node_index in range(state_size):
-            current_state[node_index] = initial_state[relative_index + node_index]
-            state_history[relative_index + node_index] = current_state[node_index]
+        current_state[:] = initial_state[relative_index : relative_index + state_size]
+
+        if save_history:
+            state_history[relative_index : relative_index + state_size] = current_state[:]
 
         for step in range(steps):
             perturbation = perform_perturbation(
@@ -342,4 +354,5 @@ def cpu_converge_async_random_order(
                 step,
                 current_state,
                 current_state,
+                save_history,
             )
