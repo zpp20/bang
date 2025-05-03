@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from bang.core import PBN
+from bang import PBN
 
 
 def test_fixpoint_async_step():

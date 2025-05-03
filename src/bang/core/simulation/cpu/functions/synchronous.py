@@ -1,5 +1,7 @@
 import random
 
+import numpy as np
+
 from bang.core.simulation.common import update_node
 from bang.core.simulation.cpu.perturbation import perform_perturbation
 from bang.core.simulation.cpu.state_management import update_initial_state
