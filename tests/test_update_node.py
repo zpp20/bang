@@ -258,7 +258,7 @@ def test_update_node_permutations():
         0.0,
         [2],
         n_parallel=1,
-        update_type_int=0,
+        update_type="asynchronous_random_order",
     )
 
     prepared_data = pbn1.pbn_data_to_np_arrays(1)

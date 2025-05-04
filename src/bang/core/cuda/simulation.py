@@ -4,17 +4,18 @@ import numba as nb
 from numba import cuda
 from numba.cuda.random import xoroshiro128p_uniform_float32
 
+# Maximum state size of 16 means we can hold 32 * 16 = 512 nodes (size of uint32 * MAX_STATE_SIZE)
+MAX_STATE_SIZE = 16
+MAX_UPDATE_ORDER_SIZE = 512
+
 
 @nb.jit
-def initialize_state(
-    gpu_initialState, gpu_stateHistory, state_size, relative_index, initialStateCopy, initialState
-):
+def initialize_state(gpu_initialState, state_size, relative_index, initialStateCopy, initialState):
     # get initial state of the trajectory this thread will simulate
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(state_size):
         initialStateCopy[node_index] = gpu_initialState[relative_index + node_index]
         initialState[node_index] = initialStateCopy[node_index]
-        gpu_stateHistory[relative_index + node_index] = initialState[node_index]
 
 
 @nb.jit
@@ -89,6 +90,7 @@ def update_initial_state(
     step,
     initialState,
     initialStateCopy,
+    save_history,
 ):
     relative_index = stateSize * idx
 
@@ -96,9 +98,10 @@ def update_initial_state(
         initialStateCopy[node_index] = initialState[node_index]
         gpu_initialState[relative_index + node_index] = initialStateCopy[node_index]
 
-        gpu_stateHistory[
-            (step + 1) * gpu_threadNum[0] + relative_index + node_index
-        ] = initialStateCopy[node_index]
+        if save_history:
+            gpu_stateHistory[
+                (step + 1) * gpu_threadNum[0] + relative_index + node_index
+            ] = initialStateCopy[node_index]
 
 
 @cuda.jit(device=True)
@@ -153,20 +156,20 @@ def kernel_converge_sync(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    save_history,
 ):
     idx = cuda.grid(1)
 
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(4,), dtype=nb.int32)
+    initialStateCopy = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
 
     relative_index = idx * stateSize
 
     initialize_state(
         gpu_initialState,
-        gpu_stateHistory,
         stateSize,
         relative_index,
         initialStateCopy,
@@ -198,11 +201,8 @@ def kernel_converge_sync(
             for node_index in range(nodeNum):
                 rand = xoroshiro128p_uniform_float32(states, idx)
 
-                index_shift = 0
-
-                if index_shift == 32:
-                    index_state += 1
-                    index_shift = 0
+                index_shift = node_index % 32
+                index_state = node_index // 32
 
                 update_node(
                     node_index,
@@ -222,8 +222,6 @@ def kernel_converge_sync(
                     initialState,
                 )
 
-                index_shift += 1
-
         update_initial_state(
             gpu_threadNum,
             gpu_stateHistory,
@@ -233,11 +231,12 @@ def kernel_converge_sync(
             step,
             initialState,
             initialStateCopy,
+            save_history,
         )
 
 
 @cuda.jit
-def kernel_converge_async(
+def kernel_converge_async_one_random(
     gpu_stateHistory,
     gpu_threadNum,
     gpu_powNum,
@@ -259,15 +258,15 @@ def kernel_converge_async(
     gpu_extraFIndexCount,
     gpu_npLength,
     gpu_npNode,
+    save_history,
 ):
     idx = cuda.grid(1)
 
     steps = gpu_steps[0]
     stateSize = gpu_stateSize[0]
 
-    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.int32)
-    initialState = cuda.local.array(shape=(4,), dtype=nb.int32)
-    update_order = cuda.local.array(shape=(400,), dtype=nb.int32)
+    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
 
     relative_index = idx * stateSize
 
@@ -275,7 +274,99 @@ def kernel_converge_async(
     # stateSize is the number of 32-bit integers needed to represent one state
     for node_index in range(stateSize):
         initialState[node_index] = gpu_initialState[relative_index + node_index]
-        gpu_stateHistory[relative_index + node_index] = initialState[node_index]
+
+    steps = gpu_steps[0]
+
+    for step in range(steps):
+        perturbation = False
+
+        perturbation = perform_perturbation(
+            gpu_npLength,
+            gpu_npNode,
+            gpu_perturbation_rate,
+            states,
+            idx,
+            initialState,
+        )
+
+        if not perturbation:
+            rand = xoroshiro128p_uniform_float32(states, idx)
+            node_index = int(rand * nodeNum)
+
+            index_shift = node_index % 32
+            index_state = node_index // 32
+
+            update_node(
+                node_index,
+                index_shift,
+                index_state,
+                rand,
+                gpu_cumCij,
+                gpu_cumNf,
+                gpu_cumNv,
+                gpu_F,
+                gpu_extraFIndex,
+                gpu_extraF,
+                gpu_cumExtraF,
+                gpu_varF,
+                gpu_powNum,
+                initialState,
+                initialState,
+            )
+
+        update_initial_state(
+            gpu_threadNum,
+            gpu_stateHistory,
+            gpu_initialState,
+            stateSize,
+            idx,
+            step,
+            initialState,
+            initialState,
+            save_history,
+        )
+
+
+@cuda.jit
+def kernel_converge_async_random_order(
+    gpu_stateHistory,
+    gpu_threadNum,
+    gpu_powNum,
+    gpu_cumNf,
+    gpu_cumCij,
+    states,
+    nodeNum,
+    gpu_perturbation_rate,
+    gpu_cumNv,
+    gpu_F,
+    gpu_varF,
+    gpu_initialState,
+    gpu_steps,
+    gpu_stateSize,
+    gpu_extraF,
+    gpu_extraFIndex,
+    gpu_cumExtraF,
+    gpu_extraFCount,
+    gpu_extraFIndexCount,
+    gpu_npLength,
+    gpu_npNode,
+    save_history,
+):
+    idx = cuda.grid(1)
+
+    steps = gpu_steps[0]
+    stateSize = gpu_stateSize[0]
+
+    # initialStateCopy = cuda.local.array(shape=(10,), dtype=nb.uint32)
+    initialState = cuda.local.array(shape=(MAX_STATE_SIZE,), dtype=nb.uint32)
+    update_order = cuda.local.array(shape=(MAX_UPDATE_ORDER_SIZE,), dtype=nb.uint32)
+
+    relative_index = idx * stateSize
+
+    # get initial state of the trajectory this thread will simulate
+    # stateSize is the number of 32-bit integers needed to represent one state
+    for node_index in range(stateSize):
+        initialState[node_index] = gpu_initialState[relative_index + node_index]
 
     steps = gpu_steps[0]
 
@@ -336,4 +427,5 @@ def kernel_converge_async(
             step,
             initialState,
             initialState,
+            save_history,
         )
