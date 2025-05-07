@@ -1,10 +1,12 @@
 import random
 
 import numpy as np
+import numba
 
 from bang.core.cuda.simulation import MAX_STATE_SIZE
 
 
+@numba.jit()
 def update_node(
     node_index,
     index_shift,
@@ -57,6 +59,7 @@ def update_node(
     )
 
 
+@numba.jit()
 def perform_perturbation(
     np_length,
     np_node,
@@ -77,6 +80,7 @@ def perform_perturbation(
     return perturbation
 
 
+@numba.jit()
 def update_initial_state(
     thread_num,
     state_history,
@@ -100,6 +104,7 @@ def update_initial_state(
         ]
 
 
+@numba.jit()
 def cpu_converge_sync(
     state_history,
     thread_num,
@@ -121,7 +126,6 @@ def cpu_converge_sync(
     np_node,
     save_history,
 ):
-    np.seterr(over="ignore")
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
@@ -183,6 +187,7 @@ def cpu_converge_sync(
             )
 
 
+@numba.jit()
 def cpu_converge_async_one_random(
     state_history,
     thread_num,
@@ -204,7 +209,6 @@ def cpu_converge_async_one_random(
     np_node,
     save_history,
 ):
-    np.seterr(over="ignore")
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
@@ -264,6 +268,7 @@ def cpu_converge_async_one_random(
             )
 
 
+@numba.jit()
 def cpu_converge_async_random_order(
     state_history,
     thread_num,
@@ -285,7 +290,6 @@ def cpu_converge_async_random_order(
     np_node,
     save_history,
 ):
-    np.seterr(over="ignore")
     state_size = state_size[0]
     thread_num = thread_num[0]
     steps = steps[0]
