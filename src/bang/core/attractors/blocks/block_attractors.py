@@ -2,7 +2,6 @@ import typing
 
 from bang.core.attractors.blocks.crossing import cross_attractors
 from bang.core.attractors.blocks.node_selection import select_nodes
-from bang.core.attractors.monolithic.segmentation import segment_attractors
 
 if typing.TYPE_CHECKING:
     from bang.core import PBN
@@ -27,8 +26,7 @@ def find_attractors_realisation(
     reduced_pbn = select_nodes(network, nodes)
     reduced_pbn.n_parallel = len(initial_states)
 
-    attractor, history = reduced_pbn.monolithic_detect_attractors(initial_states)
-    attractors = segment_attractors(attractor, history)
+    attractors = reduced_pbn.monolithic_detect_attractors(initial_states)
 
     len_nodes = len(nodes)
     list_bools = [
