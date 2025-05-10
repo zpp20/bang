@@ -24,20 +24,24 @@ def monolithic_detect_attractor(pbn: "PBN", initial_states):
 
     """
 
-    pbn.set_states(initial_states, reset_history=True)
-    history = pbn.last_state
+    sync_pbn = (
+        pbn if pbn.update_type == "synchronous" else pbn.clone_with(update_type="synchronous")
+    )
 
-    state_bytes = tuple(state.tobytes() for state in pbn.last_state)
+    sync_pbn.set_states(initial_states, reset_history=True)
+    history = sync_pbn.last_state
+
+    state_bytes = tuple(state.tobytes() for state in sync_pbn.last_state)
     n_unique_states = len({state_bytes})
     last_n_unique_states = 0
 
     while n_unique_states != last_n_unique_states:
-        pbn.simple_steps(1)
+        sync_pbn.simple_steps(1)
         last_n_unique_states = n_unique_states
         # print("Last state: ", self.get_last_state())
-        state_bytes = tuple(state.tobytes() for state in pbn.last_state)
+        state_bytes = tuple(state.tobytes() for state in sync_pbn.last_state)
         n_unique_states = len(set(state_bytes))
-        history = np.hstack((history, pbn.last_state))
+        history = np.hstack((history, sync_pbn.last_state))
 
     state_bytes_set = list(set(state_bytes))
     ret_list = [np.frombuffer(state, dtype=np.uint32)[0] for state in state_bytes_set]
