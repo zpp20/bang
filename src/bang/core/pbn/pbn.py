@@ -153,7 +153,9 @@ class PBN:
             n_parallel=n_parallel if n_parallel is not None else self.n_parallel,
             update_type=update_type if update_type is not None else self.update_type,
             save_history=save_history if save_history is not None else self.save_history,
-            steps_batch_size=steps_batch_size if steps_batch_size is not None else self.steps_batch_size,
+            steps_batch_size=steps_batch_size
+            if steps_batch_size is not None
+            else self.steps_batch_size,
         )
 
     def _create_memory_container(self):
@@ -325,9 +327,7 @@ class PBN:
         self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.state_size))
 
         if reset_history:
-            self.history = np.array(converted_states).reshape(
-                (1, self.n_parallel, self.state_size)
-            )
+            self.history = np.array(converted_states).reshape((1, self.n_parallel, self.state_size))
         else:
             if len(states) != self.history.shape[1]:
                 self.previous_simulations.append(self.history.copy())
