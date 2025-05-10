@@ -94,6 +94,68 @@ class PBN:
         if cuda.is_available():
             self._create_memory_container()
 
+    def clone_with(
+        self,
+        n: int | None = None,
+        nf: List[int] | None = None,
+        nv: List[int] | None = None,
+        F: List[List[bool]] | None = None,
+        varFInt: List[List[int]] | None = None,
+        cij: List[List[float]] | None = None,
+        perturbation: float | None = None,
+        npNode: List[int] | None = None,
+        n_parallel: int | None = None,
+        update_type: UpdateType | None = None,
+        save_history: bool | None = None,
+        steps_batch_size: int | None = None,
+    ) -> "PBN":
+        """
+        Creates a clone of the PBN with the specified parameters.
+        If a parameter is not provided, the corresponding attribute of the original PBN is used.
+
+        :param n: The number of nodes.
+        :type n: int, optional
+        :param nf: The size of each node.
+        :type nf: List[int], optional
+        :param nv: The size of each node's truth table.
+        :type nv: List[int], optional
+        :param F: The truth table of each node.
+        :type F: List[List[bool]], optional
+        :param varFInt: The index of each node's truth table.
+        :type varFInt: List[List[int]], optional
+        :param cij: The selection probability of each node.
+        :type cij: List[List[float]], optional
+        :param perturbation: The perturbation rate.
+        :type perturbation: float, optional
+        :param npNode: Index of nodes without perturbation.
+        :type npNode: List[int], optional
+        :param n_parallel: The number of parallel simulations.
+        :type n_parallel: int, optional
+        :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order", "synchronous"
+        :type update_type: str, optional
+        :param save_history: Whether to save the history of the PBN.
+        :type save_history: bool, optional
+        :param steps_batch_size: The size of the batch of the maximum number of steps executed in a single kernel invocation.
+        :type steps_batch_size: int, optional
+        :returns: A new PBN object with the specified parameters.
+        :rtype: PBN
+        """
+
+        return PBN(
+            n=n if n is not None else self.n,
+            nf=nf if nf is not None else self.nf,
+            nv=nv if nv is not None else self.nv,
+            F=F if F is not None else self.F,
+            varFInt=varFInt if varFInt is not None else self.varFInt,
+            cij=cij if cij is not None else self.cij,
+            perturbation=perturbation if perturbation is not None else self.perturbation,
+            npNode=npNode if npNode is not None else self.npNode,
+            n_parallel=n_parallel if n_parallel is not None else self.n_parallel,
+            update_type=update_type if update_type is not None else self.update_type,
+            save_history=save_history if save_history is not None else self.save_history,
+            steps_batch_size=steps_batch_size if steps_batch_size is not None else self.steps_batch_size,
+        )
+
     def _create_memory_container(self):
         self.gpu_memory_container = GpuMemoryContainer(
             self, DEFAULT_STEPS_BATCH_SIZE, self.save_history

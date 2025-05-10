@@ -57,7 +57,7 @@ def select_nodes(pbn: "PBN", nodes: list[int]):
     npNode = [np for np in pbn.npNode if np in nodes]
     npNode.append(n)
 
-    return PBN(
+    return pbn.clone_with(
         n,
         nf,
         nv,
