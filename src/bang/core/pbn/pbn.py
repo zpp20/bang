@@ -83,9 +83,9 @@ class PBN:
         self.perturbation = perturbation
         self.npNode = list(sorted(npNode))
         self.n_parallel = n_parallel
-        self.update_type = update_type
-        self.history: np.ndarray = np.zeros((1, n_parallel, self.stateSize()), dtype=np.uint32)
-        self.latest_state: np.ndarray = np.zeros((n_parallel, self.stateSize()), dtype=np.uint32)
+        self.update_type: UpdateType = update_type
+        self.history: np.ndarray = np.zeros((1, n_parallel, self.state_size), dtype=np.uint32)
+        self.latest_state: np.ndarray = np.zeros((n_parallel, self.state_size), dtype=np.uint32)
         self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
         self.gpu_memory_container = None
@@ -164,7 +164,8 @@ class PBN:
     def __str__(self):
         return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
 
-    def getN(self) -> int:
+    @property
+    def n_nodes(self) -> int:
         """
         Returns the number of nodes.
 
@@ -173,7 +174,8 @@ class PBN:
         """
         return self.n
 
-    def getNf(self) -> List[int]:
+    @property
+    def n_functions(self) -> List[int]:
         """
         Returns the size of each node.
 
@@ -182,7 +184,8 @@ class PBN:
         """
         return self.nf
 
-    def getNv(self) -> List[int]:
+    @property
+    def n_variables(self) -> List[int]:
         """
         Returns the size of each node's truth table.
 
@@ -233,7 +236,8 @@ class PBN:
 
         return retval
 
-    def get_last_state(self) -> np.ndarray:
+    @property
+    def last_state(self) -> np.ndarray:
         """
         Returns the last encountered state of the PBN's trajectories.
 
@@ -242,7 +246,8 @@ class PBN:
         """
         return self.latest_state
 
-    def get_trajectories(self) -> np.ndarray:
+    @property
+    def trajectories(self) -> np.ndarray:
         """
         Returns the execution history of the PBN, tracking the states of all trajectories.
 
@@ -317,24 +322,24 @@ class PBN:
         converted_states = [self._bools_to_state_array(state, self.n) for state in states]
 
         self.n_parallel = len(states)
-        self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.stateSize()))
+        self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.state_size))
 
         if reset_history:
             self.history = np.array(converted_states).reshape(
-                (1, self.n_parallel, self.stateSize())
+                (1, self.n_parallel, self.state_size)
             )
         else:
             if len(states) != self.history.shape[1]:
                 self.previous_simulations.append(self.history.copy())
 
                 self.history = np.array(converted_states).reshape(
-                    (1, self.n_parallel, self.stateSize())
+                    (1, self.n_parallel, self.state_size)
                 )
             else:
                 self.history = np.concatenate(
                     [
                         self.history,
-                        np.array(converted_states).reshape((1, self.n_parallel, self.stateSize())),
+                        np.array(converted_states).reshape((1, self.n_parallel, self.state_size)),
                     ],
                     axis=0,
                 )
@@ -342,7 +347,8 @@ class PBN:
         if cuda.is_available():
             self._create_memory_container()
 
-    def extraFCount(self) -> int:
+    @property
+    def n_extra_functions(self) -> int:
         """
         Returns the number of extra functions.
 
@@ -356,7 +362,8 @@ class PBN:
 
         return extraFCount
 
-    def extraFIndexCount(self) -> int:
+    @property
+    def n_extra_function_index(self) -> int:
         """
         Returns the number of extra function indices.
 
@@ -371,7 +378,8 @@ class PBN:
 
         return extraFIndexCount
 
-    def extraFIndex(self) -> List[int]:
+    @property
+    def extra_function_index(self) -> List[int]:
         """
         Returns a list of extra function indices.
 
@@ -386,7 +394,8 @@ class PBN:
 
         return extraFIndex
 
-    def cumExtraF(self) -> List[int]:
+    @property
+    def cum_extra_functions(self) -> List[int]:
         """
         Returns a list of cumulative extra functions.
 
@@ -401,7 +410,8 @@ class PBN:
 
         return cumExtraF
 
-    def extraF(self) -> List[int]:
+    @property
+    def extra_functions(self) -> List[int]:
         """
         Returns a list of extra functions.
 
@@ -415,7 +425,8 @@ class PBN:
 
         return extraF
 
-    def cumulativeNumberFunctions(self) -> np.ndarray:
+    @property
+    def cum_n_functions(self) -> np.ndarray:
         """
         Returns the cumulative sum of all elements in nf.
 
@@ -424,7 +435,8 @@ class PBN:
         """
         return np.cumsum([0] + self.nf)
 
-    def cumulativeNumberVariables(self) -> np.ndarray:
+    @property
+    def cum_n_variables(self) -> np.ndarray:
         """
         Returns the cumulative sum of all elements in nv.
 
@@ -445,7 +457,8 @@ class PBN:
         """
         return math.ceil(node_count / 32)
 
-    def stateSize(self) -> int:
+    @property
+    def state_size(self) -> int:
         """
         Returns the number of 32-bit integers needed to store all variables.
 
@@ -454,7 +467,8 @@ class PBN:
         """
         return self._calc_state_size(self.n)
 
-    def getF(self) -> List[List[bool]]:
+    @property
+    def functions(self) -> List[List[bool]]:
         """
         Returns the truth table of each node.
 
@@ -463,7 +477,8 @@ class PBN:
         """
         return self.F
 
-    def get_integer_f(self) -> List[int]:
+    @property
+    def integer_functions(self) -> List[int]:
         """
         Returns the integer representation of the truth table for each node.
 
@@ -472,25 +487,28 @@ class PBN:
         """
         return [self._get_integer_functions(func, []) for func in self.F]
 
-    def getVarFInt(self) -> List[List[int]]:
+    @property
+    def parent_variable_indices(self) -> List[List[int]]:
         """
-        Returns the index of each node's truth table.
+        Returns the indices of the parent nodes for every boolean function.
 
-        :returns: The index of each node's truth table.
+        :returns: The indices of the parent nodes by function.
         :rtype: List[List[int]]
         """
         return self.varFInt
 
-    def getCij(self) -> List[List[float]]:
+    @property
+    def function_probabilities(self) -> List[List[float]]:
         """
-        Returns the selection probability of each node.
+        Returns the selection probability of each function per node.
 
-        :returns: The selection probability of each node.
+        :returns: The selection probability of each function per node.
         :rtype: List[List[float]]
         """
         return self.cij
 
-    def getPerturbation(self) -> float:
+    @property
+    def perturbation_rate(self) -> float:
         """
         Returns the perturbation rate.
 
@@ -499,11 +517,12 @@ class PBN:
         """
         return self.perturbation
 
-    def getNpNode(self) -> List[int]:
+    @property
+    def non_perturbed_nodes(self) -> List[int]:
         """
-        Returns the index of nodes without perturbation.
+        Returns the indices of nodes without perturbation.
 
-        :returns: The index of nodes without perturbation.
+        :returns: The indices of nodes without perturbation.
         :rtype: List[int]
         """
         return self.npNode
@@ -658,7 +677,7 @@ class PBN:
         """
 
         return draw_trajectory_ndarray(
-            self.get_trajectories()[:, index, :], filename, format, show_labels
+            self.trajectories[:, index, :], filename, format, show_labels
         )
 
     def block_graph(

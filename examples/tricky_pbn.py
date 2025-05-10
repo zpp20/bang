@@ -13,4 +13,4 @@ pbn1 = bang.PBN(
 )
 pbn1.set_states([[False, False]])
 pbn1.simple_steps(1)
-print(pbn1.get_last_state())
+print(pbn1.last_state)
