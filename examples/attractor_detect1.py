@@ -16,10 +16,6 @@ pbn = bang.PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode, n_parallel)
 
 initial_states = [[False, False], [True, False], [False, True], [True, True]]
 
-attractor, history = pbn.detect_attractors(initial_states)
+attractors = pbn.monolithic_detect_attractors(initial_states)
 
-print("attractor states - ", attractor)
-
-print("trajectories: ", history)
-
-print(pbn.segment_attractor(attractor, history))
+print(attractors)
