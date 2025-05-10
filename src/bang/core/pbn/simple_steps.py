@@ -139,9 +139,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
     pbn.latest_state = last_state.reshape((pbn.n_parallel, pbn.state_size))
 
     if pbn.save_history:
-        run_history = run_history.reshape((-1, pbn.n_parallel, pbn.state_size))[
-            : n_steps + 1, :, :
-        ]
+        run_history = run_history.reshape((-1, pbn.n_parallel, pbn.state_size))[: n_steps + 1, :, :]
 
         if pbn.history is not None:
             pbn.history = np.concatenate([pbn.history, run_history[1:, :, :]], axis=0)
