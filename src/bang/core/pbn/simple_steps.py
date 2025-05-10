@@ -38,7 +38,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
         pbn.history = np.concatenate([pbn.history, pbn.latest_state], axis=0)
 
     pbn.gpu_memory_container.gpu_initialState.copy_to_device(
-        pbn.latest_state.reshape(pbn.n_parallel * pbn.stateSize())
+        pbn.latest_state.reshape(pbn.n_parallel * pbn.state_size)
     )
     pbn.gpu_memory_container.gpu_steps.copy_to_device(np.array([n_steps], dtype=np.uint32))
 
@@ -61,7 +61,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.gpu_memory_container.gpu_cumNf,
             pbn.gpu_memory_container.gpu_cumCij,
             states,
-            pbn.getN(),
+            pbn.n_nodes,
             pbn.gpu_memory_container.gpu_perturbation_rate,
             pbn.gpu_memory_container.gpu_cumNv,
             pbn.gpu_memory_container.gpu_F,
@@ -86,7 +86,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.gpu_memory_container.gpu_cumNf,
             pbn.gpu_memory_container.gpu_cumCij,
             states,
-            pbn.getN(),
+            pbn.n_nodes,
             pbn.gpu_memory_container.gpu_perturbation_rate,
             pbn.gpu_memory_container.gpu_cumNv,
             pbn.gpu_memory_container.gpu_F,
@@ -111,7 +111,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.gpu_memory_container.gpu_cumNf,
             pbn.gpu_memory_container.gpu_cumCij,
             states,
-            pbn.getN(),
+            pbn.n_nodes,
             pbn.gpu_memory_container.gpu_perturbation_rate,
             pbn.gpu_memory_container.gpu_cumNv,
             pbn.gpu_memory_container.gpu_F,
@@ -136,10 +136,10 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
     last_state = pbn.gpu_memory_container.gpu_initialState.copy_to_host()
     run_history = pbn.gpu_memory_container.gpu_stateHistory.copy_to_host()
 
-    pbn.latest_state = last_state.reshape((pbn.n_parallel, pbn.stateSize()))
+    pbn.latest_state = last_state.reshape((pbn.n_parallel, pbn.state_size))
 
     if pbn.save_history:
-        run_history = run_history.reshape((-1, pbn.n_parallel, pbn.stateSize()))[
+        run_history = run_history.reshape((-1, pbn.n_parallel, pbn.state_size))[
             : n_steps + 1, :, :
         ]
 
@@ -199,7 +199,7 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
             pow_num,
             cum_function_count,
             function_probabilities,
-            pbn.getN(),
+            pbn.n_nodes,
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -221,7 +221,7 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
             pow_num,
             cum_function_count,
             function_probabilities,
-            pbn.getN(),
+            pbn.n_nodes,
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -243,7 +243,7 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
             pow_num,
             cum_function_count,
             function_probabilities,
-            pbn.getN(),
+            pbn.n_nodes,
             perturbation_rate,
             cum_variable_count,
             functions,
@@ -262,11 +262,11 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
         raise ValueError(f"Unsupported update type: {pbn.update_type}")
 
     # Reshape and update the state and history
-    last_state = initial_state.reshape((pbn.n_parallel, pbn.stateSize()))
+    last_state = initial_state.reshape((pbn.n_parallel, pbn.state_size))
     pbn.latest_state = last_state
 
     if pbn.save_history:
-        run_history = state_history.reshape((-1, pbn.n_parallel, pbn.stateSize()))[
+        run_history = state_history.reshape((-1, pbn.n_parallel, pbn.state_size))[
             : n_steps + 1, :, :
         ]
 

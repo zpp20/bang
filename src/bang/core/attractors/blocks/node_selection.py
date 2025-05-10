@@ -5,9 +5,6 @@ if typing.TYPE_CHECKING:
 
 
 def select_nodes(pbn: "PBN", nodes: list[int]):
-    # Avoid circular dependencies
-    from bang.core import PBN
-
     new_F = list()
     new_varF = list()
     new_nv = list()

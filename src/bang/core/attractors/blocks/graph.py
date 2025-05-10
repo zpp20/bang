@@ -49,7 +49,7 @@ class Graph_PBN:
 
     def __init__(self, pbn: "PBN"):
         self.pbn = pbn
-        self.nodes = {i: PBN_Node(i, pbn, 0) for i in range(pbn.n)}
+        self.nodes = {i: PBN_Node(i, pbn, 0) for i in range(pbn.n_nodes)}
         self.dfs_numbered = 0
 
         # assign in_nodes and out_nodes to each node

@@ -9,26 +9,26 @@ if typing.TYPE_CHECKING:
 
 
 def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True):
-    nf = pbn.getNf()
-    nv = pbn.getNv()
-    F = pbn.get_integer_f()
-    varFInt = list(chain.from_iterable(pbn.getVarFInt()))
-    cij = list(chain.from_iterable(pbn.getCij()))
+    nf = pbn.n_functions
+    nv = pbn.n_variables
+    F = pbn.integer_functions
+    varFInt = list(chain.from_iterable(pbn.parent_variable_indices))
+    cij = list(chain.from_iterable(pbn.function_probabilities))
 
     cumCij = np.cumsum(cij, dtype=np.float32)
     cumNv = np.cumsum([0] + nv, dtype=np.uint32)
     cumNf = np.cumsum([0] + nf, dtype=np.uint32)
 
-    perturbation = pbn.getPerturbation()
-    npNode = pbn.getNpNode()
+    perturbation = pbn.perturbation_rate
+    npNode = pbn.non_perturbed_nodes
 
-    stateSize = pbn.stateSize()
+    stateSize = pbn.state_size
 
-    extraFCount = pbn.extraFCount()
-    extraFIndexCount = pbn.extraFIndexCount()
-    extraFIndex = pbn.extraFIndex()
-    cumExtraF = pbn.cumExtraF()
-    extraF = pbn.extraF()
+    extraFCount = pbn.n_extra_functions
+    extraFIndexCount = pbn.n_extra_function_index
+    extraFIndex = pbn.extra_function_index
+    cumExtraF = pbn.cum_extra_functions
+    extraF = pbn.extra_functions
 
     N = pbn.n_parallel
 
