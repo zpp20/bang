@@ -631,11 +631,11 @@ class PBN:
         pass
 
     @overload
-    def monolithic_detect_attractors(self, initial_states) -> list[list[list[bool]]]:
+    def monolithic_detect_attractors(self, initial_states, repr: Literal["int"]) -> list[list[int]]:
         pass
 
     @overload
-    def monolithic_detect_attractors(self, initial_states, repr: Literal["int"]) -> list[list[int]]:
+    def monolithic_detect_attractors(self, initial_states) -> list[list[list[bool]]]:
         pass
 
     def monolithic_detect_attractors(self, initial_states, repr="bool"):
@@ -658,17 +658,17 @@ class PBN:
         if repr == "bool":
             return convert_to_binary_representation(attractors, self.n_nodes)
         elif repr == "int":
-            return convert_from_binary_representation(attractors)
+            return attractors
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
     # typing only
     @overload
-    def blocks_detect_attractors(self, repr: Literal["bool"]) -> list[list[int]]:
+    def blocks_detect_attractors(self, repr: Literal["int"]) -> list[list[int]]:
         pass
 
     @overload
-    def blocks_detect_attractors(self, repr: Literal["int"]) -> list[list[list[bool]]]:
+    def blocks_detect_attractors(self, repr: Literal["bool"]) -> list[list[list[bool]]]:
         pass
 
     def blocks_detect_attractors(self, repr="bool"):
@@ -677,7 +677,7 @@ class PBN:
 
         Returns
         -------
-        attractor_states : list[list[list[bool]]]
+        attractor_states : list[list[list[bool]]] or list[list[int]]
             list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
         """
         attractors = divide_and_conquer(self)
