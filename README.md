@@ -80,7 +80,7 @@ pbn.simple_steps(10)
 # Access the simulation history
 print("Trajectory history:", pbn.history)
 # Access the final state
-print("Last state:", pbn.get_last_state())
+print("Last state:", pbn.last_state)
 ```
 
 ### 3. Using CPU-Based simulation
