@@ -61,27 +61,27 @@ class PBN:
 
     def __init__(
         self,
-        n: int,
-        nf: List[int],
-        nv: List[int],
-        F: List[List[bool]],
-        varFInt: List[List[int]],
-        cij: List[List[float]],
-        perturbation: float,
-        npNode: List[int],
+        n_nodes: int,
+        n_functions: List[int],
+        n_variables: List[int],
+        functions: List[List[bool]],
+        parent_variable_indices: List[List[int]],
+        function_probabilities: List[List[float]],
+        perturbation_rate: float,
+        non_perturbed_nodes: List[int],
         n_parallel: int = 512,
         update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
         save_history: bool = True,
         steps_batch_size=DEFAULT_STEPS_BATCH_SIZE,
     ):
-        self.n = n
-        self.nf = nf
-        self.nv = nv
-        self.F = F
-        self.varFInt = varFInt
-        self.cij = cij
-        self.perturbation = perturbation
-        self.npNode = list(sorted(npNode))
+        self.n = n_nodes
+        self.nf = n_functions
+        self.nv = n_variables
+        self.F = functions
+        self.varFInt = parent_variable_indices
+        self.cij = function_probabilities
+        self.perturbation = perturbation_rate
+        self.npNode = list(sorted(non_perturbed_nodes))
         self.n_parallel = n_parallel
         self.update_type: UpdateType = update_type
         self.history: np.ndarray = np.zeros((1, n_parallel, self.state_size), dtype=np.uint32)
@@ -142,14 +142,14 @@ class PBN:
         """
 
         return PBN(
-            n=n if n is not None else self.n,
-            nf=nf if nf is not None else self.nf,
-            nv=nv if nv is not None else self.nv,
-            F=F if F is not None else self.F,
-            varFInt=varFInt if varFInt is not None else self.varFInt,
-            cij=cij if cij is not None else self.cij,
-            perturbation=perturbation if perturbation is not None else self.perturbation,
-            npNode=npNode if npNode is not None else self.npNode,
+            n_nodes=n if n is not None else self.n,
+            n_functions=nf if nf is not None else self.nf,
+            n_variables=nv if nv is not None else self.nv,
+            functions=F if F is not None else self.F,
+            parent_variable_indices=varFInt if varFInt is not None else self.varFInt,
+            function_probabilities=cij if cij is not None else self.cij,
+            perturbation_rate=perturbation if perturbation is not None else self.perturbation,
+            non_perturbed_nodes=npNode if npNode is not None else self.npNode,
             n_parallel=n_parallel if n_parallel is not None else self.n_parallel,
             update_type=update_type if update_type is not None else self.update_type,
             save_history=save_history if save_history is not None else self.save_history,
@@ -160,7 +160,7 @@ class PBN:
 
     def _create_memory_container(self):
         self.gpu_memory_container = GpuMemoryContainer(
-            self, DEFAULT_STEPS_BATCH_SIZE, self.save_history
+            self, self.steps_batch_size, self.save_history
         )
 
     def __str__(self):
