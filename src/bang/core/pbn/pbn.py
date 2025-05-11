@@ -3,7 +3,7 @@ Module containing the PBN class and helpers.
 """
 
 import math
-from typing import List, Literal, overload
+from typing import Literal, overload
 
 import graphviz
 import numpy as np
@@ -16,7 +16,11 @@ from bang.core.attractors.monolithic.monolithic import monolithic_detect_attract
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
 from bang.core.pbn.truthtable_reduction import reduce_F
-from bang.core.pbn.utils.state_printing import convert_from_binary_representation, convert_to_binary_representation
+from bang.core.pbn.utils.integer_functions import get_integer_functions
+from bang.core.pbn.utils.state_printing import (
+    convert_from_binary_representation,
+    convert_to_binary_representation,
+)
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 from bang.visualization import draw_blocks, draw_dependencies, draw_trajectory_ndarray
@@ -28,30 +32,30 @@ DEFAULT_STEPS_BATCH_SIZE = 100000
 class PBN:
     """Class representing the PBN and the execution of simulations on it.
 
-    :param n: The number of nodes.
-    :type n: int
-    :param nf: The size of each node.
-    :type nf: List[int]
-    :param nv: The size of each node's truth table.
-    :type nv: List[int]
-    :param F: The truth table of each node.
-    :type F: List[List[bool]]
-    :param varFInt: The index of each node's truth table.
-    :type varFInt: List[List[int]]
-    :param cij: The selection probability of each node.
-    :type cij: List[List[float]]
-    :param perturbation: The perturbation rate.
-    :type perturbation: float
-    :param npNode: Index of nodes without perturbation.
-    :type npNode: List[int]
+    :param n_nodes: The number of nodes.
+    :type n_nodes: int
+    :param n_functions: The size of each node.
+    :type n_functions: list[int]
+    :param n_variables: The size of each node's truth table.
+    :type n_variables: list[int]
+    :param functions: The truth table of each node.
+    :type functions: list[list[bool]]
+    :param parent_variable_indices: The index of each node's truth table.
+    :type parent_variable_indices: list[list[int]]
+    :param function_probabilities: The selection probability of each function.
+    :type function_probabilities: list[list[float]]
+    :param perturbation_rate: The probability of perturbation at each step.
+    :type perturbation_rate: float
+    :param non_perturbed_nodes: Index of nodes without perturbation.
+    :type non_perturbed_nodes: list[int]
     :param n_parallel: The number of parallel simulations. Defaults to 512.
     :type n_parallel: int, optional
     :param history: The execution history of the PBN, tracking the states of all trajectories.
     :type history: np.ndarray
     :param latest_state: The last encountered state of the PBN's trajectories.
     :type latest_state: np.ndarray
-    :param previous_simulations: List of previous simulations.
-    :type previous_simulations: List[np.ndarray]
+    :param previous_simulations: list of previous simulations.
+    :type previous_simulations: list[np.ndarray]
     :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order", "synchronous"
     :type update_type: str
     :param save_history: Whether to save the history of the PBN.
@@ -63,33 +67,36 @@ class PBN:
     def __init__(
         self,
         n_nodes: int,
-        n_functions: List[int],
-        n_variables: List[int],
-        functions: List[List[bool]],
-        parent_variable_indices: List[List[int]],
-        function_probabilities: List[List[float]],
+        n_functions: list[int],
+        n_variables: list[int],
+        functions: list[list[bool]],
+        parent_variable_indices: list[list[int]],
+        function_probabilities: list[list[float]],
         perturbation_rate: float,
-        non_perturbed_nodes: List[int],
+        non_perturbed_nodes: list[int],
         n_parallel: int = 512,
         update_type: UpdateType = "asynchronous_one_random",  ## TODO change to 0, synchronous shouldnt be default
         save_history: bool = True,
         steps_batch_size=DEFAULT_STEPS_BATCH_SIZE,
     ):
-        self.n = n_nodes
-        self.nf = n_functions
-        self.nv = n_variables
-        self.F = functions
-        self.varFInt = parent_variable_indices
-        self.cij = function_probabilities
-        self.perturbation = perturbation_rate
-        self.npNode = list(sorted(non_perturbed_nodes))
-        self.n_parallel = n_parallel
+        # internal attributes
+        self._n = n_nodes
+        self._nf = n_functions
+        self._nv = n_variables
+        self._f = functions
+        self._var_f_int = parent_variable_indices
+        self._cij = function_probabilities
+        self._perturbation = perturbation_rate
+        self._np_node = list(sorted(non_perturbed_nodes))
+        self._n_parallel = n_parallel
+        self._history: np.ndarray = np.zeros((1, n_parallel, self.state_size), dtype=np.uint32)
+        self._latest_state: np.ndarray = np.zeros((n_parallel, self.state_size), dtype=np.uint32)
+        self._previous_simulations: list[np.ndarray] = []
+        self._gpu_memory_container = None
+
+        # public attributes
         self.update_type: UpdateType = update_type
-        self.history: np.ndarray = np.zeros((1, n_parallel, self.state_size), dtype=np.uint32)
-        self.latest_state: np.ndarray = np.zeros((n_parallel, self.state_size), dtype=np.uint32)
-        self.previous_simulations: List[np.ndarray] = []
         self.save_history = save_history
-        self.gpu_memory_container = None
         self.steps_batch_size = steps_batch_size
 
         if cuda.is_available():
@@ -98,13 +105,13 @@ class PBN:
     def clone_with(
         self,
         n: int | None = None,
-        nf: List[int] | None = None,
-        nv: List[int] | None = None,
-        F: List[List[bool]] | None = None,
-        varFInt: List[List[int]] | None = None,
-        cij: List[List[float]] | None = None,
+        nf: list[int] | None = None,
+        nv: list[int] | None = None,
+        F: list[list[bool]] | None = None,
+        varFInt: list[list[int]] | None = None,
+        cij: list[list[float]] | None = None,
         perturbation: float | None = None,
-        npNode: List[int] | None = None,
+        npNode: list[int] | None = None,
         n_parallel: int | None = None,
         update_type: UpdateType | None = None,
         save_history: bool | None = None,
@@ -117,19 +124,19 @@ class PBN:
         :param n: The number of nodes.
         :type n: int, optional
         :param nf: The size of each node.
-        :type nf: List[int], optional
+        :type nf: list[int], optional
         :param nv: The size of each node's truth table.
-        :type nv: List[int], optional
+        :type nv: list[int], optional
         :param F: The truth table of each node.
-        :type F: List[List[bool]], optional
+        :type F: list[list[bool]], optional
         :param varFInt: The index of each node's truth table.
-        :type varFInt: List[List[int]], optional
+        :type varFInt: list[list[int]], optional
         :param cij: The selection probability of each node.
-        :type cij: List[List[float]], optional
+        :type cij: list[list[float]], optional
         :param perturbation: The perturbation rate.
         :type perturbation: float, optional
         :param npNode: Index of nodes without perturbation.
-        :type npNode: List[int], optional
+        :type npNode: list[int], optional
         :param n_parallel: The number of parallel simulations.
         :type n_parallel: int, optional
         :param update_type: The type of update to use. The possible values are "asynchronous_one_random", "asynchronous_random_order", "synchronous"
@@ -143,15 +150,15 @@ class PBN:
         """
 
         return PBN(
-            n_nodes=n if n is not None else self.n,
-            n_functions=nf if nf is not None else self.nf,
-            n_variables=nv if nv is not None else self.nv,
-            functions=F if F is not None else self.F,
-            parent_variable_indices=varFInt if varFInt is not None else self.varFInt,
-            function_probabilities=cij if cij is not None else self.cij,
-            perturbation_rate=perturbation if perturbation is not None else self.perturbation,
-            non_perturbed_nodes=npNode if npNode is not None else self.npNode,
-            n_parallel=n_parallel if n_parallel is not None else self.n_parallel,
+            n_nodes=n if n is not None else self._n,
+            n_functions=nf if nf is not None else self._nf,
+            n_variables=nv if nv is not None else self._nv,
+            functions=F if F is not None else self._f,
+            parent_variable_indices=varFInt if varFInt is not None else self._var_f_int,
+            function_probabilities=cij if cij is not None else self._cij,
+            perturbation_rate=perturbation if perturbation is not None else self._perturbation,
+            non_perturbed_nodes=npNode if npNode is not None else self._np_node,
+            n_parallel=n_parallel if n_parallel is not None else self._n_parallel,
             update_type=update_type if update_type is not None else self.update_type,
             save_history=save_history if save_history is not None else self.save_history,
             steps_batch_size=steps_batch_size
@@ -160,12 +167,12 @@ class PBN:
         )
 
     def _create_memory_container(self):
-        self.gpu_memory_container = GpuMemoryContainer(
+        self._gpu_memory_container = GpuMemoryContainer(
             self, self.steps_batch_size, self.save_history
         )
 
     def __str__(self):
-        return f"PBN(n={self.n}, nf={self.nf}, nv={self.nv}, F={self.F}, varFInt={self.varFInt}, cij={self.cij}, perturbation={self.perturbation}, npNode={self.npNode})"
+        return f"PBN(n={self._n}, nf={self._nf}, nv={self._nv}, F={self._f}, varFInt={self._var_f_int}, cij={self._cij}, perturbation={self._perturbation}, npNode={self._np_node})"
 
     @property
     def n_nodes(self) -> int:
@@ -175,217 +182,37 @@ class PBN:
         :returns: The number of nodes.
         :rtype: int
         """
-        return self.n
+        return self._n
 
     @property
-    def n_functions(self) -> List[int]:
+    def n_functions(self) -> list[int]:
         """
         Returns the size of each node.
 
         :returns: The size of each node.
-        :rtype: List[int]
+        :rtype: list[int]
         """
-        return self.nf
+        return self._nf
 
     @property
-    def n_variables(self) -> List[int]:
+    def n_variables(self) -> list[int]:
         """
         Returns the size of each node's truth table.
 
         :returns: The size of each node's truth table.
-        :rtype: List[int]
+        :rtype: list[int]
         """
-        return self.nv
-
-    def _get_integer_functions(self, f: List[bool], extra_functions: List[int]) -> int:
-        """
-        Converts list of bools to 32-bit int with bits representing truth table.
-
-        :param f: List of boolean values representing the truth table.
-        :type f: List[bool]
-        :param extra_functions: List to store extra functions if the truth table exceeds 32 bits.
-        :type extra_functions: List[int]
-        :returns: Integer representation of the truth table.
-        :rtype: int
-        """
-        retval = 0
-        i = 0
-        prefix = 0
-        tempLen = len(f)
-        if tempLen > 32:
-            for i in range(32):
-                if f[i + prefix]:
-                    retval |= 1 << i
-
-            prefix += 32
-            tempLen -= 32
-
-        else:
-            for i in range(tempLen):
-                if f[i]:
-                    retval |= 1 << i
-
-            return retval
-
-        while tempLen > 0:
-            other = 0
-            for i in range(32):
-                if f[i + prefix]:
-                    other |= 1 << i
-
-            prefix += 32
-            tempLen -= 32
-            extra_functions.append(other)
-
-        return retval
+        return self._nv
 
     @property
-    def last_state(self) -> np.ndarray:
+    def functions(self) -> list[list[bool]]:
         """
-        Returns the last encountered state of the PBN's trajectories.
+        Returns the truth table of each node.
 
-        :returns: The last encountered state of the PBN's trajectories.
-        :rtype: np.ndarray
-        """
-        return self.latest_state
-
-    @property
-    def last_state_bool(self) -> list[list[bool]]:
-        """
-        Returns the last encountered state of the PBN's trajectories in boolean representation.
-
-        :returns: The last encountered state of the PBN's trajectories in boolean representation.
+        :returns: The truth table of each node.
         :rtype: list[list[bool]]
         """
-        return convert_to_binary_representation(self.latest_state, self.n_nodes)
-
-    @property
-    def trajectories(self) -> np.ndarray:
-        """
-        Returns the execution history of the PBN, tracking the states of all trajectories.
-
-        :returns: The execution history of the PBN.
-        :rtype: np.ndarray
-        """
-        return self.history
-
-    @property
-    def trajectories_bool(self) -> list[list[list[bool]]]:
-        """
-        Returns the execution history of the PBN in boolean representation.
-
-        :returns: The execution history of the PBN in boolean representation.
-        :rtype: list[list[list[bool]]]
-        """
-        return convert_to_binary_representation(self.history, self.n_nodes)
-
-    def save_trajectories(self, filename: str):
-        """
-        Saves the execution history of the PBN to a CSV file.
-
-        :param filename: The name of the file to save the history.
-        :type filename: str
-        """
-        np.save(filename, self.history)
-
-    def save_last_state(self, filename: str):
-        """
-        Saves the last encountered state of the PBN's trajectories to a CSV file.
-
-        :param filename: The name of the file to save the last state.
-        :type filename: str
-        """
-        np.save(filename, self.latest_state)
-
-    # Only for typing information
-    @overload
-    def get_blocks(self, repr: Literal["int"]) -> list[list[int]]:
-        pass
-
-    @overload
-    def get_blocks(self, repr: Literal["bool"]) -> list[list[list[bool]]]:
-        pass
-
-    def get_blocks(self, repr = "bool"):
-        """
-        Returns the blocks of the PBN.
-
-        :param repr: The representation type. Can be "bool" or "int". Defaults to "bool".
-        :type repr: str, optional
-
-        :returns: The blocks of the PBN.
-        :rtype: list[list[bool]] or list[list[int]]
-        """
-        blocks = get_blocks(self)
-
-        if repr == "bool":
-            return convert_to_binary_representation(blocks, self.n_nodes)
-        elif repr == "int":
-            return blocks
-        else:
-            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
-
-    @staticmethod
-    def _bools_to_state_array(bools: List[bool], node_count: int) -> np.ndarray:
-        """
-        Converts list of bools to integer array.
-
-        :param bools: List of boolean values representing the state.
-        :type bools: List[bool]
-        :param node_count: Number of nodes.
-        :type node_count: int
-        :raises ValueError: If the number of bools is not equal to the number of nodes.
-        :returns: Integer array representing the state.
-        :rtype: np.ndarray
-        """
-        state_size = PBN._calc_state_size(node_count)
-        if len(bools) != node_count:
-            raise ValueError("Number of bools must be equal to number of nodes")
-
-        integer_state = np.zeros((state_size), dtype=np.uint32)
-
-        for i in range(state_size)[::-1]:
-            for bit in range((len(bools) - 32 * i) % 32):
-                if bools[i * 32 + bit]:
-                    integer_state[i] |= 1 << bit
-
-        return integer_state
-
-    def set_states(self, states: List[List[bool]], reset_history: bool = False):
-        """
-        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
-        the history will be pushed into `self.previous_simulations` and the active history will be reset.
-
-        :param states: List of states to be set.
-        :type states: List[List[bool]]
-        :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
-        :type reset_history: bool, optional
-        """
-        converted_states = [self._bools_to_state_array(state, self.n) for state in states]
-
-        self.n_parallel = len(states)
-        self.latest_state = np.array(converted_states).reshape((self.n_parallel, self.state_size))
-
-        if reset_history:
-            self.history = np.array(converted_states).reshape((1, self.n_parallel, self.state_size))
-        else:
-            if len(states) != self.history.shape[1]:
-                self.previous_simulations.append(self.history.copy())
-
-                self.history = np.array(converted_states).reshape(
-                    (1, self.n_parallel, self.state_size)
-                )
-            else:
-                self.history = np.concatenate(
-                    [
-                        self.history,
-                        np.array(converted_states).reshape((1, self.n_parallel, self.state_size)),
-                    ],
-                    axis=0,
-                )
-
-        if cuda.is_available():
-            self._create_memory_container()
+        return self._f
 
     @property
     def n_extra_functions(self) -> int:
@@ -396,7 +223,7 @@ class PBN:
         :rtype: int
         """
         extraFCount = 0
-        for elem in self.nv:
+        for elem in self._nv:
             if elem > 5:
                 extraFCount += 2 ** (elem - 5) - 1
 
@@ -412,56 +239,56 @@ class PBN:
         """
         extraFIndexCount = 0
 
-        for elem in self.nv:
+        for elem in self._nv:
             if elem > 5:
                 extraFIndexCount += 1
 
         return extraFIndexCount
 
     @property
-    def extra_function_index(self) -> List[int]:
+    def extra_function_index(self) -> list[int]:
         """
         Returns a list of extra function indices.
 
-        :returns: List of extra function indices.
-        :rtype: List[int]
+        :returns: list of extra function indices.
+        :rtype: list[int]
         """
         extraFIndex = []
 
-        for i in range(len(self.nv)):
-            if self.nv[i] > 5:
+        for i in range(len(self._nv)):
+            if self._nv[i] > 5:
                 extraFIndex.append(i)
 
         return extraFIndex
 
     @property
-    def cum_extra_functions(self) -> List[int]:
+    def cum_extra_functions(self) -> list[int]:
         """
         Returns a list of cumulative extra functions.
 
-        :returns: List of cumulative extra functions.
-        :rtype: List[int]
+        :returns: list of cumulative extra functions.
+        :rtype: list[int]
         """
         cumExtraF = [0]
 
-        for i in range(len(self.nv)):
-            if self.nv[i] > 5:
-                cumExtraF.append(cumExtraF[-1] + 2 ** (self.nv[i] - 5) - 1)
+        for i in range(len(self._nv)):
+            if self._nv[i] > 5:
+                cumExtraF.append(cumExtraF[-1] + 2 ** (self._nv[i] - 5) - 1)
 
         return cumExtraF
 
     @property
-    def extra_functions(self) -> List[int]:
+    def extra_functions(self) -> list[int]:
         """
         Returns a list of extra functions.
 
-        :returns: List of extra functions.
-        :rtype: List[int]
+        :returns: list of extra functions.
+        :rtype: list[int]
         """
         extraF = []
 
-        for i in range(len(self.F)):
-            extraF.append(self._get_integer_functions(self.F[i], extraF))
+        for i in range(len(self._f)):
+            extraF.append(get_integer_functions(self._f[i], extraF))
 
         return extraF
 
@@ -473,7 +300,7 @@ class PBN:
         :returns: Cumulative sum of all elements in nf.
         :rtype: np.ndarray
         """
-        return np.cumsum([0] + self.nf)
+        return np.cumsum([0] + self._nf)
 
     @property
     def cum_n_variables(self) -> np.ndarray:
@@ -483,7 +310,7 @@ class PBN:
         :returns: Cumulative sum of all elements in nv.
         :rtype: np.ndarray
         """
-        return np.cumsum([0] + self.nv)
+        return np.cumsum([0] + self._nv)
 
     @staticmethod
     def _calc_state_size(node_count: int) -> int:
@@ -505,47 +332,37 @@ class PBN:
         :returns: Number of 32-bit integers needed to store all variables.
         :rtype: int
         """
-        return self._calc_state_size(self.n)
+        return self._calc_state_size(self._n)
 
     @property
-    def functions(self) -> List[List[bool]]:
-        """
-        Returns the truth table of each node.
-
-        :returns: The truth table of each node.
-        :rtype: List[List[bool]]
-        """
-        return self.F
-
-    @property
-    def integer_functions(self) -> List[int]:
+    def integer_functions(self) -> list[int]:
         """
         Returns the integer representation of the truth table for each node.
 
         :returns: Integer representation of the truth table for each node.
-        :rtype: List[int]
+        :rtype: list[int]
         """
-        return [self._get_integer_functions(func, []) for func in self.F]
+        return [get_integer_functions(func, []) for func in self._f]
 
     @property
-    def parent_variable_indices(self) -> List[List[int]]:
+    def parent_variable_indices(self) -> list[list[int]]:
         """
         Returns the indices of the parent nodes for every boolean function.
 
         :returns: The indices of the parent nodes by function.
-        :rtype: List[List[int]]
+        :rtype: list[list[int]]
         """
-        return self.varFInt
+        return self._var_f_int
 
     @property
-    def function_probabilities(self) -> List[List[float]]:
+    def function_probabilities(self) -> list[list[float]]:
         """
         Returns the selection probability of each function per node.
 
         :returns: The selection probability of each function per node.
-        :rtype: List[List[float]]
+        :rtype: list[list[float]]
         """
-        return self.cij
+        return self._cij
 
     @property
     def perturbation_rate(self) -> float:
@@ -555,24 +372,185 @@ class PBN:
         :returns: The perturbation rate.
         :rtype: float
         """
-        return self.perturbation
+        return self._perturbation
 
     @property
-    def non_perturbed_nodes(self) -> List[int]:
+    def non_perturbed_nodes(self) -> list[int]:
         """
         Returns the indices of nodes without perturbation.
 
         :returns: The indices of nodes without perturbation.
-        :rtype: List[int]
+        :rtype: list[int]
         """
-        return self.npNode
+        return self._np_node
 
-    def reduce_truthtables(self, states: List[List[int]]) -> tuple:
+    @property
+    def last_state(self) -> np.ndarray:
+        """
+        Returns the last encountered state of the PBN's trajectories.
+
+        :returns: The last encountered state of the PBN's trajectories.
+        :rtype: np.ndarray
+        """
+        return self._latest_state
+
+    @property
+    def last_state_bool(self) -> list[list[bool]]:
+        """
+        Returns the last encountered state of the PBN's trajectories in boolean representation.
+
+        :returns: The last encountered state of the PBN's trajectories in boolean representation.
+        :rtype: list[list[bool]]
+        """
+        return convert_to_binary_representation(self._latest_state, self.n_nodes)
+
+    @property
+    def trajectories(self) -> np.ndarray:
+        """
+        Returns the execution history of the PBN, tracking the states of all trajectories.
+
+        :returns: The execution history of the PBN.
+        :rtype: np.ndarray
+        """
+        return self._history
+
+    @property
+    def previous_simulations(self) -> list[np.ndarray]:
+        """
+        Returns the list of previous simulation histories. A new simulation history is added
+        every time the number of trajectories changes.
+
+        :returns: The list of previous simulations.
+        :rtype: list[np.ndarray]
+        """
+        return self._previous_simulations
+
+    @property
+    def trajectories_bool(self) -> list[list[list[bool]]]:
+        """
+        Returns the execution history of the PBN in boolean representation.
+
+        :returns: The execution history of the PBN in boolean representation.
+        :rtype: list[list[list[bool]]]
+        """
+        return convert_to_binary_representation(self._history, self.n_nodes)
+
+    def save_trajectories(self, filename: str):
+        """
+        Saves the execution history of the PBN to a CSV file.
+
+        :param filename: The name of the file to save the history.
+        :type filename: str
+        """
+        np.save(filename, self._history)
+
+    def save_last_state(self, filename: str):
+        """
+        Saves the last encountered state of the PBN's trajectories to a CSV file.
+
+        :param filename: The name of the file to save the last state.
+        :type filename: str
+        """
+        np.save(filename, self._latest_state)
+
+    # Only for typing information
+    @overload
+    def get_blocks(self, repr: Literal["int"]) -> list[list[int]]:
+        pass
+
+    @overload
+    def get_blocks(self, repr: Literal["bool"]) -> list[list[list[bool]]]:
+        pass
+
+    def get_blocks(self, repr="bool"):
+        """
+        Returns the blocks of the PBN.
+
+        :param repr: The representation type. Can be "bool" or "int". Defaults to "bool".
+        :type repr: str, optional
+
+        :returns: The blocks of the PBN.
+        :rtype: list[list[bool]] or list[list[int]]
+        """
+        blocks = get_blocks(self)
+
+        if repr == "bool":
+            return convert_to_binary_representation(blocks, self.n_nodes)
+        elif repr == "int":
+            return blocks
+        else:
+            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
+
+    @staticmethod
+    def _bools_to_state_array(bools: list[bool], node_count: int) -> np.ndarray:
+        """
+        Converts list of bools to integer array.
+
+        :param bools: list of boolean values representing the state.
+        :type bools: list[bool]
+        :param node_count: Number of nodes.
+        :type node_count: int
+        :raises ValueError: If the number of bools is not equal to the number of nodes.
+        :returns: Integer array representing the state.
+        :rtype: np.ndarray
+        """
+        state_size = PBN._calc_state_size(node_count)
+        if len(bools) != node_count:
+            raise ValueError("Number of bools must be equal to number of nodes")
+
+        integer_state = np.zeros((state_size), dtype=np.uint32)
+
+        for i in range(state_size)[::-1]:
+            for bit in range((len(bools) - 32 * i) % 32):
+                if bools[i * 32 + bit]:
+                    integer_state[i] |= 1 << bit
+
+        return integer_state
+
+    def set_states(self, states: list[list[bool]], reset_history: bool = False):
+        """
+        Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
+        the history will be pushed into `self.previous_simulations` and the active history will be reset.
+
+        :param states: list of states to be set.
+        :type states: list[list[bool]]
+        :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
+        :type reset_history: bool, optional
+        """
+        converted_states = [self._bools_to_state_array(state, self._n) for state in states]
+
+        self._n_parallel = len(states)
+        self._latest_state = np.array(converted_states).reshape((self._n_parallel, self.state_size))
+
+        if reset_history:
+            self._history = np.array(converted_states).reshape(
+                (1, self._n_parallel, self.state_size)
+            )
+        else:
+            if len(states) != self._history.shape[1]:
+                self._previous_simulations.append(self._history.copy())
+
+                self._history = np.array(converted_states).reshape(
+                    (1, self._n_parallel, self.state_size)
+                )
+            else:
+                self._history = np.concatenate(
+                    [
+                        self._history,
+                        np.array(converted_states).reshape((1, self._n_parallel, self.state_size)),
+                    ],
+                    axis=0,
+                )
+
+        if cuda.is_available():
+            self._create_memory_container()
+
+    def reduce_truthtables(self, states: list[list[int]]) -> tuple:
         """
         Reduces truth tables of PBN by removing states that do not change.
 
-        :param states: List of investigated states. States are lists of int with length n where i-th index represents i-th variable. 0 represents False and 1 represents True.
-        :type states: List[List[int]]
+        :param states: list of investigated states. States are lists of int with length n where i-th index represents i-th variable. 0 represents False and 1 represents True.
+        :type states: list[list[int]]
         :returns: Tuple containing list of indices of variables that change between states and truth tables with removed constant variables.
         :rtype: tuple
         """
@@ -643,26 +621,28 @@ class PBN:
 
     # typing only
     @overload
-    def monolithic_detect_attractors(self, initial_states, repr: Literal["bool"]) -> list[list[list[bool]]]:
+    def monolithic_detect_attractors(
+        self, initial_states, repr: Literal["bool"]
+    ) -> list[list[list[bool]]]:
         pass
 
     @overload
     def monolithic_detect_attractors(self, initial_states, repr: Literal["int"]) -> list[list[int]]:
         pass
 
-    def monolithic_detect_attractors(self, initial_states, repr = "bool"):
+    def monolithic_detect_attractors(self, initial_states, repr="bool"):
         """
         Detects all atractor states in PBN
 
         Parameters
         ----------
 
-        initial_states : List[List[Bool]]
-            List of investigated states.
+        initial_states : list[list[Bool]]
+            list of investigated states.
         Returns
         -------
         attractor_states : list[list[int]]
-            List of attractors where attractors are coded as lists of ints, ints representing the states.
+            list of attractors where attractors are coded as lists of ints, ints representing the states.
         """
 
         attractors = monolithic_detect_attractor(self, initial_states)
@@ -683,14 +663,14 @@ class PBN:
     def blocks_detect_attractors(self, repr: Literal["int"]) -> list[list[list[bool]]]:
         pass
 
-    def blocks_detect_attractors(self, repr = "bool"):
+    def blocks_detect_attractors(self, repr="bool"):
         """
         Detects attractors in the system using a divide-and-conquer block-based approach.
 
         Returns
         -------
         attractor_states : list[list[list[bool]]]
-            List of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
+            list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
         """
         attractors = divide_and_conquer(self)
 
@@ -700,7 +680,6 @@ class PBN:
             return convert_from_binary_representation(attractors)
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
-
 
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """

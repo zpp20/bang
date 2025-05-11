@@ -25,8 +25,8 @@ class PBN_Node:
 
         f_index = 0
         while f_index < id:
-            f_index += pbn.nf[f_index]
-        self.functions = pbn.F[f_index : f_index + pbn.nf[id]]
+            f_index += pbn._nf[f_index]
+        self.functions = pbn._f[f_index : f_index + pbn._nf[id]]
 
         # graph features
         self.dfs_id: int | None = None
@@ -54,18 +54,18 @@ class Graph_PBN:
 
         # assign in_nodes and out_nodes to each node
         current_count = 0
-        for i in range(pbn.n):  # for every variable
+        for i in range(pbn._n):  # for every variable
             for j in range(
-                current_count, current_count + pbn.nf[i]
+                current_count, current_count + pbn._nf[i]
             ):  # for every function of the variable
-                for k in pbn.varFInt[j]:  # for every variable that influences this function
+                for k in pbn._var_f_int[j]:  # for every variable that influences this function
                     # we disregard in which function the variable is influencing the current function;
                     # we just need to know that it influences it
                     self.nodes[i].in_nodes.append(k)
                     self.nodes[k].out_nodes.append(i)
-            current_count += pbn.nf[i]
+            current_count += pbn._nf[i]
 
-        for i in range(pbn.n):
+        for i in range(pbn._n):
             self.nodes[i].in_nodes = sorted(
                 list(set(self.nodes[i].in_nodes))
             )  # indices, not nodes! access nodes by self.nodes[i]

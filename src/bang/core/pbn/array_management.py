@@ -30,10 +30,10 @@ def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True)
     cumExtraF = pbn.cum_extra_functions
     extraF = pbn.extra_functions
 
-    N = pbn.n_parallel
+    N = pbn._n_parallel
 
     initial_state = (
-        np.zeros(N * stateSize, dtype=np.uint32) if pbn.latest_state is None else pbn.latest_state
+        np.zeros(N * stateSize, dtype=np.uint32) if pbn._latest_state is None else pbn._latest_state
     )
     initial_state = initial_state.reshape(N * stateSize)
 

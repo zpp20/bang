@@ -15,17 +15,17 @@ def reduce_F(self: "PBN", states: list[list[int]]) -> tuple:
     # """
     initial_state = states[0]
 
-    constant_vars = {i for i in range(0, self.n)}
+    constant_vars = {i for i in range(0, self._n)}
 
     for state in states[1:]:
-        for var in range(0, self.n):
+        for var in range(0, self._n):
             if initial_state[var] != state[var]:
                 constant_vars.remove(var)
 
     new_F = list()
     new_varF = list()
 
-    for F_func, F_vars in zip(self.F, self.varFInt):
+    for F_func, F_vars in zip(self._f, self._var_f_int):
         new_varF.append(list())
         new_F.append(list())
         curr_num_vars = len(F_vars)
