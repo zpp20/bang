@@ -3,7 +3,7 @@ Module containing the PBN class and helpers.
 """
 
 import math
-from typing import List, Literal
+from typing import List, Literal, overload
 
 import graphviz
 import numpy as np
@@ -16,6 +16,7 @@ from bang.core.attractors.monolithic.monolithic import monolithic_detect_attract
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
 from bang.core.pbn.truthtable_reduction import reduce_F
+from bang.core.pbn.utils.state_printing import convert_from_binary_representation, convert_to_binary_representation
 from bang.parsing.assa import load_assa
 from bang.parsing.sbml import parseSBMLDocument
 from bang.visualization import draw_blocks, draw_dependencies, draw_trajectory_ndarray
@@ -249,6 +250,16 @@ class PBN:
         return self.latest_state
 
     @property
+    def last_state_bool(self) -> list[list[bool]]:
+        """
+        Returns the last encountered state of the PBN's trajectories in boolean representation.
+
+        :returns: The last encountered state of the PBN's trajectories in boolean representation.
+        :rtype: list[list[bool]]
+        """
+        return convert_to_binary_representation(self.latest_state, self.n_nodes)
+
+    @property
     def trajectories(self) -> np.ndarray:
         """
         Returns the execution history of the PBN, tracking the states of all trajectories.
@@ -257,6 +268,16 @@ class PBN:
         :rtype: np.ndarray
         """
         return self.history
+
+    @property
+    def trajectories_bool(self) -> list[list[list[bool]]]:
+        """
+        Returns the execution history of the PBN in boolean representation.
+
+        :returns: The execution history of the PBN in boolean representation.
+        :rtype: list[list[list[bool]]]
+        """
+        return convert_to_binary_representation(self.history, self.n_nodes)
 
     def save_trajectories(self, filename: str):
         """
@@ -276,14 +297,33 @@ class PBN:
         """
         np.save(filename, self.latest_state)
 
-    def get_blocks(self) -> list[list[int]]:
+    # Only for typing information
+    @overload
+    def get_blocks(self, repr: Literal["int"]) -> list[list[int]]:
+        pass
+
+    @overload
+    def get_blocks(self, repr: Literal["bool"]) -> list[list[list[bool]]]:
+        pass
+
+    def get_blocks(self, repr = "bool"):
         """
         Returns the blocks of the PBN.
 
+        :param repr: The representation type. Can be "bool" or "int". Defaults to "bool".
+        :type repr: str, optional
+
         :returns: The blocks of the PBN.
-        :rtype: list[list[int]]
+        :rtype: list[list[bool]] or list[list[int]]
         """
-        return get_blocks(self)
+        blocks = get_blocks(self)
+
+        if repr == "bool":
+            return convert_to_binary_representation(blocks, self.n_nodes)
+        elif repr == "int":
+            return blocks
+        else:
+            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
     @staticmethod
     def _bools_to_state_array(bools: List[bool], node_count: int) -> np.ndarray:
@@ -601,7 +641,16 @@ class PBN:
         else:
             invoke_cpu_simulation(self, n_steps, actions)
 
-    def monolithic_detect_attractors(self, initial_states):
+    # typing only
+    @overload
+    def monolithic_detect_attractors(self, initial_states, repr: Literal["bool"]) -> list[list[list[bool]]]:
+        pass
+
+    @overload
+    def monolithic_detect_attractors(self, initial_states, repr: Literal["int"]) -> list[list[int]]:
+        pass
+
+    def monolithic_detect_attractors(self, initial_states, repr = "bool"):
         """
         Detects all atractor states in PBN
 
@@ -616,9 +665,25 @@ class PBN:
             List of attractors where attractors are coded as lists of ints, ints representing the states.
         """
 
-        return monolithic_detect_attractor(self, initial_states)
+        attractors = monolithic_detect_attractor(self, initial_states)
 
-    def blocks_detect_attractors(self):
+        if repr == "bool":
+            return convert_to_binary_representation(attractors, self.n_nodes)
+        elif repr == "int":
+            return convert_from_binary_representation(attractors)
+        else:
+            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
+
+    # typing only
+    @overload
+    def blocks_detect_attractors(self, repr: Literal["bool"]) -> list[list[int]]:
+        pass
+
+    @overload
+    def blocks_detect_attractors(self, repr: Literal["int"]) -> list[list[list[bool]]]:
+        pass
+
+    def blocks_detect_attractors(self, repr = "bool"):
         """
         Detects attractors in the system using a divide-and-conquer block-based approach.
 
@@ -627,8 +692,15 @@ class PBN:
         attractor_states : list[list[list[bool]]]
             List of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
         """
+        attractors = divide_and_conquer(self)
 
-        return divide_and_conquer(self)
+        if repr == "bool":
+            return attractors
+        elif repr == "int":
+            return convert_from_binary_representation(attractors)
+        else:
+            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
+
 
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """
