@@ -71,7 +71,7 @@ def draw_blocks(
 
     dot.attr("node", shape="circle")
 
-    for i in range(pbn.n):
+    for i in range(pbn._n):
         dot.node(
             str(i),
             label=f"{i}",
@@ -79,14 +79,14 @@ def draw_blocks(
             style="wedged",
         )
 
-    cumNf = np.cumsum([0] + pbn.nf, dtype=np.int32)
+    cumNf = np.cumsum([0] + pbn._nf, dtype=np.int32)
 
     edges = set()
 
-    for node_ind in range(pbn.n):
-        for func_ind in range(pbn.nf[node_ind]):
+    for node_ind in range(pbn._n):
+        for func_ind in range(pbn._nf[node_ind]):
             f_index = cumNf[node_ind] + func_ind
-            f_parents = pbn.varFInt[f_index]
+            f_parents = pbn._var_f_int[f_index]
 
             for parent in f_parents:
                 if (parent, node_ind) not in edges:

@@ -1,12 +1,14 @@
 import numpy as np
 
+
 def to_binary_array(value, bit_length=8):
     """Convert an integer to a binary array of a given bit length."""
     return [bool((value >> i) & 1) for i in range(bit_length)]
 
+
 def convert_to_binary_representation(data, bit_length) -> list:
     """
-    Recursively convert all numbers in a nested array (or numpy array) 
+    Recursively convert all numbers in a nested array (or numpy array)
     into arrays of their binary representation.
     """
     if isinstance(data, (int, float, np.integer, np.floating)):
@@ -23,6 +25,7 @@ def convert_to_binary_representation(data, bit_length) -> list:
         return [convert_to_binary_representation(item, bit_length) for item in data]
     else:
         raise ValueError("Unsupported data type: {}".format(type(data)))
+
 
 def convert_from_binary_representation(data) -> list | int:
     """

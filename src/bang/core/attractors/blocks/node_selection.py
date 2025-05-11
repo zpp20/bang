@@ -8,7 +8,7 @@ def select_nodes(pbn: "PBN", nodes: list[int]):
     new_F = list()
     new_varF = list()
     new_nv = list()
-    for F_func, F_vars, n_vars in zip(pbn.F, pbn.varFInt, pbn.nv):
+    for F_func, F_vars, n_vars in zip(pbn._f, pbn._var_f_int, pbn._nv):
         # assumes F contains truthtables for sorted vars
         # print("F_vars ", F_vars)
         new_nv.append(0)
@@ -43,15 +43,15 @@ def select_nodes(pbn: "PBN", nodes: list[int]):
 
     # Assumes nodes are numbered from 0 to n-1!!!!!
     n = len(nodes)
-    nf = [pbn.nf[idx] for idx, i in enumerate(pbn.nf) if idx in nodes]
+    nf = [pbn._nf[idx] for idx, i in enumerate(pbn._nf) if idx in nodes]
     nv = [new_nv[idx] for idx, i in enumerate(new_nv) if idx in nodes]
     F = [sublist[0] for sublist in new_F]
     F = [F[idx] for idx, i in enumerate(F) if idx in nodes]
     print()
     varFInt = [translate(new_varF[idx]) for idx, i in enumerate(new_varF) if idx in nodes]
-    cij = pbn.cij
-    perturbation = pbn.perturbation
-    npNode = [np for np in pbn.npNode if np in nodes]
+    cij = pbn._cij
+    perturbation = pbn._perturbation
+    npNode = [np for np in pbn._np_node if np in nodes]
     npNode.append(n)
 
     return pbn.clone_with(
@@ -63,6 +63,6 @@ def select_nodes(pbn: "PBN", nodes: list[int]):
         cij,
         perturbation,
         npNode,
-        pbn.n_parallel,
+        pbn._n_parallel,
         update_type="synchronous",
     )

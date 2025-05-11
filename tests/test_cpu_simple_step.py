@@ -21,7 +21,7 @@ def test_fixpoint_async_step():
 
     pbn1.simple_steps(101, device="cpu")
 
-    assert np.array_equal([[1], [3]], pbn1.latest_state), pbn1.latest_state
+    assert np.array_equal([[1], [3]], pbn1._latest_state), pbn1._latest_state
 
 
 def test_fixpoint_sync_step():
@@ -41,7 +41,7 @@ def test_fixpoint_sync_step():
 
     pbn1.simple_steps(21, device="cpu")
 
-    assert np.array_equal([[1], [1]], pbn1.latest_state), pbn1.latest_state
+    assert np.array_equal([[1], [1]], pbn1._latest_state), pbn1._latest_state
 
 
 def test_independent_pair_sync_step():
@@ -73,13 +73,13 @@ def test_independent_pair_sync_step():
     )
 
     pbn2.simple_steps(1, device="cpu")
-    assert np.array_equal([[15]], pbn2.latest_state)
+    assert np.array_equal([[15]], pbn2._latest_state)
 
     pbn2.simple_steps(1, device="cpu")
-    assert np.array_equal([[10]], pbn2.latest_state)
+    assert np.array_equal([[10]], pbn2._latest_state)
 
     pbn2.simple_steps(1, device="cpu")
-    assert np.array_equal([[15]], pbn2.latest_state)
+    assert np.array_equal([[15]], pbn2._latest_state)
 
 
 @pytest.mark.parametrize("n_parallel", [16, 32, 64, 128, 256, 512])
@@ -100,7 +100,7 @@ def test_large_n_parallel_sync(n_parallel):
 
     pbn1.simple_steps(21, device="cpu")
 
-    assert np.array_equal([[3] for _ in range(n_parallel)], pbn1.latest_state), pbn1.latest_state
+    assert np.array_equal([[3] for _ in range(n_parallel)], pbn1._latest_state), pbn1._latest_state
 
 
 @pytest.mark.parametrize("n_parallel", [16, 32, 64, 128, 256, 512])
@@ -121,4 +121,4 @@ def test_large_n_parallel_async(n_parallel):
 
     pbn1.simple_steps(21, device="cpu")
 
-    assert np.array_equal([[3] for _ in range(n_parallel)], pbn1.latest_state), pbn1.latest_state
+    assert np.array_equal([[3] for _ in range(n_parallel)], pbn1._latest_state), pbn1._latest_state

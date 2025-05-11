@@ -14,5 +14,5 @@ pbn = PBN(n, nf, nv, F, varFInt, cij, perturbation, npNode)
 
 new_pbn = select_nodes(pbn, [0])
 
-print("new pbn truthtable - ", new_pbn.F)
-print("new pbn varFInt - ", new_pbn.varFInt)
+print("new pbn truthtable - ", new_pbn._f)
+print("new pbn varFInt - ", new_pbn._var_f_int)
