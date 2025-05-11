@@ -26,7 +26,7 @@ def find_attractors_realisation(
     reduced_pbn = select_nodes(network, nodes)
     reduced_pbn._n_parallel = len(initial_states)
 
-    attractors = reduced_pbn.monolithic_detect_attractors(initial_states)
+    attractors = reduced_pbn.monolithic_detect_attractors(initial_states, repr="int")
 
     len_nodes = len(nodes)
     list_bools = [

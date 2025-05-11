@@ -462,6 +462,10 @@ class PBN:
     def get_blocks(self, repr: Literal["bool"]) -> list[list[list[bool]]]:
         pass
 
+    @overload
+    def get_blocks(self) -> list[list[list[bool]]]:
+        pass
+
     def get_blocks(self, repr="bool"):
         """
         Returns the blocks of the PBN.
@@ -624,6 +628,10 @@ class PBN:
     def monolithic_detect_attractors(
         self, initial_states, repr: Literal["bool"]
     ) -> list[list[list[bool]]]:
+        pass
+
+    @overload
+    def monolithic_detect_attractors(self, initial_states) -> list[list[list[bool]]]:
         pass
 
     @overload
