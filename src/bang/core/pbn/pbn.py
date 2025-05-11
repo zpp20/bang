@@ -588,11 +588,11 @@ class PBN:
         if device == "cuda" and cuda.is_available():
             if self.save_history:
                 # batch simple_step executions to avoid allocating too much memory for history
-                for _ in range(n_steps // DEFAULT_STEPS_BATCH_SIZE):
-                    invoke_cuda_simulation(self, DEFAULT_STEPS_BATCH_SIZE, actions)
+                for _ in range(n_steps // self.steps_batch_size):
+                    invoke_cuda_simulation(self, self.steps_batch_size, actions)
 
-                if n_steps % DEFAULT_STEPS_BATCH_SIZE != 0:
-                    invoke_cuda_simulation(self, n_steps % DEFAULT_STEPS_BATCH_SIZE, actions)
+                if n_steps % self.steps_batch_size != 0:
+                    invoke_cuda_simulation(self, n_steps % self.steps_batch_size, actions)
             else:
                 invoke_cuda_simulation(self, n_steps, actions)
         elif device == "cuda" and not cuda.is_available():
