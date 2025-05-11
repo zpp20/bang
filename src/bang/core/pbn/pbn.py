@@ -405,7 +405,7 @@ class PBN:
         return convert_to_binary_representation(self._latest_state, self.n_nodes)
 
     @property
-    def trajectories(self) -> np.ndarray:
+    def history(self) -> np.ndarray:
         """
         Returns the execution history of the PBN, tracking the states of all trajectories.
 
@@ -426,7 +426,7 @@ class PBN:
         return self._previous_simulations
 
     @property
-    def trajectories_bool(self) -> list[list[list[bool]]]:
+    def history_bool(self) -> list[list[list[bool]]]:
         """
         Returns the execution history of the PBN in boolean representation.
 
@@ -735,9 +735,7 @@ class PBN:
         :rtype: graphviz.Digraph
         """
 
-        return draw_trajectory_ndarray(
-            self.trajectories[:, index, :], filename, format, show_labels
-        )
+        return draw_trajectory_ndarray(self.history[:, index, :], filename, format, show_labels)
 
     def block_graph(
         self, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
