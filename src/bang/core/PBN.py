@@ -739,11 +739,9 @@ class PBN:
         if not numpy_states:
             self.set_states(initial_states, reset_history=True)
         else:
-            self.n_parallel = len(initial_states)
+            self.n_parallel = initial_states.shape[0]
             self.latest_state = initial_states
-            self.history = np.array(initial_states).reshape(
-                (1, self.n_parallel, self.stateSize())
-            )
+            self.history = np.stack([initial_states], axis=0)
         history = self.get_last_state()
 
         state_bytes = tuple(state.tobytes() for state in self.get_last_state())
@@ -759,8 +757,8 @@ class PBN:
             history = np.hstack((history, self.get_last_state()))
 
         state_bytes_set = list(set(state_bytes))
-        ret_list = [np.frombuffer(state, dtype=np.int32)[0] for state in state_bytes_set]
-        return (np.array(ret_list), history)
+        ret_list = [np.frombuffer(state, dtype=np.int32) for state in state_bytes_set]
+        return (np.vstack(ret_list), history)
 
     def segment_attractor(self, attractor_states, history):
         active_states = attractor_states
