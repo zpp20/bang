@@ -1,4 +1,4 @@
-from bang.core.PBN import PBN
+from bang import PBN
 
 
 def test_save_history_true():
@@ -17,9 +17,9 @@ def test_save_history_true():
     )
     pbn.set_states([[True, False], [False, True]])
 
-    pbn.simple_steps_cpu(5)
+    pbn.simple_steps(5, device="cpu")
 
-    assert pbn.history.shape == (7, 2, 1), pbn.history
+    assert pbn._history.shape == (7, 2, 1), pbn._history
 
 
 def test_save_history_no_set_state():
@@ -36,9 +36,9 @@ def test_save_history_no_set_state():
         update_type="synchronous",
     )
 
-    pbn.simple_steps_cpu(5)
+    pbn.simple_steps(5, device="cpu")
 
-    assert pbn.history.shape == (6, 2, 1), pbn.history
+    assert pbn._history.shape == (6, 2, 1), pbn._history
 
 
 def test_save_history_false():
@@ -56,9 +56,9 @@ def test_save_history_false():
         save_history=False,
     )
 
-    pbn.simple_steps_cpu(5)
+    pbn.simple_steps(5, device="cpu")
 
-    assert pbn.history.shape == (1, 2, 1), pbn.history
+    assert pbn._history.shape == (1, 2, 1), pbn._history
 
 
 def test_save_history_false_set_state():
@@ -78,6 +78,6 @@ def test_save_history_false_set_state():
 
     pbn.set_states([[True, False], [False, True]])
 
-    pbn.simple_steps_cpu(5)
+    pbn.simple_steps(5, device="cpu")
 
-    assert pbn.history.shape == (2, 2, 1), pbn.history
+    assert pbn._history.shape == (2, 2, 1), pbn._history

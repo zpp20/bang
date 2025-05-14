@@ -39,9 +39,9 @@ def test_simple_step_large_nodeset(test_n_nodes, test_n_states):
         update_type="synchronous",
     )
 
-    pbn1.simple_steps_cpu(1)
+    pbn1.simple_steps(1, device="cpu")
 
-    last_state = pbn1.get_last_state()
+    last_state = pbn1.last_state
 
     expected = [[2**32 - 1 for _ in range(test_n_states)]]
 
@@ -87,9 +87,9 @@ def test_update_state_large_missing_pair(test_n_nodes, test_n_states):
         update_type="synchronous",
     )
 
-    pbn1.simple_steps_cpu(1)
+    pbn1.simple_steps(1, device="cpu")
 
-    last_state = pbn1.get_last_state()
+    last_state = pbn1.last_state
 
     expected = [[2**32 - 1 for _ in range(test_n_states - 1)] + [2**30 - 1]]
 
