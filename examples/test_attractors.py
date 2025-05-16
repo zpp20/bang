@@ -1,5 +1,5 @@
-from bang.core.cuda.attractor_search import divide_and_counquer
-from bang.core.PBN import PBN
+from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
+from bang.core.pbn.pbn import PBN
 
 SCP_PBN = PBN(
     3,
@@ -45,6 +45,6 @@ SCP_PBN3 = PBN(
     [3],
 )
 
-print(divide_and_counquer(SCP_PBN))
-print(divide_and_counquer(SCP_PBN2))
-print(divide_and_counquer(SCP_PBN3))
+print(divide_and_conquer(SCP_PBN))
+print(divide_and_conquer(SCP_PBN2))
+print(divide_and_conquer(SCP_PBN3))

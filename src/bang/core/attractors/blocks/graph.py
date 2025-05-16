@@ -1,4 +1,38 @@
-# import bang.parsing.assa
+import typing
+
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+
+
+class PBN_Node:
+    """Representation of a node in the PBN graph.
+
+    Attributes:
+    id: int  The id of the node.
+    name: str The name of the node.
+    current_value: int The current value of the node.
+    in_nodes: list   A list of indices of nodes that influence this node.
+    out_nodes: list  A list of indices of nodes that this node influences.
+    functions: list A list of functions that update the value of the node.
+    """
+
+    def __init__(self, id, pbn: "PBN", current_value, name=str(id)):
+        self.id = id
+        self.name = name
+        self.current_value = current_value
+        self.in_nodes = []
+        self.out_nodes = []
+
+        f_index = 0
+        while f_index < id:
+            f_index += pbn._nf[f_index]
+        self.functions = pbn._f[f_index : f_index + pbn._nf[id]]
+
+        # graph features
+        self.dfs_id: int | None = None
+        self.dfs_tree_size: int | None = None
+        self.scc_id: int | None = None
+        self.visited: bool = False
 
 
 class Graph_PBN:
@@ -13,25 +47,25 @@ class Graph_PBN:
 
     """
 
-    def __init__(self, pbn):
+    def __init__(self, pbn: "PBN"):
         self.pbn = pbn
-        self.nodes = {i: PBN_Node(i, pbn, 0) for i in range(pbn.n)}
+        self.nodes = {i: PBN_Node(i, pbn, 0) for i in range(pbn.n_nodes)}
         self.dfs_numbered = 0
 
         # assign in_nodes and out_nodes to each node
         current_count = 0
-        for i in range(pbn.n):  # for every variable
+        for i in range(pbn._n):  # for every variable
             for j in range(
-                current_count, current_count + pbn.nf[i]
+                current_count, current_count + pbn._nf[i]
             ):  # for every function of the variable
-                for k in pbn.varFInt[j]:  # for every variable that influences this function
+                for k in pbn._var_f_int[j]:  # for every variable that influences this function
                     # we disregard in which function the variable is influencing the current function;
                     # we just need to know that it influences it
                     self.nodes[i].in_nodes.append(k)
                     self.nodes[k].out_nodes.append(i)
-            current_count += pbn.nf[i]
+            current_count += pbn._nf[i]
 
-        for i in range(pbn.n):
+        for i in range(pbn._n):
             self.nodes[i].in_nodes = sorted(
                 list(set(self.nodes[i].in_nodes))
             )  # indices, not nodes! access nodes by self.nodes[i]
@@ -44,7 +78,7 @@ class Graph_PBN:
         self.block_children = []
 
     # dfs numbering functions
-    def dfs_aux(self, node):
+    def dfs_aux(self, node: PBN_Node):
         node.visited = True
         node.dfs_id = self.dfs_numbered
         self.dfs_numbered += 1
@@ -61,9 +95,12 @@ class Graph_PBN:
             if not node.visited:
                 self.dfs_aux(node)
 
-    def scc_aux(self, node, root_dfs):
+    def scc_aux(self, node: PBN_Node, root_dfs: PBN_Node):
         node.visited = True
         if node.scc_id is None:
+            assert node.dfs_id is not None and root_dfs.dfs_id is not None
+            assert root_dfs.dfs_tree_size is not None
+
             if (
                 node.dfs_id >= root_dfs.dfs_id
                 and node.dfs_id < root_dfs.dfs_id + root_dfs.dfs_tree_size
@@ -137,37 +174,6 @@ class Graph_PBN:
                 block += influencers
                 block = sorted(list(set(block)))
                 self.blocks.append(block)
-
-
-class PBN_Node:
-    """Representation of a node in the PBN graph.
-
-    Attributes:
-    id: int  The id of the node.
-    name: str The name of the node.
-    current_value: int The current value of the node.
-    in_nodes: list   A list of indices of nodes that influence this node.
-    out_nodes: list  A list of indices of nodes that this node influences.
-    functions: list A list of functions that update the value of the node.
-    """
-
-    def __init__(self, id, pbn, current_value, name=str(id)):
-        self.id = id
-        self.name = name
-        self.current_value = current_value
-        self.in_nodes = []
-        self.out_nodes = []
-
-        f_index = 0
-        while f_index < id:
-            f_index += pbn.nf[f_index]
-        self.functions = pbn.F[f_index : f_index + pbn.nf[id]]
-
-        # graph features
-        self.dfs_id = None
-        self.dfs_tree_size = None
-        self.scc_id = None
-        self.visited = False
 
 
 # Returns topologically sorted blocks of the PBN

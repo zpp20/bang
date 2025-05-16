@@ -1,5 +1,5 @@
 from bang.core import PBN
-from bang.graph.graph import Graph_PBN
+from bang.core.attractors.blocks.graph import Graph_PBN
 
 
 def setup_pbn():
