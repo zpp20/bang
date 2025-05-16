@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import typing
 
 if typing.TYPE_CHECKING:
     from bang.core import PBN
