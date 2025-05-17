@@ -5,32 +5,10 @@ import typing
 if typing.TYPE_CHECKING:
     from bang.core import PBN
 
-def _merge_attractors(network : "PBN", attractors):
-        sets = [set(arr) for arr in attractors]
-        merged = []
+from .count_states import count_states
+from .merge_attractors import merge_attractors
 
-        while sets:
-            current, *rest = sets
-            current = set(current)
-
-            changed = True
-            while changed:
-                changed = False
-                remaining = []
-                for s in rest:
-                    if current & s:  # If there is any overlap
-                        current |= s
-                        changed = True
-                    else:
-                        remaining.append(s)
-                rest = remaining
-
-            merged.append(np.array(list(current)))
-            sets = rest
-
-        return merged
-
-def monte_carlo(network : "PBN", num_steps : int, step_length : int, repetitions : int):
+def monte_carlo(network : "PBN", trajectory_length : int, minimum_repetitions : int, initial_trajectory_length : int):
         """
         Detect attractors of a BN by monte carlo approach of running multiple trajectories while checking for repeat states in history.
 
@@ -42,37 +20,42 @@ def monte_carlo(network : "PBN", num_steps : int, step_length : int, repetitions
 
 
         """
-        assert network.n_parallel < 2**network.n, "Warning! There are more concurrent trajectories than possible states"
+        assert network._n_parallel < 2**network._n, "Warning! There are more concurrent trajectories than possible states"
 
-        max_val = 2**network.n
+        max_val = 2**network._n
 
-        samples = random.sample(range(max_val), network.n_parallel)
+        samples = random.sample(range(max_val), network._n_parallel)
 
         def int_to_bool_list(integer, int_size):
             return [(integer >> i) & 1 == 1 for i in range(int_size)]
 
-        samples = [int_to_bool_list(sample, network.n) for sample in samples]
+        samples = [int_to_bool_list(sample, network._n) for sample in samples]
 
         network.set_states(states=samples, reset_history=True)
+        
+        network.save_history = False
 
-        for s in range(num_steps):
-            network.simple_steps(n_steps=step_length)
+        network.simple_steps(n_steps=initial_trajectory_length)
 
-        trajectories = network.get_trajectories()
+        network.save_history = True
+        
+        network.simple_steps(n_steps=trajectory_length)
+
+        trajectories = network.history
         trajectories = np.squeeze(trajectories).T
 
-        trajectories_state_count = network._count_states(trajectories)
+        trajectories_state_count = count_states(trajectories)
         detected_attractors = []
 
         for i, trajectory in enumerate(trajectories_state_count):
             max_value = max(trajectory,key=trajectory.get)
-            if trajectory[max_value] > repetitions:
+            if trajectory[max_value] > minimum_repetitions:
                 indices = np.where(trajectories[i] == max_value)[0]
                 first_index = indices[0]
                 attractor_trajectory = trajectories[i][first_index:]
                 attractor_states = np.unique(attractor_trajectory)
                 detected_attractors.append(attractor_states)
         
-        attractors = _merge_attractors(network, detected_attractors)
+        attractors = merge_attractors(detected_attractors)
 
         return attractors

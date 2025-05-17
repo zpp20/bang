@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
-from bang.core.attractors.monte_carlo import monte_carlo
+from bang.core.attractors.monte_carlo.monte_carlo import monte_carlo
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 from bang.core.attractors.blocks.graph import get_blocks
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
@@ -714,12 +714,12 @@ class PBN:
             list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
         
         """
-        attractors = monte_carlo(self)
+        attractors = monte_carlo(self, trajectory_length, minimum_repetitions, initial_trajectory_length)
 
-        if repr == "bool":
+        if repr == "int":
             return attractors
-        elif repr == "int":
-            return convert_from_binary_representation(attractors)
+        elif repr == "bool":
+            return convert_to_binary_representation(attractors, self._n)
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
@@ -798,7 +798,7 @@ def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
 
 
-def load_from_file(path: str, format: str = "sbml") -> PBN:
+def load_from_file(path: str, format: str = "sbml", n_parallel=512) -> PBN:
     """
     Loads a PBN from files of format .pbn or .sbml.
 
@@ -812,8 +812,8 @@ def load_from_file(path: str, format: str = "sbml") -> PBN:
     """
     match format:
         case "sbml":
-            return PBN(*load_sbml(path))
+            return PBN(*load_sbml(path), n_parallel=n_parallel)
         case "assa":
-            return PBN(*load_assa(path))
+            return PBN(*load_assa(path), n_parallel=n_parallel)
         case _:
             raise ValueError("Invalid format")
