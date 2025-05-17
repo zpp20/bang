@@ -690,7 +690,7 @@ class PBN:
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
-    def monte_carlo_detect_attractors(self, trajectory_length : int,  minimum_repetitions : int = 10, initial_trajectory_length : int = 10e6, repr='bool'):
+    def monte_carlo_detect_attractors(self, trajectory_length : int, attractor_length : int, repr='bool'):
         """
         Detects attractors in the system by running multiple trajectories and checking for repetitions.
 
@@ -698,15 +698,10 @@ class PBN:
         ----------
 
         trajectory_length : int 
-            Length of trajectories in attractor search.
+            Length after which we assume each trajectory is in attractor.
 
-        
-        minimum_repetitions : int
-            Specifies how often a state needs to repeat to be considered as attractor state
-
-        
         initial_trajectory_length : int, optional
-            Length of trajectories before attractor search. Defaults to 10e6.
+            Length of trajectory from which we read attractors.
 
         Returns
         -------
@@ -714,7 +709,7 @@ class PBN:
             list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
         
         """
-        attractors = monte_carlo(self, trajectory_length, minimum_repetitions, initial_trajectory_length)
+        attractors = monte_carlo(self, trajectory_length, attractor_length)
 
         if repr == "int":
             return attractors

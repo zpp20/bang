@@ -8,7 +8,7 @@ if typing.TYPE_CHECKING:
 from .count_states import count_states
 from .merge_attractors import merge_attractors
 
-def monte_carlo(network : "PBN", trajectory_length : int, minimum_repetitions : int, initial_trajectory_length : int):
+def monte_carlo(network : "PBN", initial_trajectory_length : int, trajectory_length : int):
         """
         Detect attractors of a BN by monte carlo approach of running multiple trajectories while checking for repeat states in history.
 
@@ -37,25 +37,27 @@ def monte_carlo(network : "PBN", trajectory_length : int, minimum_repetitions : 
 
         network.simple_steps(n_steps=initial_trajectory_length)
 
+
         network.save_history = True
         
         network.simple_steps(n_steps=trajectory_length)
 
         trajectories = network.history
         trajectories = np.squeeze(trajectories).T
+        trajectories = trajectories[::, 1:]
 
-        trajectories_state_count = count_states(trajectories)
-        detected_attractors = []
+        # trajectories_state_count = count_states(trajectories)
+        # detected_attractors = []
 
-        for i, trajectory in enumerate(trajectories_state_count):
-            max_value = max(trajectory,key=trajectory.get)
-            if trajectory[max_value] > minimum_repetitions:
-                indices = np.where(trajectories[i] == max_value)[0]
-                first_index = indices[0]
-                attractor_trajectory = trajectories[i][first_index:]
-                attractor_states = np.unique(attractor_trajectory)
-                detected_attractors.append(attractor_states)
+        # for i, trajectory in enumerate(trajectories_state_count):
+        #     max_value = max(trajectory,key=trajectory.get)
+        #     if trajectory[max_value] > minimum_repetitions:
+        #         indices = np.where(trajectories[i] == max_value)[0]
+        #         first_index = indices[0]
+        #         attractor_trajectory = trajectories[i][first_index:]
+        #         attractor_states = np.unique(attractor_trajectory)
+        #         detected_attractors.append(attractor_states)
         
-        attractors = merge_attractors(detected_attractors)
+        attractors = merge_attractors(trajectories)
 
         return attractors
