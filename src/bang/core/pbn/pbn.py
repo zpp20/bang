@@ -10,6 +10,7 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
+from bang.core.attractors.monte_carlo.monte_carlo import monte_carlo
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 from bang.core.attractors.blocks.graph import get_blocks
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
@@ -689,6 +690,35 @@ class PBN:
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
+    def monte_carlo_detect_attractors(self, trajectory_length : int, attractor_length : int, repr='bool'):
+        """
+        Detects attractors in the system by running multiple trajectories and checking for repetitions.
+
+        Parameters
+        ----------
+
+        trajectory_length : int 
+            Length after which we assume each trajectory is in attractor.
+
+        initial_trajectory_length : int, optional
+            Length of trajectory from which we read attractors.
+
+        Returns
+        -------
+        attractor_states : list[list[list[bool]]] or list[list[int]]
+            list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
+        
+        """
+        attractors = monte_carlo(self, trajectory_length, attractor_length)
+
+        if repr == "int":
+            return attractors
+        elif repr == "bool":
+            return convert_to_binary_representation(attractors, self._n)
+        else:
+            raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
+
+
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """
         Plot the dependency graph of a Probabilistic Boolean Network (PBN).
@@ -763,7 +793,7 @@ def load_sbml(path: str) -> tuple:
     return parseSBMLDocument(path)
 
 
-def load_from_file(path: str, format: str = "sbml") -> PBN:
+def load_from_file(path: str, format: str = "sbml", n_parallel=512) -> PBN:
     """
     Loads a PBN from files of format .pbn or .sbml.
 
@@ -777,8 +807,8 @@ def load_from_file(path: str, format: str = "sbml") -> PBN:
     """
     match format:
         case "sbml":
-            return PBN(*load_sbml(path))
+            return PBN(*load_sbml(path), n_parallel=n_parallel)
         case "assa":
-            return PBN(*load_assa(path))
+            return PBN(*load_assa(path), n_parallel=n_parallel)
         case _:
             raise ValueError("Invalid format")

@@ -1,0 +1,71 @@
+//The definition file always starts with type=synchronous.
+
+//It reserves the possibility for extension to asynchronous model.
+
+type=synchronous
+
+//specify number of nodes
+
+n=3
+
+//specify perturbation rate
+
+perturbation=0.0
+
+//We list the names of all nodes one by one below.
+
+//Each line specifies one node name.
+
+//The order of the names determines their orders in ASSA-PBN.
+
+//A node name can not start with a number.
+
+//The following characters are not allowed for a node name:
+
+//space, tab, &!j^= : ():
+
+nodeNames
+
+x0
+
+x1
+
+x2
+
+endNodeNames
+
+//We list the functions for each node one by one.
+
+//Each line contains 1 Boolean function.
+
+//It starts with a positive number denoting the selection
+
+//probability. The double number is separated with the remaining part
+
+//using ":". "0" is not allowed for probability. If the probabilities
+
+//for a node do not sum up to 1, they will be normalised.
+
+node x0
+
+1.0 : x0&x1
+
+endNode
+
+node x1
+
+1 : (!x2)&(x1|x0)
+
+endNode
+
+node x2
+
+1 : x0&x1&(!x2)
+
+endNode
+
+npNode
+
+x2
+
+endNpNode
