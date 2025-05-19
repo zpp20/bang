@@ -512,7 +512,7 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]], reset_history: bool = False):
+    def set_states(self, states: list[list[bool]] | npt.NDArray[np.uint32], reset_history: bool = False):
         """
         Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
         the history will be pushed into `self.previous_simulations` and the active history will be reset.
@@ -522,7 +522,7 @@ class PBN:
         :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
         :type reset_history: bool, optional
         """
-        converted_states = [self._bools_to_state_array(state, self._n) for state in states]
+        converted_states = [self._bools_to_state_array(state, self._n) for state in states] if isinstance(states, list) else states
 
         self._n_parallel = len(states)
         self._latest_state = np.array(converted_states).reshape((self._n_parallel, self.state_size))
