@@ -1,12 +1,11 @@
 import numpy as np
 
 
-def segment_attractors(attractor_states, history):
+def segment_attractors(attractor_states, history, n_nodes):
     active_states = attractor_states
     transition = dict()
 
     for trajectory in history:
-        # print(trajectory)
         for i in range(len(trajectory) - 1):
             if trajectory[i] in transition:
                 if transition[trajectory[i]] != trajectory[i + 1]:
@@ -15,11 +14,10 @@ def segment_attractors(attractor_states, history):
             transition[trajectory[i]] = trajectory[i + 1]
 
     num_states = len(active_states)
-
     attractors = []
 
     while num_states > 0:
-        initial_state = active_states[0]
+        initial_state = active_states[0][0] if n_nodes // 32 < 1 else active_states[0] 
 
         rm_idx = np.where(active_states == initial_state)[0]
         active_states = np.delete(active_states, rm_idx)
