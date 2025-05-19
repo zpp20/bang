@@ -14,6 +14,7 @@ from bang.core.attractors.monte_carlo.monte_carlo import monte_carlo
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 from bang.core.attractors.blocks.graph import get_blocks
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
+from bang.core.attractors.blocks.attractors_paralel import divide_and_counquer_gpu
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
 from bang.core.pbn.truthtable_reduction import reduce_F
@@ -689,6 +690,18 @@ class PBN:
             return convert_from_binary_representation(attractors)
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
+
+    def blocks_detect_attractors_parallel(self) -> list[npt.NDArray[np.uint32]]:
+        """
+        Detects attractors in the system using a divide-and-conquer block-based approach parallelized on the cpu as well as gpu.
+
+        Returns
+        -------
+        attractor_states : numpy.NDArray[np.uint32]
+            list of attractors where attractors are coded as 2D lists od 32 bit unsigned integers.
+        """
+
+        return divide_and_counquer_gpu(self)
 
     def monte_carlo_detect_attractors(self, trajectory_length : int, attractor_length : int, repr='bool'):
         """
