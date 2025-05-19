@@ -44,6 +44,7 @@ __pycache__
 .coverage
 .pytest_cache/
 .benchmarks
+tests/biodivine_db/*
 
 # documentation build artifacts
 
