@@ -80,7 +80,7 @@ def divide_and_counquer_gpu(network : PBN):
     for i in range(len(blocks)):
         threads.append(threading.Thread(target=block_thread, args=(
             i,
-            network,
+            network.clone_with(),
             semaphores, 
             blocks,
             attractors,
