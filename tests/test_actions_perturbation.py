@@ -1,6 +1,6 @@
 import numpy as np
 
-from bang.core.PBN import PBN
+from bang.core import PBN
 
 
 def test_should_perturb_at_index():

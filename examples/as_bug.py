@@ -18,4 +18,4 @@ pbn.set_states(initial_states, reset_history=True)
 
 pbn.simple_steps(1)
 
-print(pbn.get_last_state())
+print(pbn.last_state)
