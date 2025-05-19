@@ -1,4 +1,8 @@
-from bang.core.pbn.pbn import PBN
+import typing
+
+if typing.TYPE_CHECKING:
+    from bang.core import PBN
+    
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 import bang.core.attractors.blocks.graph as graph
 from itertools import product
@@ -22,7 +26,7 @@ def states(Block: list[int], state_size) -> np.ndarray:
 
 def block_thread(
     id :int,
-    pbn : PBN,
+    pbn : "PBN",
     semaphores :list[threading.Semaphore], 
     blocks :list[tuple[list[int], list[int]]] ,
     attractors :list[npt.NDArray[np.uint32]],
@@ -67,7 +71,7 @@ def get_elementary_blocks(blocks :list[tuple[list[int], list[int]]]) -> list[lis
         result.append(blocks[i][0] + reduce(add, [[]] + [result[j] for j in blocks[i][1]]))
     return result
 
-def divide_and_counquer_gpu(network : PBN):
+def divide_and_counquer_gpu(network : "PBN"):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks(True)
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks
@@ -93,4 +97,4 @@ def divide_and_counquer_gpu(network : PBN):
     for thread in threads:
         thread.join()
         
-    return attractors[len(blocks) - 1], attractors_cum_index[len(blocks) - 1]
+    return [attractors[-1][attractors_cum_index[-1][i] : attractors_cum_index[-1][i + 1]] for i in range(len(attractors_cum_index[-1]) - 1)]
