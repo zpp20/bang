@@ -1,5 +1,6 @@
-from bang.core.PBN import PBN
-import bang.graph.graph as graph
+from bang.core.pbn.pbn import PBN
+from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
+import bang.core.attractors.blocks.graph as graph
 from itertools import product
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +11,7 @@ from operator import add
 import numba.cuda
 
 def states(Block: list[int], state_size) -> np.ndarray:
-    states = np.zeros((2 ** len(Block), (state_size // 32) + 1), dtype=np.int32)
+    states = np.zeros((2 ** len(Block), (state_size // 32) + 1), dtype=np.uint32)
     bool_states = [[]]
     for node in Block:
         bool_states = [state + [False] for state in bool_states] + [state + [True] for state in bool_states]
@@ -24,8 +25,8 @@ def block_thread(
     pbn : PBN,
     semaphores :list[threading.Semaphore], 
     blocks :list[tuple[list[int], list[int]]] ,
-    attractors :list[npt.NDArray[np.int32]],
-    attractors_cum_index :list[npt.NDArray[np.int32]],
+    attractors :list[npt.NDArray[np.uint32]],
+    attractors_cum_index :list[npt.NDArray[np.uint32]],
     elementary_blocks :list[list[int]]
     ):
     
@@ -37,24 +38,24 @@ def block_thread(
         
     if len(blocks[id][1]) != 0:
         initial_states = corss_attractors_gpu(
-            [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n)],
-            [attractors_cum_index[i] for i in blocks[id][1]] + [np.array([0, 2 ** len(blocks[id][0])], dtype=np.int32)],
+            [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n_nodes)],
+            [attractors_cum_index[i] for i in blocks[id][1]] + [np.array([0, 2 ** len(blocks[id][0])], dtype=np.uint32)],
             [list(zip(elementary_blocks[i], [i] * len(elementary_blocks[i]))) for i in blocks[id][1]] + [list(zip(blocks[id][0], len(blocks[id][0]) * [id]))]
             )[0]
     else:
-        initial_states = states(elementary_blocks[id], pbn.n)
+        initial_states = states(elementary_blocks[id], pbn.n_nodes)
     
-    attractors_tmp = [pbn.detect_attractor(initial_states, True, thread_stream)[0]]# pbn.segment_attractor(*pbn.detect_attractor(initial_states, True, thread_stream))
-
-    attractors_cum_index[id] = np.zeros((len(attractors_tmp) + 1,), dtype=np.int32)    
+    attractors_tmp = monolithic_detect_attractor(pbn, initial_states, "np.int(32)")
+    
+    attractors_cum_index[id] = np.zeros((len(attractors_tmp) + 1,), dtype=np.uint32)    
     for i in range(len(attractors_tmp)):
         attractors_cum_index[id][i] = attractors_cum_index[id][i - 1] + len(attractors_tmp[i]) if i > 0 else 0
     
-    attractors[id] = np.zeros((attractors_cum_index[id][-2] + len(attractors_tmp[-1]), (pbn.n // 32) + 1), dtype=np.int32)
+    attractors[id] = np.zeros((attractors_cum_index[id][-2] + len(attractors_tmp[-1]), (pbn.n_nodes // 32) + 1), dtype=np.uint32)
     attractors_cum_index[id][-1] = attractors[id].shape[0]
     
     for i in range(len(attractors_tmp)):
-        attractors[id][attractors_cum_index[id][i]:attractors_cum_index[id][i + 1]] = attractors_tmp[i]
+        attractors[id][attractors_cum_index[id][i]:attractors_cum_index[id][i + 1]] = np.array(attractors_tmp[i]).reshape((len(attractors_tmp[i]), (pbn.n_nodes // 32) + 1))
     
     for sem in [semaphores[j] for j in range(len(blocks)) if id in blocks[j][1]]:
         sem.release()
@@ -72,8 +73,8 @@ def divide_and_counquer_gpu(network : PBN):
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks
     elementery_blocks = get_elementary_blocks(blocks)
     semaphores = [threading.Semaphore(0) for block, children in blocks]
-    attractors :list[npt.NDArray[np.int32]] = [np.zeros((2, 2), dtype=np.int32) for block in blocks]
-    attractors_cum_index :list[npt.NDArray[np.int32]] = [np.zeros((2, 2), dtype=np.int32) for block in blocks]
+    attractors :list[npt.NDArray[np.uint32]] = [np.zeros((2, 2), dtype=np.uint32) for block in blocks]
+    attractors_cum_index :list[npt.NDArray[np.uint32]] = [np.zeros((2, 2), dtype=np.uint32) for block in blocks]
     threads :list[threading.Thread] = []
     
     for i in range(len(blocks)):
