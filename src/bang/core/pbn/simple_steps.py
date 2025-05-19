@@ -23,7 +23,7 @@ from bang.core.simulation.cuda import (
 )
 
 
-def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None):
+def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None, stream = cuda.default_stream()):
     if pbn._latest_state is None or pbn._history is None:
         raise ValueError("Initial state must be set before simulation")
 
@@ -54,7 +54,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
     blockSize = 32
 
     if pbn.update_type == "asynchronous_one_random":
-        kernel_converge_async_one_random[block, blockSize](  # type: ignore
+        kernel_converge_async_one_random[block, blockSize, stream](  # type: ignore
             pbn._gpu_memory_container.gpu_stateHistory,
             pbn._gpu_memory_container.gpu_threadNum,
             pbn._gpu_memory_container.gpu_powNum,
@@ -79,7 +79,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.save_history,
         )
     elif pbn.update_type == "asynchronous_random_order":
-        kernel_converge_async_random_order[block, blockSize](  # type: ignore
+        kernel_converge_async_random_order[block, blockSize, stream](  # type: ignore
             pbn._gpu_memory_container.gpu_stateHistory,
             pbn._gpu_memory_container.gpu_threadNum,
             pbn._gpu_memory_container.gpu_powNum,
@@ -104,7 +104,7 @@ def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uin
             pbn.save_history,
         )
     elif pbn.update_type == "synchronous":
-        kernel_converge_sync[block, blockSize](  # type: ignore
+        kernel_converge_sync[block, blockSize, stream](  # type: ignore
             pbn._gpu_memory_container.gpu_stateHistory,
             pbn._gpu_memory_container.gpu_threadNum,
             pbn._gpu_memory_container.gpu_powNum,
