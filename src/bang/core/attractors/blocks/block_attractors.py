@@ -1,6 +1,6 @@
 import typing
 
-from bang.core.attractors.blocks.crossing import cross_attractors
+from bang.core.attractors.blocks.crossing import cross_attractors_cpu
 from bang.core.attractors.blocks.node_selection import select_nodes
 
 if typing.TYPE_CHECKING:
@@ -88,14 +88,14 @@ def find_block_attractors(
     while True:
         attractor, nodes = child_attractors[0][0][indices[0]], child_attractors[0][1]
         for i in range(len(child_attractors) - 1):
-            attractor, nodes = cross_attractors(
+            attractor, nodes = cross_attractors_cpu(
                 attractor,
                 nodes,
                 child_attractors[i + 1][0][indices[i + 1]],
                 child_attractors[i + 1][1],
             )
         result += find_attractors_realisation(
-            network, *cross_attractors(states(Block), Block, attractor, nodes)
+            network, *cross_attractors_cpu(states(Block), Block, attractor, nodes)
         )
         if not inc():
             break
