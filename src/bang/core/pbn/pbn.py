@@ -167,9 +167,9 @@ class PBN:
             else self.steps_batch_size,
         )
 
-    def _create_memory_container(self):
+    def _create_memory_container(self, stream = cuda.default_stream()):
         self._gpu_memory_container = GpuMemoryContainer(
-            self, self.steps_batch_size, self.save_history
+            self, self.steps_batch_size, self.save_history, stream
         )
 
     def __str__(self):
@@ -512,7 +512,7 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]] | npt.NDArray[np.uint32], reset_history: bool = False):
+    def set_states(self, states: list[list[bool]] | npt.NDArray[np.uint32], reset_history: bool = False, stream = cuda.default_stream()):
         """
         Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
         the history will be pushed into `self.previous_simulations` and the active history will be reset.
@@ -548,7 +548,7 @@ class PBN:
                 )
 
         if cuda.is_available():
-            self._create_memory_container()
+            self._create_memory_container(stream=stream)
 
     def reduce_truthtables(self, states: list[list[int]]) -> tuple:
         """

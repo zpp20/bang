@@ -29,7 +29,7 @@ def monolithic_detect_attractor(pbn: "PBN", initial_states, states_repr = "bool"
         pbn if pbn.update_type == "synchronous" else pbn.clone_with(update_type="synchronous")
     )
     
-    sync_pbn.set_states(initial_states, reset_history=True)
+    sync_pbn.set_states(initial_states, reset_history=True, stream=stream)
 
     history = sync_pbn.last_state
 

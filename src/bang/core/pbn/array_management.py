@@ -93,7 +93,7 @@ def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True)
 
 
 class GpuMemoryContainer:
-    def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True):
+    def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True, stream = cuda.default_stream()):
         pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, save_history)
 
         (
@@ -118,22 +118,22 @@ class GpuMemoryContainer:
             non_perturbed_count,
         ) = pbn_data
 
-        self.gpu_cumNv = cuda.to_device(cum_variable_count)
-        self.gpu_F = cuda.to_device(functions)
-        self.gpu_varF = cuda.to_device(function_variables)
-        self.gpu_initialState = cuda.to_device(initial_state)
-        self.gpu_stateHistory = cuda.to_device(state_history)
-        self.gpu_threadNum = cuda.to_device(thread_num)
-        self.gpu_steps = cuda.to_device(steps)
-        self.gpu_stateSize = cuda.to_device(state_size)
-        self.gpu_extraF = cuda.to_device(extra_functions)
-        self.gpu_extraFIndex = cuda.to_device(extra_functions_index)
-        self.gpu_cumExtraF = cuda.to_device(cum_extra_functions)
-        self.gpu_extraFCount = cuda.to_device(extra_function_count)
-        self.gpu_extraFIndexCount = cuda.to_device(extra_function_index_count)
-        self.gpu_npNode = cuda.to_device(perturbation_blacklist)
-        self.gpu_npLength = cuda.to_device(non_perturbed_count)
-        self.gpu_cumCij = cuda.to_device(function_probabilities)
-        self.gpu_cumNf = cuda.to_device(cum_function_count)
-        self.gpu_perturbation_rate = cuda.to_device(perturbation_rate)
-        self.gpu_powNum = cuda.to_device(pow_num)
+        self.gpu_cumNv = cuda.to_device(cum_variable_count, stream)
+        self.gpu_F = cuda.to_device(functions, stream)
+        self.gpu_varF = cuda.to_device(function_variables, stream)
+        self.gpu_initialState = cuda.to_device(initial_state, stream)
+        self.gpu_stateHistory = cuda.to_device(state_history, stream)
+        self.gpu_threadNum = cuda.to_device(thread_num, stream)
+        self.gpu_steps = cuda.to_device(steps, stream)
+        self.gpu_stateSize = cuda.to_device(state_size, stream)
+        self.gpu_extraF = cuda.to_device(extra_functions, stream)
+        self.gpu_extraFIndex = cuda.to_device(extra_functions_index, stream)
+        self.gpu_cumExtraF = cuda.to_device(cum_extra_functions, stream)
+        self.gpu_extraFCount = cuda.to_device(extra_function_count, stream)
+        self.gpu_extraFIndexCount = cuda.to_device(extra_function_index_count, stream)
+        self.gpu_npNode = cuda.to_device(perturbation_blacklist, stream)
+        self.gpu_npLength = cuda.to_device(non_perturbed_count, stream)
+        self.gpu_cumCij = cuda.to_device(function_probabilities, stream)
+        self.gpu_cumNf = cuda.to_device(cum_function_count, stream)
+        self.gpu_perturbation_rate = cuda.to_device(perturbation_rate, stream)
+        self.gpu_powNum = cuda.to_device(pow_num, stream)
