@@ -44,7 +44,9 @@ def block_thread(
         initial_states = corss_attractors_gpu(
             [attractors[i] for i in blocks[id][1]] + [states(blocks[id][0], pbn.n_nodes)],
             [attractors_cum_index[i] for i in blocks[id][1]] + [np.array([0, 2 ** len(blocks[id][0])], dtype=np.uint32)],
-            [list(zip(elementary_blocks[i], [i] * len(elementary_blocks[i]))) for i in blocks[id][1]] + [list(zip(blocks[id][0], len(blocks[id][0]) * [id]))]
+            [list(zip(elementary_blocks[i], [i] * len(elementary_blocks[i]))) for i in blocks[id][1]] + [list(zip(blocks[id][0], len(blocks[id][0]) * [id]))],
+            thread_stream,
+            (pbn.n_nodes // 32) + 1
             )[0]
     else:
         initial_states = states(elementary_blocks[id], pbn.n_nodes)
@@ -75,7 +77,7 @@ def divide_and_counquer_gpu(network : "PBN"):
     PBN_graph = graph.Graph_PBN(network)
     PBN_graph.find_scc_and_blocks(True)
     blocks :list[tuple[list[int], list[int]]] = PBN_graph.blocks
-    elementery_blocks = get_elementary_blocks(blocks)
+    elementary_blocks = get_elementary_blocks(blocks)
     semaphores = [threading.Semaphore(0) for block, children in blocks]
     attractors :list[npt.NDArray[np.uint32]] = [np.zeros((2, 2), dtype=np.uint32) for block in blocks]
     attractors_cum_index :list[npt.NDArray[np.uint32]] = [np.zeros((2, 2), dtype=np.uint32) for block in blocks]
@@ -89,7 +91,7 @@ def divide_and_counquer_gpu(network : "PBN"):
             blocks,
             attractors,
             attractors_cum_index,
-            elementery_blocks
+            elementary_blocks
             )))
     for thread in threads:
         thread.start()
@@ -97,4 +99,12 @@ def divide_and_counquer_gpu(network : "PBN"):
     for thread in threads:
         thread.join()
         
-    return [attractors[-1][attractors_cum_index[-1][i] : attractors_cum_index[-1][i + 1]] for i in range(len(attractors_cum_index[-1]) - 1)]
+    final_blocks = [i for i in range(len(blocks)) if not any([block for block in blocks if i in block[1]])]
+    attr_res, attr_res_index = corss_attractors_gpu(
+        [attractors[i] for i in final_blocks],
+        [attractors_cum_index[i] for i in final_blocks],
+        [list(zip(elementary_blocks[i], [i] * len(elementary_blocks[i]))) for i in final_blocks],
+        (network.n_nodes + 32) // 1
+    ) if len(final_blocks) > 1 else attractors[-1], attractors_cum_index[-1]
+        
+    return [attr_res[attr_res_index[i] : attr_res_index[i + 1]] for i in range(len(attr_res_index) - 1)]

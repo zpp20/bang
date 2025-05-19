@@ -701,7 +701,7 @@ class PBN:
             list of attractors where attractors are coded as 2D lists od 32 bit unsigned integers.
         """
 
-        return divide_and_counquer_gpu(self)
+        return divide_and_counquer_gpu(self) #type: ignore
 
     def monte_carlo_detect_attractors(self, trajectory_length : int, attractor_length : int, repr='bool'):
         """
