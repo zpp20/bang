@@ -7,7 +7,7 @@ if typing.TYPE_CHECKING:
     from bang.core import PBN
 
 from bang.core.attractors.blocks.block_attractors import find_block_attractors
-from bang.core.attractors.blocks.crossing import cross_attractors
+from bang.core.attractors.blocks.crossing import cross_attractors_cpu
 
 
 def get_all_nodes(blocks: list[tuple[list[int], list[int]]], i: int) -> list[int]:
@@ -50,7 +50,7 @@ def divide_and_conquer(network: "PBN"):
     result, nodes = attractors[max]
     for i in range(max + 1, len(attractors)):
         result = [
-            cross_attractors(x, nodes, y, attractors[i][1])[0]
+            cross_attractors_cpu(x, nodes, y, attractors[i][1])[0]
             for x, y in product(result, attractors[i][0])
         ]
         nodes = list(set(nodes + attractors[i][1]))
