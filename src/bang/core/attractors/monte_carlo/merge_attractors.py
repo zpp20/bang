@@ -1,23 +1,33 @@
 import numpy as np
+from collections import defaultdict
 
+class UnionFind:
+    def __init__(self):
+        self.parent = {}
+
+    def find(self, x):
+        if self.parent.setdefault(x, x) != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):
+        self.parent[self.find(x)] = self.find(y)
 
 def merge_attractors(attractors):
-        sets = [set(arr) for arr in attractors]
-        merged = []
-        while sets:
-            current, *rest = sets
-            current = set(current)
-            changed = True
-            while changed:
-                changed = False
-                remaining = []
-                for s in rest:
-                    if current & s:  # If there is any overlap
-                        current |= s
-                        changed = True
-                    else:
-                        remaining.append(s)
-                rest = remaining
-            merged.append(np.array(list(current)))
-            sets = rest
-        return merged
+    attractor_sets = [set(attractor) for attractor in attractors]
+    uf = UnionFind()
+
+    for attractor in attractor_sets:
+        it = iter(attractor)
+        first = next(it)
+
+        for item in it:
+            uf.union(first, item)
+
+    merged_attractors = defaultdict(set)
+    for attractor in attractor_sets:
+        for state in attractor:
+            root = uf.find(state)
+            merged_attractors[root].add(state)
+
+    return [np.array(list(merged_attractor)) for merged_attractor in merged_attractors.values()]

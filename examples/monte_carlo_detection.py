@@ -10,7 +10,6 @@ attr = pbn.monte_carlo_detect_attractors(trajectory_length= 200, attractor_lengt
 
 print(attr)
 
-
 attr = pbn.monte_carlo_detect_attractors(trajectory_length= 200, attractor_length=100, repr='int')
 
 print(attr)
