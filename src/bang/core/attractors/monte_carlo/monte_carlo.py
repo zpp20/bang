@@ -22,21 +22,12 @@ def monte_carlo(network : "PBN", initial_trajectory_length : int, trajectory_len
         """
         assert network._n_parallel < 2**network._n, "Warning! There are more concurrent trajectories than possible states"
 
-        max_val = 2**network._n
-
-        samples = random.sample(range(max_val), network._n_parallel)
-
-        def int_to_bool_list(integer, int_size):
-            return [(integer >> i) & 1 == 1 for i in range(int_size)]
-
-        samples = [int_to_bool_list(sample, network._n) for sample in samples]
+        samples = [[random.choice([True, False]) for _ in range(network._n)] for _ in range(network._n_parallel)]
 
         network.set_states(states=samples, reset_history=True)
-        
-        network.save_history = False
+        network.save_history = True
 
         network.simple_steps(n_steps=initial_trajectory_length)
-
 
         network.save_history = True
         
