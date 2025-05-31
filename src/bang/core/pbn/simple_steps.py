@@ -23,7 +23,12 @@ from bang.core.simulation.cuda import (
 )
 
 
-def invoke_cuda_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint] | None = None, stream = cuda.default_stream()):
+def invoke_cuda_simulation(
+    pbn: "PBN",
+    n_steps: int,
+    actions: npt.NDArray[np.uint] | None = None,
+    stream=cuda.default_stream(),
+):
     if pbn._latest_state is None or pbn._history is None:
         raise ValueError("Initial state must be set before simulation")
 

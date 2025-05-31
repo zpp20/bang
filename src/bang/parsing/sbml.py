@@ -32,7 +32,9 @@ def parseSBMLDocument(path: str):
     nodes = enumerateNodes(qual_model)
     nf = [1 for n in nodes]
 
-    for node_idx, transition in enumerate(qual_model.getListOfTransitions()):  # Scan all the transitions.
+    for node_idx, transition in enumerate(
+        qual_model.getListOfTransitions()
+    ):  # Scan all the transitions.
         # Get the output variable
         # output = transition.getListOfOutputs()
         logic_terms = transition.getListOfFunctionTerms()

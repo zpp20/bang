@@ -1,7 +1,7 @@
-import subprocess
-import itertools
 import csv
+import itertools
 import re
+import subprocess
 
 # Grid of parameters to benchmark
 update_types = ["synchronous", "asynchronous_one_random", "asynchronous_random_order"]
@@ -9,7 +9,7 @@ n_steps_list = [1000, 5000, 10000]
 n_steps_list = [100, 1000]
 save_history = [False]
 n_nodes_list = [16, 32, 64, 128, 256]
-n_nodes_list=[64]
+n_nodes_list = [64]
 n_parallels = [64, 256, 1024, 2048, 4096, 8192, 16384]
 
 script_path = "bencher.py"
@@ -33,36 +33,44 @@ elapsed_time_pattern = re.compile(r"Elapsed kernel execution time:\s*([\d.]+)\s*
 
 with open(output_csv, mode="w", newline="") as csvfile:
     csvwriter = csv.writer(csvfile)
-    csvwriter.writerow([
-        "update_type", "n_steps", "save_history", "n_nodes", "n_parallel", "elapsed_time_ms"
-    ])
+    csvwriter.writerow(
+        ["update_type", "n_steps", "save_history", "n_nodes", "n_parallel", "elapsed_time_ms"]
+    )
 
-    param_combinations = itertools.product(update_types, n_steps_list, save_history, n_nodes_list, n_parallels)
+    param_combinations = itertools.product(
+        update_types, n_steps_list, save_history, n_nodes_list, n_parallels
+    )
 
     for update_type, n_steps, save_history, n_nodes, n_parallel in param_combinations:
-
         # If a start_from is defined, skip until we match
         if start_from is not None and not start_found:
-            if (update_type == start_from["update_type"] and
-                n_steps == start_from["n_steps"] and
-                save_history == start_from["save_history"] and
-                n_nodes == start_from["n_nodes"] and
-                n_parallel == start_from["n_parallel"]):
+            if (
+                update_type == start_from["update_type"]
+                and n_steps == start_from["n_steps"]
+                and save_history == start_from["save_history"]
+                and n_nodes == start_from["n_nodes"]
+                and n_parallel == start_from["n_parallel"]
+            ):
                 start_found = True
             else:
                 continue
 
         cmd = [
-            "python", script_path,
-            "--update_type", update_type,
-            "--n_steps", str(n_steps),
-            "--n_nodes", str(n_nodes),
-            "--n_parallel", str(n_parallel),
-            "--cpu"
+            "python",
+            script_path,
+            "--update_type",
+            update_type,
+            "--n_steps",
+            str(n_steps),
+            "--n_nodes",
+            str(n_nodes),
+            "--n_parallel",
+            str(n_parallel),
+            "--cpu",
         ]
 
         if save_history:
-          cmd += ["--save_history"]
+            cmd += ["--save_history"]
 
         retry = True
         n_retries = 0
@@ -84,7 +92,7 @@ with open(output_csv, mode="w", newline="") as csvfile:
                 time_start_index = 0 if "--cpu" in cmd else 1
 
                 for time in m[time_start_index:]:
-                  elapsed_time += float(time)
+                    elapsed_time += float(time)
 
                 print(f"Total elapsed time found: {elapsed_time:.3f} ms")
                 print(f"stdout:\n{stdout}")
@@ -97,8 +105,6 @@ with open(output_csv, mode="w", newline="") as csvfile:
             n_retries += 1
 
         # Write results to CSV
-        csvwriter.writerow([
-            update_type, n_steps, save_history, n_nodes, n_parallel, elapsed_time
-        ])
+        csvwriter.writerow([update_type, n_steps, save_history, n_nodes, n_parallel, elapsed_time])
 
 print("Benchmarking complete")

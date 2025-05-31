@@ -1,20 +1,35 @@
 import argparse
-import bang
+import time
+
 from numba import cuda
 
-import time
+import bang
+
 
 def main():
     # config.DISABLE_JIT = True
     # os.environ["NUMBA_DISABLE_JIT"] = "1"
 
-    parser = argparse.ArgumentParser(description="Run a BANG PBN simulation with configurable parameters.")
-    parser.add_argument("--update_type", type=str, default="synchronous", help="Type of update (e.g., synchronous, asynchronous)")
+    parser = argparse.ArgumentParser(
+        description="Run a BANG PBN simulation with configurable parameters."
+    )
+    parser.add_argument(
+        "--update_type",
+        type=str,
+        default="synchronous",
+        help="Type of update (e.g., synchronous, asynchronous)",
+    )
     parser.add_argument("--n_steps", type=int, default=10000, help="Number of steps to simulate")
     parser.add_argument("--save_history", help="Whether to save history", action="store_true")
     parser.add_argument("--n_nodes", type=int, default=256, help="Number of nodes in the network")
-    parser.add_argument("--n_parallel", type=int, default=1024 * 8, help="Number of parallel simulations")
-    parser.add_argument("--cpu", help="Whether to conduct the benchmark on the CPU instead of GPU", action="store_true")
+    parser.add_argument(
+        "--n_parallel", type=int, default=1024 * 8, help="Number of parallel simulations"
+    )
+    parser.add_argument(
+        "--cpu",
+        help="Whether to conduct the benchmark on the CPU instead of GPU",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
@@ -53,20 +68,18 @@ def main():
         n_parallel=args.n_parallel,
         update_type=args.update_type,
         save_history=args.save_history,
-        steps_batch_size=50000
+        steps_batch_size=50000,
     )
 
     print("shape state history", pbn2.history.shape)
     print("save history", pbn2.save_history)
 
-
-
     if args.cpu:
         # dry run
-        pbn2.simple_steps(args.n_steps, device='cpu')
+        pbn2.simple_steps(args.n_steps, device="cpu")
 
         start = time.process_time()
-        pbn2.simple_steps(args.n_steps, device='cpu')
+        pbn2.simple_steps(args.n_steps, device="cpu")
         end = time.process_time()
 
         print("Elapsed kernel execution time:", (end - start) * 1000, "ms")
@@ -75,11 +88,10 @@ def main():
         pbn2.simple_steps(args.n_steps)
         pbn2.simple_steps(args.n_steps)
 
-
-
     print("\nSimulation complete.")
 
     cuda.close()
+
 
 if __name__ == "__main__":
     main()

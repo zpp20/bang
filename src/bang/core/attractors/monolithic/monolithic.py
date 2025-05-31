@@ -1,7 +1,7 @@
 import typing
 
-import numpy as np
 import numba.cuda as cu
+import numpy as np
 
 if typing.TYPE_CHECKING:
     from bang.core import PBN
@@ -9,7 +9,9 @@ if typing.TYPE_CHECKING:
 from bang.core.attractors.monolithic.segmentation import segment_attractors
 
 
-def monolithic_detect_attractor(pbn: "PBN", initial_states, states_repr = "bool", stream = cu.default_stream()):
+def monolithic_detect_attractor(
+    pbn: "PBN", initial_states, states_repr="bool", stream=cu.default_stream()
+):
     """
     Detects all atractor states in PBN
 
@@ -28,7 +30,7 @@ def monolithic_detect_attractor(pbn: "PBN", initial_states, states_repr = "bool"
     sync_pbn = (
         pbn if pbn.update_type == "synchronous" else pbn.clone_with(update_type="synchronous")
     )
-    
+
     sync_pbn.set_states(initial_states, reset_history=True, stream=stream)
 
     history = sync_pbn.last_state

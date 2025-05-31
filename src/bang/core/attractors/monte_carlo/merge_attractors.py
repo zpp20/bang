@@ -1,5 +1,7 @@
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
+
 
 class UnionFind:
     def __init__(self):
@@ -12,6 +14,7 @@ class UnionFind:
 
     def union(self, x, y):
         self.parent[self.find(x)] = self.find(y)
+
 
 def merge_attractors(attractors):
     attractor_sets = [set(attractor) for attractor in attractors]
