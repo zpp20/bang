@@ -12,8 +12,8 @@ import numpy as np
 import numpy.typing as npt
 
 import bang.core.attractors.blocks.graph as graph
-from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 from bang.core.attractors.blocks.crossing import cross_attractors_gpu
+from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
 
 
 def states(Block: list[int], state_size) -> np.ndarray:

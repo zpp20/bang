@@ -9,9 +9,7 @@ if typing.TYPE_CHECKING:
 from bang.core.attractors.monolithic.segmentation import segment_attractors
 
 
-def monolithic_detect_attractor(
-    pbn: "PBN", initial_states, states_repr="bool", stream=cu.default_stream()
-):
+def monolithic_detect_attractor(pbn: "PBN", initial_states, states_repr="bool", stream=None):
     """
     Detects all atractor states in PBN
 
@@ -26,6 +24,8 @@ def monolithic_detect_attractor(
         List of states where attractors are coded as ints
 
     """
+    if cu.is_available() and stream is None:
+        stream = cu.default_stream()
 
     sync_pbn = (
         pbn if pbn.update_type == "synchronous" else pbn.clone_with(update_type="synchronous")

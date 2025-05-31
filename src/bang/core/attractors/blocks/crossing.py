@@ -104,9 +104,12 @@ def cross_attractors_gpu(
     attractor_list: list[npt.NDArray[np.uint32]],
     attractor_cum_index: list[npt.NDArray[np.uint32]],
     nodes: list[list[tuple[int, int]]],
-    stream=cuda.default_stream(),
+    stream=None,
     int_size=1,
 ):
+    if stream is None:
+        stream = cuda.default_stream()
+
     attractors_global = cuda.to_device(
         np.concatenate(attractor_list, dtype=np.uint32), stream=stream
     )

@@ -7,7 +7,7 @@ if typing.TYPE_CHECKING:
     from bang.core import PBN
 
 # from .count_states import count_states
-from .merge_attractors import merge_attractors
+from bang.core.attractors.monte_carlo.merge_attractors import merge_attractors
 
 
 def monte_carlo(network: "PBN", initial_trajectory_length: int, trajectory_length: int):
