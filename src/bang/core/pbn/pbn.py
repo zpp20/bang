@@ -10,11 +10,11 @@ import numpy as np
 import numpy.typing as npt
 from numba import cuda
 
-from bang.core.attractors.monte_carlo.monte_carlo import monte_carlo
+from bang.core.attractors.blocks.attractors_paralel import divide_and_counquer_gpu
 from bang.core.attractors.blocks.divide_and_conquer import divide_and_conquer
 from bang.core.attractors.blocks.graph import get_blocks
 from bang.core.attractors.monolithic.monolithic import monolithic_detect_attractor
-from bang.core.attractors.blocks.attractors_paralel import divide_and_counquer_gpu
+from bang.core.attractors.monte_carlo.monte_carlo import monte_carlo
 from bang.core.pbn.array_management import GpuMemoryContainer
 from bang.core.pbn.simple_steps import invoke_cpu_simulation, invoke_cuda_simulation
 from bang.core.pbn.truthtable_reduction import reduce_F
@@ -168,7 +168,10 @@ class PBN:
             else self.steps_batch_size,
         )
 
-    def _create_memory_container(self, stream = cuda.default_stream()):
+    def _create_memory_container(self, stream=None):
+        if stream is None:
+            stream = cuda.default_stream()
+
         self._gpu_memory_container = GpuMemoryContainer(
             self, self.steps_batch_size, self.save_history, stream
         )
@@ -513,7 +516,12 @@ class PBN:
 
         return integer_state
 
-    def set_states(self, states: list[list[bool]] | npt.NDArray[np.uint32], reset_history: bool = False, stream = cuda.default_stream()):
+    def set_states(
+        self,
+        states: list[list[bool]] | npt.NDArray[np.uint32],
+        reset_history: bool = False,
+        stream=None,
+    ):
         """
         Sets the initial states of the PBN. If the number of trajectories is different than the number of previous trajectories,
         the history will be pushed into `self.previous_simulations` and the active history will be reset.
@@ -523,7 +531,11 @@ class PBN:
         :param reset_history: If True, the history of the PBN will be reset. Defaults to False.
         :type reset_history: bool, optional
         """
-        converted_states = [self._bools_to_state_array(state, self._n) for state in states] if isinstance(states, list) else states
+        converted_states = (
+            [self._bools_to_state_array(state, self._n) for state in states]
+            if isinstance(states, list)
+            else states
+        )
 
         self._n_parallel = len(states)
         self._latest_state = np.array(converted_states).reshape((self._n_parallel, self.state_size))
@@ -549,6 +561,9 @@ class PBN:
                 )
 
         if cuda.is_available():
+            if stream is None:
+                stream = cuda.default_stream()
+
             self._create_memory_container(stream=stream)
 
     def reduce_truthtables(self, states: list[list[int]]) -> tuple:
@@ -701,16 +716,18 @@ class PBN:
             list of attractors where attractors are coded as 2D lists od 32 bit unsigned integers.
         """
 
-        return divide_and_counquer_gpu(self) #type: ignore
+        return divide_and_counquer_gpu(self)  # type: ignore
 
-    def monte_carlo_detect_attractors(self, trajectory_length : int, attractor_length : int, repr='bool'):
+    def monte_carlo_detect_attractors(
+        self, trajectory_length: int, attractor_length: int, repr="bool"
+    ):
         """
         Detects attractors in the system by running multiple trajectories and checking for repetitions.
 
         Parameters
         ----------
 
-        trajectory_length : int 
+        trajectory_length : int
             Length after which we assume each trajectory is in attractor.
 
         initial_trajectory_length : int, optional
@@ -720,7 +737,7 @@ class PBN:
         -------
         attractor_states : list[list[list[bool]]] or list[list[int]]
             list of attractors where attractors are coded as lists of lists of bools, lists of bools representing the states.
-        
+
         """
         attractors = monte_carlo(self, trajectory_length, attractor_length)
 
@@ -730,7 +747,6 @@ class PBN:
             return convert_to_binary_representation(attractors, self._n)
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
-
 
     def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
         """

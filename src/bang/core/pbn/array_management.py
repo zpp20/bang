@@ -93,7 +93,10 @@ def convert_pbn_to_ndarrays(pbn: "PBN", n_steps: int, save_history: bool = True)
 
 
 class GpuMemoryContainer:
-    def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True, stream = cuda.default_stream()):
+    def __init__(self, pbn: "PBN", n_steps: int, save_history: bool = True, stream=None):
+        if stream is None:
+            stream = cuda.default_stream()
+
         pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, save_history)
 
         (
