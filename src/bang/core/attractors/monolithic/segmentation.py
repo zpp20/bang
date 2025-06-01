@@ -17,7 +17,7 @@ def segment_attractors(attractor_states, history, n_nodes):
     attractors = []
 
     while num_states > 0:
-        initial_state = active_states[0][0] if n_nodes // 32 < 1 else active_states[0] 
+        initial_state = active_states[0][0] if n_nodes // 32 < 1 else active_states[0]
 
         rm_idx = np.where(active_states == initial_state)[0]
         active_states = np.delete(active_states, rm_idx)

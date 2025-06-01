@@ -6,10 +6,10 @@ attr_deter = pbn.blocks_detect_attractors(repr="bool")
 
 print(attr_deter)
 
-attr = pbn.monte_carlo_detect_attractors(trajectory_length= 200, attractor_length=100, repr='bool')
+attr = pbn.monte_carlo_detect_attractors(trajectory_length=200, attractor_length=100, repr="bool")
 
 print(attr)
 
-attr = pbn.monte_carlo_detect_attractors(trajectory_length= 200, attractor_length=100, repr='int')
+attr = pbn.monte_carlo_detect_attractors(trajectory_length=200, attractor_length=100, repr="int")
 
 print(attr)
