@@ -33,7 +33,7 @@ def monolithic_detect_attractor(pbn: "PBN", initial_states, states_repr="bool", 
 
     sync_pbn.set_states(initial_states, reset_history=True, stream=stream)
 
-    history = sync_pbn.last_state
+    history =  [s.copy() for s in sync_pbn.last_state]
 
     state_bytes = tuple(state.tobytes() for state in sync_pbn.last_state)
     n_unique_states = len({state_bytes})
