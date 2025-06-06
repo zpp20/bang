@@ -32,7 +32,7 @@ def monte_carlo(network: "PBN", initial_trajectory_length: int, trajectory_lengt
     ]
 
     network.set_states(states=samples, reset_history=True)
-    network.save_history = True
+    network.save_history = False
 
     network.simple_steps(n_steps=initial_trajectory_length)
 
@@ -43,18 +43,6 @@ def monte_carlo(network: "PBN", initial_trajectory_length: int, trajectory_lengt
     trajectories = network.history
     trajectories = np.squeeze(trajectories).T
     trajectories = trajectories[::, 1:]
-
-    # trajectories_state_count = count_states(trajectories)
-    # detected_attractors = []
-
-    # for i, trajectory in enumerate(trajectories_state_count):
-    #     max_value = max(trajectory,key=trajectory.get)
-    #     if trajectory[max_value] > minimum_repetitions:
-    #         indices = np.where(trajectories[i] == max_value)[0]
-    #         first_index = indices[0]
-    #         attractor_trajectory = trajectories[i][first_index:]
-    #         attractor_states = np.unique(attractor_trajectory)
-    #         detected_attractors.append(attractor_states)
 
     attractors = merge_attractors(trajectories)
 

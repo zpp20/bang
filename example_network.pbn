@@ -10,7 +10,7 @@ n=3
 
 //specify perturbation rate
 
-perturbation=0.0
+perturbation=0.2
 
 //We list the names of all nodes one by one below.
 
@@ -54,13 +54,17 @@ endNode
 
 node x1
 
-1.0 : (!x2)&(x1|x0)
+0.3 : (!x2)&(x1|x0)
+
+0.7 : (!x0)&x1&x2
 
 endNode
 
 node x2
 
-1.0 : x0&x1&(!x2)
+0.4 : (!x0)&x1
+
+0.6 : x0&x1&(!x2)
 
 endNode
 
