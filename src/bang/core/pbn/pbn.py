@@ -5,6 +5,8 @@ Module containing the PBN class and helpers.
 import math
 from typing import Literal, overload
 
+import os
+
 import graphviz
 import numpy as np
 import numpy.typing as npt
@@ -635,7 +637,9 @@ class PBN:
             else:
                 invoke_cuda_simulation(self, n_steps, actions)
         elif device == "cuda" and not cuda.is_available():
-            print("WARNING! CUDA is not available, falling back to CPU simulation")
+            if os.environ.get("BANG_SUPPRESS_WARNINGS") != "1":
+                print("WARNING! CUDA is not available, falling back to CPU simulation")
+
             invoke_cpu_simulation(self, n_steps, actions)
         else:
             invoke_cpu_simulation(self, n_steps, actions)

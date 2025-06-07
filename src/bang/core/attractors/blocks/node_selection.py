@@ -47,7 +47,7 @@ def select_nodes(pbn: "PBN", nodes: list[int]):
     nv = [new_nv[idx] for idx, i in enumerate(new_nv) if idx in nodes]
     F = [sublist[0] for sublist in new_F]
     F = [F[idx] for idx, i in enumerate(F) if idx in nodes]
-    print()
+
     varFInt = [translate(new_varF[idx]) for idx, i in enumerate(new_varF) if idx in nodes]
     cij = pbn._cij
     perturbation = pbn._perturbation
