@@ -37,7 +37,10 @@ def create_color_string(
 
 
 def draw_blocks(
-    pbn: "PBN", filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    pbn: "PBN",
+    filename: str | None = None,
+    format: Literal["pdf", "png", "svg"] = "svg",
+    number_from_one: bool = False,
 ) -> graphviz.Digraph:
     """
     Plot the blocks of a Probabilistic Boolean Network (PBN).
@@ -72,9 +75,10 @@ def draw_blocks(
     dot.attr("node", shape="circle")
 
     for i in range(pbn._n):
+        label = f"{i + 1}" if number_from_one else f"{i}"
         dot.node(
             str(i),
-            label=f"{i}",
+            label,
             color=create_color_string(i, node_to_blocks, contrasting_colors),
             style="wedged",
         )

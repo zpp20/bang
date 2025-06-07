@@ -9,7 +9,10 @@ if typing.TYPE_CHECKING:
 
 
 def draw_dependencies(
-    pbn: "PBN", filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+    pbn: "PBN",
+    filename: str | None = None,
+    format: Literal["pdf", "png", "svg"] = "svg",
+    number_from_one: bool = False,
 ) -> graphviz.Digraph:
     """
     Plot the dependency graph of a Probabilistic Boolean Network (PBN).
@@ -34,7 +37,8 @@ def draw_dependencies(
     dot.attr("node", shape="circle")
 
     for i in range(pbn._n):
-        dot.node(str(i), label=f"{i}")
+        label = f"{i + 1}" if number_from_one else f"{i}"
+        dot.node(str(i), label)
 
     cumNf = np.cumsum([0] + pbn._nf, dtype=np.int32)
 
