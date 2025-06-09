@@ -3,6 +3,7 @@ Module containing the PBN class and helpers.
 """
 
 import math
+import os
 from typing import Literal, overload
 
 import graphviz
@@ -635,7 +636,9 @@ class PBN:
             else:
                 invoke_cuda_simulation(self, n_steps, actions)
         elif device == "cuda" and not cuda.is_available():
-            print("WARNING! CUDA is not available, falling back to CPU simulation")
+            if os.environ.get("BANG_SUPPRESS_WARNINGS") != "1":
+                print("WARNING! CUDA is not available, falling back to CPU simulation")
+
             invoke_cpu_simulation(self, n_steps, actions)
         else:
             invoke_cpu_simulation(self, n_steps, actions)
@@ -748,7 +751,12 @@ class PBN:
         else:
             raise ValueError("Invalid representation type. Use 'bool' or 'int'.")
 
-    def dependency_graph(self, filename: str | None = None) -> graphviz.Digraph:
+    def dependency_graph(
+        self,
+        filename: str | None = None,
+        format: Literal["pdf", "png", "svg"] = "svg",
+        number_from_one: bool = False,
+    ) -> graphviz.Digraph:
         """
         Plot the dependency graph of a Probabilistic Boolean Network (PBN).
 
@@ -759,11 +767,17 @@ class PBN:
         :param filename: The filename to save the graph as a PNG image. If None, the graph is not saved.
         :type filename: str, optional
 
+        :param format: The format to save the graph in. Default is 'svg'.
+        :type format: Literal['pdf', 'png', 'svg']
+
+        :param number_from_one: If True, the nodes are numbered starting from 1. If False, they are numbered starting from 0. Default is False.
+        :type number_from_one: bool
+
         :return: A graphviz.Digraph object representing the dependency graph.
         :rtype: graphviz.Digraph
         """
 
-        return draw_dependencies(self, filename)
+        return draw_dependencies(self, filename, format, number_from_one)
 
     def trajectory_graph(
         self,
@@ -790,14 +804,22 @@ class PBN:
         :param show_labels: Whether to show labels on the nodes. Default is True. If set to False, the nodes are represented as points.
         :type show_labels: bool
 
+        :param number_from_one: If True, the nodes are numbered starting from 1. If False, they are numbered starting from 0. Default is False.
+        :type number_from_one: bool
+
         :return: A graphviz.Digraph object representing the trajectory graph.
         :rtype: graphviz.Digraph
         """
 
-        return draw_trajectory_ndarray(self.history[:, index, :], filename, format, show_labels)
+        return draw_trajectory_ndarray(
+            self.history[:, index, :], filename, format, show_labels, self.n_nodes
+        )
 
     def block_graph(
-        self, filename: str | None = None, format: Literal["pdf", "png", "svg"] = "svg"
+        self,
+        filename: str | None = None,
+        format: Literal["pdf", "png", "svg"] = "svg",
+        number_from_one: bool = False,
     ) -> graphviz.Digraph:
         """
         Plot the blocks of a Probabilistic Boolean Network (PBN).
@@ -811,11 +833,14 @@ class PBN:
         :param format: The format to save the graph in. Default is 'svg'.
         :type format: Literal['pdf', 'png', 'svg']
 
+        :param number_from_one: If True, the nodes are numbered starting from 1. If False, they are numbered starting from 0. Default is False.
+        :type number_from_one: bool
+
         :return: A graphviz.Digraph object representing the block graph.
         :rtype: graphviz.Digraph
         """
 
-        return draw_blocks(self, filename, format)
+        return draw_blocks(self, filename, format, number_from_one)
 
 
 def load_sbml(path: str) -> tuple:

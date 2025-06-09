@@ -3,12 +3,15 @@ from typing import Literal
 import graphviz
 import numpy as np
 
+from bang.visualization.utils import convert_to_ones_zeros, max_bit_length
+
 
 def draw_trajectory_ndarray(
     trajectory: np.ndarray,
     filename: str | None = None,
     format: Literal["pdf", "png", "svg"] = "svg",
     show_labels: bool = True,
+    bit_length: int | None = None,
 ) -> graphviz.Digraph:
     """
     Plot the trajectory of a Probabilistic Boolean Network (PBN).
@@ -44,12 +47,14 @@ def draw_trajectory_ndarray(
 
     nodes = set()
 
+    bit_length = bit_length or max_bit_length(trajectory)
+
     nodes.add(str(trajectory[0, :]))
-    dot.node(str(trajectory[0, :]), str(trajectory[0, :]))
+    dot.node(str(trajectory[0, :]), convert_to_ones_zeros(trajectory[0, :], bit_length))
 
     for prev, next in zip(trajectory[:-1, :], trajectory[1:, :]):
         if str(next) not in nodes:
-            dot.node(str(next), str(next))
+            dot.node(str(next), convert_to_ones_zeros(next, bit_length))
 
         if (str(prev), str(next)) not in edges:
             dot.edge(str(prev), str(next))

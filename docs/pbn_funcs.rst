@@ -2,7 +2,7 @@ PBN module documentation
 ========================
 
 
-.. automodule:: bang.core.PBN
+.. automodule:: bang.core.pbn.pbn
     :members:
     :member-order: groupwise
 
