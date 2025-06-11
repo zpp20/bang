@@ -1,6 +1,6 @@
 import bang
 
-pbn = bang.load_from_file("examples/example_network.pbn", 'assa')
+pbn = bang.load_from_file("examples/example_network.pbn", "assa")
 
 pbn.update_type = "synchronous"
 
