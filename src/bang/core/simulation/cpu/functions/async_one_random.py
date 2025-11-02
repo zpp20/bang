@@ -35,10 +35,12 @@ def cpu_converge_async_one_random(
 
     for idx in range(thread_num):
         current_state = np.zeros(state_size, dtype=np.uint32)
+        current_state_copy = np.zeros(state_size, dtype=np.uint32)
         relative_index = idx * state_size
 
         # Initialize state
         current_state[:] = initial_state[relative_index : relative_index + state_size]
+        current_state_copy[:] = initial_state[relative_index : relative_index + state_size]
 
         if save_history:
             state_history[relative_index : relative_index + state_size] = current_state[:]
@@ -56,7 +58,7 @@ def cpu_converge_async_one_random(
                 index_shift = node_index % 32
                 index_state = node_index // 32
                 rand = random.random()
-
+                
                 update_node(
                     node_index,
                     index_shift,
@@ -71,7 +73,7 @@ def cpu_converge_async_one_random(
                     cum_extra_f,
                     var_f,
                     pow_num,
-                    current_state,
+                    current_state_copy,
                     current_state,
                 )
 
@@ -83,6 +85,6 @@ def cpu_converge_async_one_random(
                 idx,
                 step,
                 current_state,
-                current_state,
+                current_state_copy,
                 save_history,
             )
