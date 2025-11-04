@@ -144,7 +144,7 @@ def get_function(n, lines, probs, names_dict, nv, F, varFInt, i, index_dict):
     sorted_vars = [index_dict[var] for var in sorted_var_indices]
 
     # generate every possible variable evaluation
-    truth_combinations = list(itertools.product([False, True], repeat=n))
+    truth_combinations = list(itertools.product([False, True],repeat=len(sorted_vars)))
     truth_table = []
 
     # evaluate the function for every possible combination of variables
