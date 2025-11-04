@@ -172,7 +172,7 @@ def invoke_cpu_simulation(pbn: "PBN", n_steps: int, actions: npt.NDArray[np.uint
 
     if actions is not None:
         pbn._latest_state = pbn._perturb_state_by_actions(actions, pbn._latest_state)
-        pbn._history = np.concatenate([pbn._history, pbn._latest_state], axis=0)
+        pbn._history = np.concatenate([pbn._history, np.expand_dims(pbn._latest_state, axis=2)], axis=0)
 
     # Convert PBN data to numpy arrays
     pbn_data = convert_pbn_to_ndarrays(pbn, n_steps, pbn.save_history)
