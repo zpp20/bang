@@ -46,7 +46,7 @@ def update_node(
         state_fragment = initialStateCopy[relative_index]
 
         if ((state_fragment >> (gpu_varF[start_var_f_index + ind]) % 32) & 1) != 0:
-            shift_num += gpu_powNum[1][ind]
+            shift_num += gpu_powNum[1][result_state_size - ind - 1]
 
     # if we have more than 5 variables, we need to use our extraF array
     if shift_num > 32:
